@@ -4,11 +4,11 @@ import "./interfaces/IPoolFactory.sol";
 import "./Pool.sol";
 
 contract PoolFactory is IPoolFactory {
-    address public feeTo;
-    address public feeToSetter;
+    address public override feeTo;
+    address public override feeToSetter;
 
-    mapping(address => mapping(address => address)) public getPair;
-    address[] public allPairs;
+    mapping(address => mapping(address => address)) public override getPool;
+    address[] public override allPools;
 
     event PairCreated(
         address indexed token0,
@@ -21,40 +21,41 @@ contract PoolFactory is IPoolFactory {
         feeToSetter = _feeToSetter;
     }
 
-    function allPairsLength() external view returns (uint256) {
-        return allPairs.length;
+    function allPoolsLength() external view override returns (uint256) {
+        return allPools.length;
     }
 
-    function createPair(address tokenA, address tokenB)
+    function createPool(address tokenA, address tokenB)
         external
-        returns (address pair)
+        override
+        returns (address pool)
     {
         require(tokenA != tokenB, "UniswapV2: IDENTICAL_ADDRESSES");
         (address token0, address token1) =
             tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         require(token0 != address(0), "UniswapV2: ZERO_ADDRESS");
         require(
-            getPair[token0][token1] == address(0),
+            getPool[token0][token1] == address(0),
             "UniswapV2: PAIR_EXISTS"
         ); // single check is sufficient
-        bytes memory bytecode = type(UniswapV2Pair).creationCode;
+        bytes memory bytecode = type(Pool).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(token0, token1));
         assembly {
-            pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
+            pool := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
-        IUniswapV2Pair(pair).initialize(token0, token1);
-        getPair[token0][token1] = pair;
-        getPair[token1][token0] = pair; // populate mapping in the reverse direction
-        allPairs.push(pair);
-        emit PairCreated(token0, token1, pair, allPairs.length);
+        IPool(pool).initialize(token0, token1);
+        getPool[token0][token1] = pool;
+        getPool[token1][token0] = pool; // populate mapping in the reverse direction
+        allPools.push(pool);
+        emit PoolCreated(token0, token1, pool, allPools.length);
     }
 
-    function setFeeTo(address _feeTo) external {
+    function setFeeTo(address _feeTo) external override {
         require(msg.sender == feeToSetter, "UniswapV2: FORBIDDEN");
         feeTo = _feeTo;
     }
 
-    function setFeeToSetter(address _feeToSetter) external {
+    function setFeeToSetter(address _feeToSetter) external override {
         require(msg.sender == feeToSetter, "UniswapV2: FORBIDDEN");
         feeToSetter = _feeToSetter;
     }
