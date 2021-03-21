@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.7.6;
 
-import "../interfaces/InterestStrategyInterface.sol";
+import "./interfaces/InterestStrategyInterface.sol";
 
-import "../node_modules/openzeppelin-contracts/math/SafeMath.sol";
-import "../node_modules/openzeppelin-contracts/math/SignedSafeMath.sol";
-import "../node_modules/openzeppelin-contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SignedSafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 //Describes a cubic parabola
 contract InterestStrategy is InterestStrategyInterface {
