@@ -8,9 +8,9 @@ interface InterestStrategyInterface {
     function getInterestForReserve(uint256 reserves, uint256 target)
         external
         view
-        returns (int256);
+        returns (uint256, uint256);
 
-    //Sets the offsett to a new value
+    //Sets the offsett to a new valuesß
     function setOffsett(uint256 newOffsett) external returns (bool);
 
     //Gets the current offsett

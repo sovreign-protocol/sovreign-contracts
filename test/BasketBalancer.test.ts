@@ -63,9 +63,9 @@ describe('BasketBalancer', function () {
         });
 
         it('sets correct allocations', async function () {
-            let alloc = await balancer.getAllocation(pools[0]);
+            let alloc = await balancer.getTargetAllocation(pools[0]);
             expect(alloc).to.equal(500000);
-            alloc = await balancer.getAllocation(pools[1]);
+            alloc = await balancer.getTargetAllocation(pools[1]);
             expect(alloc).to.equal(500000);
         });
 
@@ -77,9 +77,9 @@ describe('BasketBalancer', function () {
 
             // (500000 * 200 + 200000 * 100) / 300 = 400000
             // (500000 * 200 + 800000 * 100) / 300 = 600000
-            let alloc = await balancer.getAllocation(pools[0]);
+            let alloc = await balancer.getTargetAllocation(pools[0]);
             expect(alloc).to.equal(BigNumber.from(400000));
-            alloc = await balancer.getAllocation(pools[1]);
+            alloc = await balancer.getTargetAllocation(pools[1]);
             expect(alloc).to.equal(BigNumber.from(600000));
 
         });
@@ -103,7 +103,7 @@ describe('BasketBalancer', function () {
 
         it('DAO can add a new pool', async function () {
             await balancer.connect(flyingParrot).addPool(address3)
-            expect( await balancer.getAllocation(address3)).to.be.equal(0)
+            expect( await balancer.getTargetAllocation(address3)).to.be.equal(0)
             let pools = await balancer.getPools()
             expect(pools[2]).to.be.equal(address3)
         });

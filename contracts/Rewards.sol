@@ -10,7 +10,7 @@ import "./interfaces/IBarn.sol";
 contract Rewards is Ownable {
     using SafeMath for uint256;
 
-    uint256 constant decimals = 10 ** 18;
+    uint256 constant decimals = 10**18;
 
     struct Pull {
         address source;
@@ -35,7 +35,11 @@ contract Rewards is Ownable {
 
     event Claim(address indexed user, uint256 amount);
 
-    constructor(address _owner, address _token, address _barn) {
+    constructor(
+        address _owner,
+        address _token,
+        address _barn
+    ) {
         require(_token != address(0), "reward token must not be 0x0");
         require(_barn != address(0), "barn address must not be 0x0");
 
@@ -49,13 +53,13 @@ contract Rewards is Ownable {
     // account for the changes in reward that the user should get
     // it updates the amount owed to the user without transferring the funds
     function registerUserAction(address user) public {
-        require(msg.sender == address(barn), 'only callable by barn');
+        require(msg.sender == address(barn), "only callable by barn");
 
         _calculateOwed(user);
     }
 
     // claim calculates the currently owed reward and transfers the funds to the user
-    function claim() public returns (uint256){
+    function claim() public returns (uint256) {
         _calculateOwed(msg.sender);
 
         uint256 amount = owed[msg.sender];
@@ -92,7 +96,8 @@ contract Rewards is Ownable {
         }
 
         uint256 diff = balanceNow.sub(balanceBefore);
-        uint256 multiplier = currentMultiplier.add(diff.mul(decimals).div(totalStakedBond));
+        uint256 multiplier =
+            currentMultiplier.add(diff.mul(decimals).div(totalStakedBond));
 
         balanceBefore = balanceNow;
         currentMultiplier = multiplier;
@@ -100,15 +105,26 @@ contract Rewards is Ownable {
 
     // setupPullToken is used to setup the rewards system; only callable by contract owner
     // set source to address(0) to disable the functionality
-    function setupPullToken(address source, uint256 startTs, uint256 endTs, uint256 amount) public {
+    function setupPullToken(
+        address source,
+        uint256 startTs,
+        uint256 endTs,
+        uint256 amount
+    ) public {
         require(msg.sender == owner(), "!owner");
         require(!disabled, "contract is disabled");
 
         if (pullFeature.source != address(0)) {
-            require(source == address(0), "contract is already set up, source must be 0x0");
+            require(
+                source == address(0),
+                "contract is already set up, source must be 0x0"
+            );
             disabled = true;
         } else {
-            require(source != address(0), "contract is not setup, source must be != 0x0");
+            require(
+                source != address(0),
+                "contract is not setup, source must be != 0x0"
+            );
         }
 
         if (source == address(0)) {
@@ -116,8 +132,14 @@ contract Rewards is Ownable {
             require(endTs == 0, "disable contract: endTs must be 0");
             require(amount == 0, "disable contract: amount must be 0");
         } else {
-            require(endTs > startTs, "setup contract: endTs must be greater than startTs");
-            require(amount > 0, "setup contract: amount must be greater than 0");
+            require(
+                endTs > startTs,
+                "setup contract: endTs must be greater than startTs"
+            );
+            require(
+                amount > 0,
+                "setup contract: amount must be greater than 0"
+            );
         }
 
         pullFeature.source = source;
@@ -133,8 +155,8 @@ contract Rewards is Ownable {
 
     // setBarn sets the address of the BarnBridge Barn into the state variable
     function setBarn(address _barn) public {
-        require(_barn != address(0), 'barn address must not be 0x0');
-        require(msg.sender == owner(), '!owner');
+        require(_barn != address(0), "barn address must not be 0x0");
+        require(msg.sender == owner(), "!owner");
 
         barn = IBarn(_barn);
     }
@@ -160,11 +182,17 @@ contract Rewards is Ownable {
         }
 
         uint256 timeSinceLastPull = timestampCap.sub(lastPullTs);
-        uint256 shareToPull = timeSinceLastPull.mul(decimals).div(pullFeature.totalDuration);
-        uint256 amountToPull = pullFeature.totalAmount.mul(shareToPull).div(decimals);
+        uint256 shareToPull =
+            timeSinceLastPull.mul(decimals).div(pullFeature.totalDuration);
+        uint256 amountToPull =
+            pullFeature.totalAmount.mul(shareToPull).div(decimals);
 
         lastPullTs = block.timestamp;
-        rewardToken.transferFrom(pullFeature.source, address(this), amountToPull);
+        rewardToken.transferFrom(
+            pullFeature.source,
+            address(this),
+            amountToPull
+        );
     }
 
     // _calculateOwed calculates and updates the total amount that is owed to an user and updates the user's multiplier

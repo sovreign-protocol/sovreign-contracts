@@ -27,16 +27,25 @@ interface IBarn {
     function balanceOf(address user) external view returns (uint256);
 
     // balanceAtTs returns the amount of BOND that the user currently staked (bonus NOT included)
-    function balanceAtTs(address user, uint256 timestamp) external view returns (uint256);
+    function balanceAtTs(address user, uint256 timestamp)
+        external
+        view
+        returns (uint256);
 
     // stakeAtTs returns the Stake object of the user that was valid at `timestamp`
-    function stakeAtTs(address user, uint256 timestamp) external view returns (LibBarnStorage.Stake memory);
+    function stakeAtTs(address user, uint256 timestamp)
+        external
+        view
+        returns (LibBarnStorage.Stake memory);
 
     // votingPower returns the voting power (bonus included) + delegated voting power for a user at the current block
     function votingPower(address user) external view returns (uint256);
 
     // votingPowerAtTs returns the voting power (bonus included) + delegated voting power for a user at a point in time
-    function votingPowerAtTs(address user, uint256 timestamp) external view returns (uint256);
+    function votingPowerAtTs(address user, uint256 timestamp)
+        external
+        view
+        returns (uint256);
 
     // bondStaked returns the total raw amount of BOND staked at the current block
     function bondStaked() external view returns (uint256);
@@ -49,11 +58,17 @@ interface IBarn {
     function delegatedPower(address user) external view returns (uint256);
 
     // delegatedPowerAtTs returns the total voting power that a user received from other users at a point in time
-    function delegatedPowerAtTs(address user, uint256 timestamp) external view returns (uint256);
+    function delegatedPowerAtTs(address user, uint256 timestamp)
+        external
+        view
+        returns (uint256);
 
     // multiplierAtTs calculates the multiplier at a given timestamp based on the user's stake a the given timestamp
     // it includes the decay mechanism
-    function multiplierAtTs(address user, uint256 timestamp) external view returns (uint256);
+    function multiplierAtTs(address user, uint256 timestamp)
+        external
+        view
+        returns (uint256);
 
     // userLockedUntil returns the timestamp until the user's balance is locked
     function userLockedUntil(address user) external view returns (uint256);

@@ -1,21 +1,25 @@
 pragma solidity 0.7.6;
-
 import "./interfaces/IPoolFactory.sol";
+import "./interfaces/IBasketBalancer.sol";
+import "./interfaces/InterestStrategyInterface.sol";
+import "./interfaces/IPool.sol";
 import "./Pool.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract PoolFactory is IPoolFactory {
+    using SafeMath for uint256;
+
     address public override feeTo;
     address public override feeToSetter;
+    address public basketBalacer;
+    address public sovToken;
+    address public reignToken;
 
-    mapping(address => mapping(address => address)) public override getPool;
+    mapping(address => address) public override getPool;
+    mapping(address => address) public override getInterestStartegy;
     address[] public override allPools;
 
-    event PairCreated(
-        address indexed token0,
-        address indexed token1,
-        address pair,
-        uint256
-    );
+    event PairCreated(address indexed token, address pair, uint256);
 
     constructor(address _feeToSetter) public {
         feeToSetter = _feeToSetter;
@@ -25,29 +29,22 @@ contract PoolFactory is IPoolFactory {
         return allPools.length;
     }
 
-    function createPool(address tokenA, address tokenB)
+    function createPool(address token)
         external
         override
         returns (address pool)
     {
-        require(tokenA != tokenB, "UniswapV2: IDENTICAL_ADDRESSES");
-        (address token0, address token1) =
-            tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), "UniswapV2: ZERO_ADDRESS");
-        require(
-            getPool[token0][token1] == address(0),
-            "UniswapV2: PAIR_EXISTS"
-        ); // single check is sufficient
+        require(token != address(0), "UniswapV2: ZERO_ADDRESS");
+        require(getPool[token] == address(0), "UniswapV2: POOL_EXISTS"); // single check is sufficient
         bytes memory bytecode = type(Pool).creationCode;
-        bytes32 salt = keccak256(abi.encodePacked(token0, token1));
+        bytes32 salt = keccak256(abi.encodePacked(token));
         assembly {
             pool := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
-        IPool(pool).initialize(token0, token1);
-        getPool[token0][token1] = pool;
-        getPool[token1][token0] = pool; // populate mapping in the reverse direction
+        IPool(pool).initialize(token, sovToken, reignToken);
+        getPool[token] = pool;
         allPools.push(pool);
-        emit PoolCreated(token0, token1, pool, allPools.length);
+        emit PoolCreated(token, pool, allPools.length);
     }
 
     function setFeeTo(address _feeTo) external override {
@@ -55,8 +52,68 @@ contract PoolFactory is IPoolFactory {
         feeTo = _feeTo;
     }
 
+    function setInterestStrategy(address startegy, address pool)
+        external
+        override
+    {
+        getInterestStartegy[pool] = startegy;
+    }
+
+    function getInterestRate(
+        address pool,
+        uint256 reserves,
+        uint256 target
+    ) external view override returns (uint256, uint256) {
+        address strategy = getInterestStartegy[pool];
+        return
+            InterestStrategyInterface(basketBalacer).getInterestForReserve(
+                reserves,
+                target
+            );
+    }
+
     function setFeeToSetter(address _feeToSetter) external override {
         require(msg.sender == feeToSetter, "UniswapV2: FORBIDDEN");
         feeToSetter = _feeToSetter;
+    }
+
+    function getTargetAllocation(address pool)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return IBasketBalancer(basketBalacer).getTargetAllocation(pool);
+    }
+
+    function getPoolsTVL() external view override returns (uint256) {
+        uint256 tvl = 0;
+        for (uint32 i = 0; i < allPools.length; i++) {
+            IPool pool = IPool(getPool[allPools[i]]);
+            uint256 pool_size = pool.getReserves();
+            address pool_token = pool.token();
+            uint256 price = getTokenPrice(pool_token);
+            uint256 pool_value = pool_size.mul(price);
+            tvl = tvl.add(pool_value);
+        }
+        return tvl;
+    }
+
+    function getTokenPrice(address pool_token)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        return 1;
+    }
+
+    function getReignRate(address pool)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return 1;
     }
 }

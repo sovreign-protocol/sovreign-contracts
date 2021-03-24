@@ -1,18 +1,15 @@
-pragma solidity >=0.5.0;
+pragma solidity 0.7.6;
 
 interface IPoolFactory {
-    event PoolCreated(
-        address indexed token0,
-        address indexed token1,
-        address pool,
-        uint256
-    );
+    event PoolCreated(address indexed token, address pool, uint256);
 
     function feeTo() external view returns (address);
 
     function feeToSetter() external view returns (address);
 
-    function getPool(address tokenA, address tokenB)
+    function getPool(address token) external view returns (address pool);
+
+    function getInterestStartegy(address token)
         external
         view
         returns (address pool);
@@ -21,11 +18,25 @@ interface IPoolFactory {
 
     function allPoolsLength() external view returns (uint256);
 
-    function createPool(address tokenA, address tokenB)
-        external
-        returns (address pool);
+    function getPoolsTVL() external view returns (uint256);
+
+    function getTokenPrice(address) external view returns (uint256);
+
+    function getReignRate(address) external view returns (uint256);
+
+    function getTargetAllocation(address) external view returns (uint256);
+
+    function getInterestRate(
+        address,
+        uint256,
+        uint256
+    ) external view returns (uint256, uint256);
+
+    function createPool(address token) external returns (address pool);
 
     function setFeeTo(address) external;
 
     function setFeeToSetter(address) external;
+
+    function setInterestStrategy(address, address) external;
 }

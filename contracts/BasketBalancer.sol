@@ -81,7 +81,7 @@ contract BasketBalancer {
         return pools.length;
     }
 
-    function getAllocation(address pool) public view returns (uint256) {
+    function getTargetAllocation(address pool) public view returns (uint256) {
         return allocation[pool];
     }
 

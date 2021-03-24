@@ -11,13 +11,16 @@ import "./interfaces/IERC165.sol";
 import "./interfaces/IERC173.sol";
 
 contract Barn {
-    constructor(IDiamondCut.FacetCut[] memory _diamondCut, address _owner) payable {
+    constructor(IDiamondCut.FacetCut[] memory _diamondCut, address _owner)
+        payable
+    {
         require(_owner != address(0), "owner must not be 0x0");
 
         LibDiamond.diamondCut(_diamondCut, address(0), new bytes(0));
         LibOwnership.setContractOwner(_owner);
 
-        LibDiamondStorage.DiamondStorage storage ds = LibDiamondStorage.diamondStorage();
+        LibDiamondStorage.DiamondStorage storage ds =
+            LibDiamondStorage.diamondStorage();
 
         // adding ERC165 data
         ds.supportedInterfaces[type(IERC165).interfaceId] = true;
@@ -29,7 +32,8 @@ contract Barn {
     // Find facet for function that is called and execute the
     // function if a facet is found and return any value.
     fallback() external payable {
-        LibDiamondStorage.DiamondStorage storage ds = LibDiamondStorage.diamondStorage();
+        LibDiamondStorage.DiamondStorage storage ds =
+            LibDiamondStorage.diamondStorage();
 
         address facet = address(bytes20(ds.facets[msg.sig].facetAddress));
         require(facet != address(0), "Diamond: Function does not exist");
@@ -39,12 +43,12 @@ contract Barn {
             let result := delegatecall(gas(), facet, 0, calldatasize(), 0, 0)
             returndatacopy(0, 0, returndatasize())
             switch result
-            case 0 {
-                revert(0, returndatasize())
-            }
-            default {
-                return (0, returndatasize())
-            }
+                case 0 {
+                    revert(0, returndatasize())
+                }
+                default {
+                    return(0, returndatasize())
+                }
         }
     }
 

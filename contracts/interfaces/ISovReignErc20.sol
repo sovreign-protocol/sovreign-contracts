@@ -1,6 +1,18 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.7.6;
 
-interface IPoolErc20 {
+interface ISovReignErc20 {
+    event Burn(address indexed from, uint256 value);
+    event Mint(address indexed to, uint256 value);
+
+    function burn(address from, uint256 amount) external returns (bool);
+
+    function mint(address to, uint256 amount) external returns (bool);
+
+    function setFactory(address factory) external returns (bool);
+
+    function getFactory() external view returns (bool);
+
     event Approval(
         address indexed owner,
         address indexed spender,
@@ -32,20 +44,4 @@ interface IPoolErc20 {
         address to,
         uint256 value
     ) external returns (bool);
-
-    function DOMAIN_SEPARATOR() external view returns (bytes32);
-
-    function PERMIT_TYPEHASH() external pure returns (bytes32);
-
-    function nonces(address owner) external view returns (uint256);
-
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
 }
