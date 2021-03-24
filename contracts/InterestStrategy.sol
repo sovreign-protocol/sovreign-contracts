@@ -13,27 +13,44 @@ contract InterestStrategy is InterestStrategyInterface {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
-    uint256 offsett;
-    uint256 multiplier;
+    uint256 public constant blocksPerYear = 2102400;
 
-    constructor(uint256 _offesett, uint256 _multiplier) {
-        offsett = _offesett;
-        multiplier = _multiplier;
-    }
+    uint256 multiplier = 3 * 10**12;
+    uint256 offsett = 2 * 10**36;
 
-    //Computes what the interest is at the point on the curve described by the difference between actual reserves and target
+    constructor() {}
+
+    //Computes what the interest on a single blcok by getting the Yearly rate based on the curve
     function getInterestForReserve(uint256 reserves, uint256 target)
         public
         view
         override
-        returns (int256)
+        returns (uint256, uint256)
     {
         int256 _reserves = int256(reserves);
         int256 _target = int256(target);
-        int256 scaler = 100000; //this allows to have a division of hole numbers
+        int256 scaler = 10**18; //this allows to have a division of hole numbers
         int256 delta = (scaler.mul(_target.sub(_reserves))).div(_target);
-        int256 interest = int256(multiplier).mul(delta.mul(delta).mul(delta));
-        return interest.div(scaler).add(int256(offsett));
+        int256 interestInt =
+            int256(multiplier).mul(delta.mul(delta).mul(delta)).div(scaler);
+
+        uint256 positive;
+        uint256 negative;
+
+        if (interestInt >= 0) {
+            uint256 interest = uint256(interestInt);
+            positive = (interest / (blocksPerYear)).add(offsett);
+        } else {
+            negative = (uint256(interestInt.mul(-1)) / (blocksPerYear));
+            if (negative < offsett) {
+                positive = offsett - negative;
+                negative = 0;
+            } else {
+                negative = negative - offsett;
+            }
+        }
+
+        return (positive / 10**25, negative / 10**25);
     }
 
     //Sets the offsett to a new value
