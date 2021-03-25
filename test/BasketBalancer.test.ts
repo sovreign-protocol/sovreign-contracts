@@ -69,18 +69,28 @@ describe('BasketBalancer', function () {
             expect(alloc).to.equal(500000);
         });
 
+        it('inition allocation vote is empty ', async function () {
+            let alloc = await balancer.connect(user).getAllocationVote(userAddress);
+            expect(alloc[0].length).to.equal(0);
+            expect(alloc[1].length).to.equal(0);
+            expect(alloc[2]).to.equal(0);
+        });
+
         it('can vote with correct allocation', async function () {
             await barn.deposit(userAddress, 100);
             await barn.deposit(flyingParrotAddress, 200);
 
-            await balancer.connect(user).makeVote(pools, [200000,800000]);
+            await balancer.connect(user).updateAllocationVote(pools, [200000,800000]);
+
+            let resp = await balancer.connect(user).getAllocationVote(userAddress);
+            expect(resp[0][0]).to.equal(pools[0]);
+            expect(resp[1][0]).to.equal(200000);
+            expect(resp[2]).to.gt(0);
 
             // (500000 * 200 + 200000 * 100) / 300 = 400000
             // (500000 * 200 + 800000 * 100) / 300 = 600000
-            let alloc = await balancer.getTargetAllocation(pools[0]);
-            expect(alloc).to.equal(BigNumber.from(400000));
-            alloc = await balancer.getTargetAllocation(pools[1]);
-            expect(alloc).to.equal(BigNumber.from(600000));
+            let alloc = await balancer.computeAllocation();
+            expect(alloc[0]).to.equal(BigNumber.from(400000));
 
         });
 
@@ -89,7 +99,7 @@ describe('BasketBalancer', function () {
             await barn.deposit(flyingParrotAddress, 200);
 
             await expect( 
-                balancer.connect(user).makeVote(pools, [BigNumber.from(100000),BigNumber.from(700000)])
+                balancer.connect(user).updateAllocationVote(pools, [BigNumber.from(100000),BigNumber.from(700000)])
             ).to.be.revertedWith('allocation is not complete')
 
         });

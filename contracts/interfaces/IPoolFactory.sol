@@ -9,7 +9,7 @@ interface IPoolFactory {
 
     function getPool(address token) external view returns (address pool);
 
-    function getInterestStartegy(address token)
+    function getInterestStrategy(address token)
         external
         view
         returns (address pool);

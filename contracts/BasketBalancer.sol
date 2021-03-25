@@ -6,14 +6,22 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract BasketBalancer {
     using SafeMath for uint256;
-    mapping(address => uint256) allocation;
-    address[] pools;
+
+    address[] allPools;
+    mapping(address => uint256) poolAllocation;
+
+    address[] public voters;
+
+    struct AllocationVote {
+        address[] pools;
+        uint256[] allocations;
+        uint256 lastUpdated;
+    }
+    mapping(address => AllocationVote) allocationVotes;
 
     uint256 FULL_ALLOCATION = 1000000;
 
     IBarn barn;
-
-    mapping(address => uint256) public lastVote;
 
     address DAO;
 
@@ -24,68 +32,120 @@ contract BasketBalancer {
 
     constructor(
         address[] memory newPools,
-        uint256[] memory newTargets,
+        uint256[] memory newAllocation,
         address barnAddress,
         address dao
     ) {
         uint256 amountAllocated = 0;
         for (uint256 i = 0; i < newPools.length; i++) {
-            uint256 poolPercentage = newTargets[i];
+            uint256 poolPercentage = newAllocation[i];
             amountAllocated = amountAllocated.add(poolPercentage);
-            allocation[newPools[i]] = poolPercentage;
+            poolAllocation[newPools[i]] = poolPercentage;
         }
         require(
             amountAllocated == FULL_ALLOCATION,
             "allocation is not complete"
         );
 
-        pools = newPools;
+        allPools = newPools;
         barn = IBarn(barnAddress);
         DAO = dao;
     }
 
-    function makeVote(address[] calldata pool_list, uint256[] calldata targets)
-        public
-    {
-        require(pool_list.length == targets.length, "Need to have same length");
+    function updateAllocationVote(
+        address[] calldata pools,
+        uint256[] calldata allocations
+    ) public {
+        require(pools.length == allocations.length, "Need to have same length");
 
-        uint256 votingPower = barn.balanceOf(msg.sender);
+        require(barn.balanceOf(msg.sender) > 0, "Not allowed to vote");
 
-        uint256 totalPower = barn.bondStaked();
+        AllocationVote memory currentVote = allocationVotes[msg.sender];
 
-        uint256 remainingPower = totalPower.sub(votingPower);
-
-        uint256 amountAllocated = 0;
-        for (uint256 i = 0; i < pool_list.length; i++) {
-            uint256 poolPercentage = targets[i];
-
-            amountAllocated = amountAllocated.add(poolPercentage);
-
-            address pool = pool_list[i];
-            allocation[pool] = allocation[pool]
-                .mul(remainingPower)
-                .add(poolPercentage.mul(votingPower))
-                .div(totalPower);
+        if (currentVote.lastUpdated == 0) {
+            voters.push(msg.sender);
         }
 
+        uint256 amountAllocated = 0;
+        for (uint256 i = 0; i < pools.length; i++) {
+            require(allPools[i] == pools[i], "pools have incorrect order");
+            amountAllocated = amountAllocated.add(allocations[i]);
+        }
         require(
             amountAllocated == FULL_ALLOCATION,
-            "allocation is not complete"
+            "Allocation is not complete"
         );
+
+        currentVote.pools = pools;
+        currentVote.allocations = allocations;
+        currentVote.lastUpdated = block.timestamp;
+
+        allocationVotes[msg.sender] = currentVote;
+
+        //emit event
     }
 
-    function addPool(address pool) public onlyDAO returns (uint256) {
-        //Verify that this address is of a contract implementing the Pool interface
-        pools.push(pool);
-        allocation[pool] = 0;
-        return pools.length;
+    function updateBasketBalance() external returns (bool) {
+        uint256[] memory allocations = computeAllocation();
+
+        for (uint256 i = 0; i < allPools.length; i++) {
+            poolAllocation[allPools[i]] = allocations[i];
+        }
+
+        return true;
+    }
+
+    function computeAllocation() public view returns (uint256[] memory) {
+        uint256[] memory _allocations = new uint256[](allPools.length);
+
+        for (uint256 i = 0; i < voters.length; i++) {
+            address voter = voters[i];
+
+            uint256 votingPower = barn.balanceOf(voter);
+            uint256 totalPower = barn.bondStaked();
+            uint256 remainingPower = totalPower.sub(votingPower);
+
+            AllocationVote storage votersVote = allocationVotes[voter];
+
+            for (uint256 ii = 0; ii < votersVote.pools.length; ii++) {
+                uint256 poolPercentage = votersVote.allocations[ii];
+
+                address pool = votersVote.pools[ii];
+                _allocations[ii] = _allocations[ii]
+                    .mul(remainingPower)
+                    .add(poolPercentage.mul(votingPower))
+                    .div(totalPower);
+            }
+        }
+
+        return (_allocations);
+    }
+
+    function getAllocationVote(address voter)
+        public
+        view
+        returns (
+            address[] memory,
+            uint256[] memory,
+            uint256
+        )
+    {
+        AllocationVote memory vote = allocationVotes[voter];
+
+        return (vote.pools, vote.allocations, vote.lastUpdated);
     }
 
     function getTargetAllocation(address pool) public view returns (uint256) {
-        return allocation[pool];
+        return poolAllocation[pool];
+    }
+
+    function addPool(address pool) public onlyDAO returns (uint256) {
+        allPools.push(pool);
+        poolAllocation[pool] = 0;
+        return allPools.length;
     }
 
     function getPools() public view returns (address[] memory) {
-        return pools;
+        return allPools;
     }
 }

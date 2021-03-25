@@ -2,15 +2,9 @@
 pragma solidity 0.7.6;
 
 interface IPool {
-    event Mint(address indexed sender, uint256 amountSov);
-    event Burn(address indexed sender, uint256 amountSov);
+    event Mint(address indexed sender, uint256 amountToken, uint256 amountSov);
+    event Burn(address indexed sender, uint256 amountToken, uint256 amountSov);
     event AccrueInterest(uint256 cashPrior, uint256 interestAccumulated);
-    event Swap(
-        address indexed sender,
-        uint256 amountIn,
-        uint256 amountSov,
-        address indexed to
-    );
     event Sync(uint256 reserve);
 
     function MINIMUM_LIQUIDITY() external pure returns (uint256);

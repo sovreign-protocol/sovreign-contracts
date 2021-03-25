@@ -81,7 +81,11 @@ contract Pool is IPool, PoolErc20 {
         emit Sync(reserve);
     }
 
-    function _mintFee(uint256 _reserve) private returns (bool feeOn) {
+    function _takeFeeIn(uint256 amount) private returns (bool feeOn) {
+        //TODO
+    }
+
+    function _takeFeeOut(uint256 amount) private returns (bool feeOn) {
         //TODO
     }
 
@@ -98,7 +102,7 @@ contract Pool is IPool, PoolErc20 {
         uint256 balance = IERC20(token).balanceOf(address(this));
         uint256 amount = balance.sub(_reserve);
 
-        bool feeOn = _mintFee(_reserve);
+        bool feeOn = _takeFeeIn(amount);
         uint256 _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
         if (_totalSupply == 0) {
             liquidity = amount.sub(MINIMUM_LIQUIDITY);
@@ -112,7 +116,6 @@ contract Pool is IPool, PoolErc20 {
         _update(balance, _reserve);
 
         _mintSov(to, amount);
-        emit Mint(msg.sender, amount);
     }
 
     function burn(address to)
@@ -130,7 +133,7 @@ contract Pool is IPool, PoolErc20 {
         uint256 sovToBurn = IPoolFactory(factory).getPoolsTVL();
         uint256 amount = balanceOf[address(this)];
 
-        bool feeOn = _mintFee(_reserve);
+        bool feeOn = _takeFeeOut(amount);
         uint256 _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
         uint256 amountWithInterest =
             (amount.mul(interestMultiplier)).div(10**18);
@@ -143,8 +146,6 @@ contract Pool is IPool, PoolErc20 {
         _update(balance, _reserve);
 
         _burnSov(to, amount);
-
-        emit Burn(to, amount);
     }
 
     // force balances to match reserves
@@ -196,6 +197,8 @@ contract Pool is IPool, PoolErc20 {
         uint256 price = IPoolFactory(factory).getTokenPrice(address(this));
         uint256 amountSov = amount.mul(price).mul(sovSupply) / TVL;
 
+        emit Mint(msg.sender, amount, amountSov);
+
         return ISovReignErc20(sovToken).mint(to, amountSov);
     }
 
@@ -204,6 +207,8 @@ contract Pool is IPool, PoolErc20 {
         uint256 TVL = IPoolFactory(factory).getPoolsTVL();
         uint256 price = IPoolFactory(factory).getTokenPrice(address(this));
         uint256 amountSov = amount.mul(price).mul(sovSupply) / TVL;
+
+        emit Burn(msg.sender, amount, amountSov);
 
         return ISovReignErc20(sovToken).burn(from, amountSov);
     }

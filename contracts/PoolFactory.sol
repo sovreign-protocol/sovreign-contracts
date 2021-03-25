@@ -4,6 +4,7 @@ import "./interfaces/IBasketBalancer.sol";
 import "./interfaces/InterestStrategyInterface.sol";
 import "./interfaces/IPool.sol";
 import "./Pool.sol";
+import "./InterestStrategy.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract PoolFactory is IPoolFactory {
@@ -16,7 +17,7 @@ contract PoolFactory is IPoolFactory {
     address public reignToken;
 
     mapping(address => address) public override getPool;
-    mapping(address => address) public override getInterestStartegy;
+    mapping(address => address) public override getInterestStrategy;
     address[] public override allPools;
 
     event PairCreated(address indexed token, address pair, uint256);
@@ -41,9 +42,14 @@ contract PoolFactory is IPoolFactory {
         assembly {
             pool := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
+
         IPool(pool).initialize(token, sovToken, reignToken);
+        InterestStrategy interest = new InterestStrategy();
+
         getPool[token] = pool;
+        getInterestStrategy[pool] = address(interest);
         allPools.push(pool);
+
         emit PoolCreated(token, pool, allPools.length);
     }
 
@@ -52,11 +58,11 @@ contract PoolFactory is IPoolFactory {
         feeTo = _feeTo;
     }
 
-    function setInterestStrategy(address startegy, address pool)
+    function setInterestStrategy(address strategy, address pool)
         external
         override
     {
-        getInterestStartegy[pool] = startegy;
+        getInterestStrategy[pool] = strategy;
     }
 
     function getInterestRate(
@@ -64,7 +70,7 @@ contract PoolFactory is IPoolFactory {
         uint256 reserves,
         uint256 target
     ) external view override returns (uint256, uint256) {
-        address strategy = getInterestStartegy[pool];
+        address strategy = getInterestStrategy[pool];
         return
             InterestStrategyInterface(basketBalacer).getInterestForReserve(
                 reserves,
