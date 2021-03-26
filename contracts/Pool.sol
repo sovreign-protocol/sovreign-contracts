@@ -11,7 +11,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract Pool is IPool, PoolErc20 {
     using SafeMath for uint256;
-    using UQ112x112 for uint224;
 
     uint256 public constant override MINIMUM_LIQUIDITY = 10**3;
     bytes4 private constant SELECTOR =
@@ -73,8 +72,8 @@ contract Pool is IPool, PoolErc20 {
         reignToken = _reign;
     }
 
-    // update reserves and, on the first call per block, price accumulators
-    function _update(uint256 balance, uint256 _reserve) private {
+    // update reserves and, on the first call per block
+    function _updateReserves(uint256 balance) private {
         require(balance <= uint256(-1), "UniswapV2: OVERFLOW");
         reserve = uint256(balance);
         blockNumberLast = block.number;
@@ -113,7 +112,7 @@ contract Pool is IPool, PoolErc20 {
         require(liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED");
         //Mint LP Tokens
         _mint(to, liquidity);
-        _update(balance, _reserve);
+        _updateReserves(balance);
 
         _mintSov(to, amount);
     }
@@ -129,7 +128,6 @@ contract Pool is IPool, PoolErc20 {
         uint256 _reserve = getReserves(); // gas savings
         address _token = token; // gas savings
         address _sovToken = sovToken; // gas savings
-        uint256 balance = IERC20(_token).balanceOf(address(this));
         uint256 sovToBurn = IPoolFactory(factory).getPoolsTVL();
         uint256 amount = balanceOf[address(this)];
 
@@ -142,8 +140,8 @@ contract Pool is IPool, PoolErc20 {
         _burn(address(this), amount);
         //Withdraw only with interest applied
         _safeTransfer(_token, to, amountWithInterest);
-        balance = IERC20(_token).balanceOf(address(this));
-        _update(balance, _reserve);
+        uint256 balance = IERC20(_token).balanceOf(address(this));
+        _updateReserves(balance);
 
         _burnSov(to, amount);
     }
@@ -158,7 +156,6 @@ contract Pool is IPool, PoolErc20 {
         );
     }
 
-    // force balances to match reserves
     function redeem(address to, uint256 amountReign) external override lock {
         _accrueInterest();
 
@@ -182,13 +179,12 @@ contract Pool is IPool, PoolErc20 {
         _safeTransfer(_token, to, amount);
 
         uint256 balance = IERC20(_token).balanceOf(address(this));
-        uint256 _reserve = getReserves();
-        _update(balance, _reserve);
+        _updateReserves(balance);
     }
 
     // force reserves to match balances
     function sync() external override lock {
-        _update(IERC20(token).balanceOf(address(this)), reserve);
+        _updateReserves(IERC20(token).balanceOf(address(this)));
     }
 
     function _mintSov(address to, uint256 amount) private returns (bool) {

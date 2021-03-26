@@ -16,6 +16,8 @@ interface IPoolFactory {
 
     function allPools(uint256) external view returns (address pool);
 
+    function isPool(address) external view returns (bool);
+
     function allPoolsLength() external view returns (uint256);
 
     function getPoolsTVL() external view returns (uint256);

@@ -105,6 +105,15 @@ contract PoolFactory is IPoolFactory {
         return tvl;
     }
 
+    function isPool(address pool) public view override returns (bool) {
+        for (uint32 i = 0; i < allPools.length; i++) {
+            if (allPools[i] == pool) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function getTokenPrice(address pool_token)
         public
         view
