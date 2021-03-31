@@ -1,4 +1,5 @@
 pragma solidity =0.7.6;
+pragma experimental ABIEncoderV2;
 
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
@@ -8,19 +9,15 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./libraries/UniswapV2Library.sol";
 import "./libraries/UniswapV2OracleLibrary.sol";
 
+import "./interfaces/IOracle.sol";
+
 // sliding window oracle that uses observations collected over a window to provide moving price averages in the past
 // `windowSize` with a precision of `windowSize / granularity`
 // note this is a singleton oracle and only needs to be deployed once per desired parameters, which
 // differs from the simple oracle which must be deployed once per pair.
-contract ExampleSlidingWindowOracle {
+contract UniswapSWOracle is IOracle {
     using FixedPoint for *;
     using SafeMath for uint256;
-
-    struct Observation {
-        uint256 timestamp;
-        uint256 price0Cumulative;
-        uint256 price1Cumulative;
-    }
 
     address public immutable factory;
     // the desired amount of time over which the moving average should be computed, e.g. 24 hours
@@ -59,6 +56,7 @@ contract ExampleSlidingWindowOracle {
     function observationIndexOf(uint256 timestamp)
         public
         view
+        override
         returns (uint8 index)
     {
         uint256 epochPeriod = timestamp / periodSize;
@@ -69,7 +67,7 @@ contract ExampleSlidingWindowOracle {
     function getFirstObservationInWindow(address pair)
         private
         view
-        returns (Observation storage firstObservation)
+        returns (Observation memory firstObservation)
     {
         uint8 observationIndex = observationIndexOf(block.timestamp);
         // no overflow issue. if observationIndex + 1 overflows, result is still zero.
@@ -79,7 +77,7 @@ contract ExampleSlidingWindowOracle {
 
     // update the cumulative price for the observation at the current timestamp. each observation is updated at most
     // once per epoch period.
-    function update(address tokenA, address tokenB) external {
+    function update(address tokenA, address tokenB) external override {
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
 
         // populate the array with empty observations (first call only)
@@ -128,10 +126,9 @@ contract ExampleSlidingWindowOracle {
         address tokenIn,
         uint256 amountIn,
         address tokenOut
-    ) external view returns (uint256 amountOut) {
+    ) external view override returns (uint256 amountOut) {
         address pair = UniswapV2Library.pairFor(factory, tokenIn, tokenOut);
-        Observation storage firstObservation =
-            getFirstObservationInWindow(pair);
+        Observation memory firstObservation = getFirstObservationInWindow(pair);
 
         uint256 timeElapsed = block.timestamp - firstObservation.timestamp;
         require(

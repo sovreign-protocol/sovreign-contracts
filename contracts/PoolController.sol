@@ -3,6 +3,7 @@ import "./interfaces/IPoolController.sol";
 import "./interfaces/IBasketBalancer.sol";
 import "./interfaces/InterestStrategyInterface.sol";
 import "./interfaces/IPool.sol";
+import "./interfaces/IOracle.sol";
 import "./Pool.sol";
 import "./InterestStrategy.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -11,19 +12,34 @@ contract PoolController is IPoolController {
     using SafeMath for uint256;
 
     address public override feeTo;
-    address public override feeToSetter;
-    address public basketBalacer;
+    address public basketBalancer;
     address public sovToken;
     address public reignToken;
 
+    address public reignDAO;
+
     mapping(address => address) public override getPool;
     mapping(address => address) public override getInterestStrategy;
+    mapping(address => address) public override getOracle;
     address[] public override allPools;
 
     event PairCreated(address indexed token, address pair, uint256);
 
-    constructor(address _feeToSetter) public {
-        feeToSetter = _feeToSetter;
+    constructor(
+        address _basketBalancer,
+        address _sovToken,
+        address _reignToken,
+        address _reignDAO
+    ) public {
+        basketBalancer = _basketBalancer;
+        sovToken = _sovToken;
+        reignToken = _reignToken;
+        reignDAO = _reignDAO;
+    }
+
+    modifier onlyDAO() {
+        require(msg.sender == reignDAO, "SoV-Reign: Forbidden");
+        _;
     }
 
     function allPoolsLength() external view override returns (uint256) {
@@ -33,6 +49,7 @@ contract PoolController is IPoolController {
     function createPool(address token)
         external
         override
+        onlyDAO
         returns (address pool)
     {
         require(token != address(0), "SoV-Reign: ZERO_ADDRESS");
@@ -49,22 +66,47 @@ contract PoolController is IPoolController {
         getPool[token] = pool;
         getInterestStrategy[pool] = address(interest);
         allPools.push(address(pool));
+        IBasketBalancer(basketBalancer).addPool(address(pool));
 
         emit PoolCreated(token, pool, allPools.length);
 
         return pool;
     }
 
-    function setFeeTo(address _feeTo) external override {
-        require(msg.sender == feeToSetter, "SoV-Reign: FORBIDDEN");
+    function setFeeTo(address _feeTo) external override onlyDAO {
         feeTo = _feeTo;
+    }
+
+    function setReignDAO(address _reignDAO) external override onlyDAO {
+        _reignDAO = _reignDAO;
+    }
+
+    function setBaseketBalancer(address _basketBalancer)
+        external
+        override
+        onlyDAO
+    {
+        basketBalancer = _basketBalancer;
+    }
+
+    function setSovToken(address _sovToken) external override onlyDAO {
+        sovToken = _sovToken;
+    }
+
+    function setReignToken(address _reignToken) external override onlyDAO {
+        reignToken = _reignToken;
     }
 
     function setInterestStrategy(address strategy, address pool)
         external
         override
+        onlyDAO
     {
         getInterestStrategy[pool] = strategy;
+    }
+
+    function setOracle(address oracle, address pool) external override onlyDAO {
+        getOracle[pool] = oracle;
     }
 
     function getInterestRate(
@@ -74,15 +116,10 @@ contract PoolController is IPoolController {
     ) external view override returns (uint256, uint256) {
         address strategy = getInterestStrategy[pool];
         return
-            InterestStrategyInterface(basketBalacer).getInterestForReserve(
+            InterestStrategyInterface(strategy).getInterestForReserve(
                 reserves,
                 target
             );
-    }
-
-    function setFeeToSetter(address _feeToSetter) external override {
-        require(msg.sender == feeToSetter, "SoV-Reign: FORBIDDEN");
-        feeToSetter = _feeToSetter;
     }
 
     function getTargetAllocation(address pool)
@@ -91,7 +128,7 @@ contract PoolController is IPoolController {
         override
         returns (uint256)
     {
-        return IBasketBalancer(basketBalacer).getTargetAllocation(pool);
+        return IBasketBalancer(basketBalancer).getTargetAllocation(pool);
     }
 
     function getPoolsTVL() external view override returns (uint256) {
