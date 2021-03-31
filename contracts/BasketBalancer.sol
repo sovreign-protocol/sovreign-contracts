@@ -2,9 +2,10 @@ pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "./interfaces/IBarn.sol";
+import "./interfaces/IBasketBalancer.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract BasketBalancer {
+contract BasketBalancer is IBasketBalancer {
     using SafeMath for uint256;
 
     address[] allPools;
@@ -55,7 +56,7 @@ contract BasketBalancer {
     function updateAllocationVote(
         address[] calldata pools,
         uint256[] calldata allocations
-    ) public {
+    ) public override {
         require(pools.length == allocations.length, "Need to have same length");
 
         require(barn.balanceOf(msg.sender) > 0, "Not allowed to vote");
@@ -85,7 +86,7 @@ contract BasketBalancer {
         //emit event
     }
 
-    function updateBasketBalance() external returns (bool) {
+    function updateBasketBalance() external override returns (bool) {
         uint256[] memory allocations = computeAllocation();
 
         for (uint256 i = 0; i < allPools.length; i++) {
@@ -95,7 +96,12 @@ contract BasketBalancer {
         return true;
     }
 
-    function computeAllocation() public view returns (uint256[] memory) {
+    function computeAllocation()
+        public
+        view
+        override
+        returns (uint256[] memory)
+    {
         uint256[] memory _allocations = new uint256[](allPools.length);
 
         for (uint256 i = 0; i < voters.length; i++) {
@@ -124,6 +130,7 @@ contract BasketBalancer {
     function getAllocationVote(address voter)
         public
         view
+        override
         returns (
             address[] memory,
             uint256[] memory,
@@ -135,17 +142,22 @@ contract BasketBalancer {
         return (vote.pools, vote.allocations, vote.lastUpdated);
     }
 
-    function getTargetAllocation(address pool) public view returns (uint256) {
+    function getTargetAllocation(address pool)
+        public
+        view
+        override
+        returns (uint256)
+    {
         return poolAllocation[pool];
     }
 
-    function addPool(address pool) public onlyDAO returns (uint256) {
+    function addPool(address pool) public override onlyDAO returns (uint256) {
         allPools.push(pool);
         poolAllocation[pool] = 0;
         return allPools.length;
     }
 
-    function getPools() public view returns (address[] memory) {
+    function getPools() public view override returns (address[] memory) {
         return allPools;
     }
 }
