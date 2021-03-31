@@ -111,6 +111,7 @@ contract PoolFactory is IPoolFactory {
         override
         returns (uint256)
     {
+        // TODO: oracle?
         return 1;
     }
 

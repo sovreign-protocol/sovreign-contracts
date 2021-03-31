@@ -17,6 +17,8 @@ contract Pool is IPool, PoolErc20 {
     bytes4 private constant SELECTOR =
         bytes4(keccak256(bytes("transfer(address,uint256)")));
 
+    // premium to be paid to incentivized to tak take our
+    // REIGN instead of going to secondary market
     uint256 public override premiumFactor = 11 * 10**17;
     uint256 public override feeIn = 2 * 10**15;
     uint256 public override feeOut = 2 * 10**15;
@@ -235,7 +237,7 @@ contract Pool is IPool, PoolErc20 {
         // Calculate the number of blocks elapsed since the last accrual
         uint256 blockDelta = currentBlockNumber.sub(accrualBlockNumberPrior);
 
-        // new = old * (1 - (intrest % * blocks ))
+        // new = old * (1 - (interest % * blocks ))
         uint256 excessLiquidityNew =
             totalSupply.mul(interestRate.mul(blockDelta));
 
