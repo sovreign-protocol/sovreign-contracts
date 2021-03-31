@@ -1,6 +1,6 @@
 pragma solidity 0.7.6;
 
-interface IPoolFactory {
+interface IPoolController {
     event PoolCreated(address indexed token, address pool, uint256);
 
     function feeTo() external view returns (address);

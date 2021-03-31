@@ -111,7 +111,7 @@ contract BasketBalancer {
                 uint256 poolPercentage = votersVote.allocations[ii];
 
                 address pool = votersVote.pools[ii];
-                _allocations[ii] = _allocations[ii]
+                _allocations[ii] = getTargetAllocation(pool)
                     .mul(remainingPower)
                     .add(poolPercentage.mul(votingPower))
                     .div(totalPower);

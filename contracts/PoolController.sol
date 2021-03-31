@@ -1,5 +1,5 @@
 pragma solidity 0.7.6;
-import "./interfaces/IPoolFactory.sol";
+import "./interfaces/IPoolController.sol";
 import "./interfaces/IBasketBalancer.sol";
 import "./interfaces/InterestStrategyInterface.sol";
 import "./interfaces/IPool.sol";
@@ -7,7 +7,7 @@ import "./Pool.sol";
 import "./InterestStrategy.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract PoolFactory is IPoolFactory {
+contract PoolController is IPoolController {
     using SafeMath for uint256;
 
     address public override feeTo;
@@ -35,8 +35,8 @@ contract PoolFactory is IPoolFactory {
         override
         returns (address pool)
     {
-        require(token != address(0), "UniswapV2: ZERO_ADDRESS");
-        require(getPool[token] == address(0), "UniswapV2: POOL_EXISTS"); // single check is sufficient
+        require(token != address(0), "SoV-Reign: ZERO_ADDRESS");
+        require(getPool[token] == address(0), "SoV-Reign: POOL_EXISTS"); // single check is sufficient
         bytes memory bytecode = type(Pool).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(token));
         assembly {
@@ -48,13 +48,15 @@ contract PoolFactory is IPoolFactory {
 
         getPool[token] = pool;
         getInterestStrategy[pool] = address(interest);
-        allPools.push(pool);
+        allPools.push(address(pool));
 
         emit PoolCreated(token, pool, allPools.length);
+
+        return pool;
     }
 
     function setFeeTo(address _feeTo) external override {
-        require(msg.sender == feeToSetter, "UniswapV2: FORBIDDEN");
+        require(msg.sender == feeToSetter, "SoV-Reign: FORBIDDEN");
         feeTo = _feeTo;
     }
 
@@ -79,7 +81,7 @@ contract PoolFactory is IPoolFactory {
     }
 
     function setFeeToSetter(address _feeToSetter) external override {
-        require(msg.sender == feeToSetter, "UniswapV2: FORBIDDEN");
+        require(msg.sender == feeToSetter, "SoV-Reign: FORBIDDEN");
         feeToSetter = _feeToSetter;
     }
 

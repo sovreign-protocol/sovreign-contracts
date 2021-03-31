@@ -100,7 +100,7 @@ describe('BasketBalancer', function () {
 
             await expect( 
                 balancer.connect(user).updateAllocationVote(pools, [BigNumber.from(100000),BigNumber.from(700000)])
-            ).to.be.revertedWith('allocation is not complete')
+            ).to.be.revertedWith('Allocation is not complete')
 
         });
 

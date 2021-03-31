@@ -1,12 +1,11 @@
 pragma solidity 0.7.6;
 
 import "./PoolErc20.sol";
-import "./libraries/UQ112x112.sol";
 import "./libraries/Math.sol";
 import "./interfaces/IERC20.sol";
-import "./interfaces/ISovReignErc20.sol";
+import "./interfaces/IMintBurnErc20.sol";
 import "./interfaces/IPool.sol";
-import "./interfaces/IPoolFactory.sol";
+import "./interfaces/IPoolController.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract Pool is IPool, PoolErc20 {
@@ -128,7 +127,7 @@ contract Pool is IPool, PoolErc20 {
         uint256 _reserve = getReserves(); // gas savings
         address _token = token; // gas savings
         address _sovToken = sovToken; // gas savings
-        uint256 sovToBurn = IPoolFactory(factory).getPoolsTVL();
+        uint256 sovToBurn = IPoolController(factory).getPoolsTVL();
         uint256 amount = balanceOf[address(this)];
 
         bool feeOn = _takeFeeOut(amount);
@@ -160,13 +159,13 @@ contract Pool is IPool, PoolErc20 {
         _accrueInterest();
 
         require(
-            ISovReignErc20(reignToken).balanceOf(msg.sender) > amountReign,
+            IMintBurnErc20(reignToken).balanceOf(msg.sender) > amountReign,
             "insufficient balance"
         );
 
         address _token = token;
         uint256 reignToTokenRate =
-            IPoolFactory(factory).getReignRate(address(this));
+            IPoolController(factory).getReignRate(address(this));
 
         uint256 amount =
             amountReign.mul(reignToTokenRate).mul(premiumFactor).div(10**36);
@@ -175,7 +174,7 @@ contract Pool is IPool, PoolErc20 {
 
         excessLiquidity = excessLiquidity.sub(amount);
 
-        ISovReignErc20(reignToken).burn(to, amountReign);
+        IMintBurnErc20(reignToken).burnFrom(to, amountReign);
         _safeTransfer(_token, to, amount);
 
         uint256 balance = IERC20(_token).balanceOf(address(this));
@@ -188,25 +187,25 @@ contract Pool is IPool, PoolErc20 {
     }
 
     function _mintSov(address to, uint256 amount) private returns (bool) {
-        uint256 sovSupply = ISovReignErc20(sovToken).totalSupply();
-        uint256 TVL = IPoolFactory(factory).getPoolsTVL();
-        uint256 price = IPoolFactory(factory).getTokenPrice(address(this));
+        uint256 sovSupply = IMintBurnErc20(sovToken).totalSupply();
+        uint256 TVL = IPoolController(factory).getPoolsTVL();
+        uint256 price = IPoolController(factory).getTokenPrice(address(this));
         uint256 amountSov = amount.mul(price).mul(sovSupply) / TVL;
 
         emit Mint(msg.sender, amount, amountSov);
 
-        return ISovReignErc20(sovToken).mint(to, amountSov);
+        return IMintBurnErc20(sovToken).mint(to, amountSov);
     }
 
     function _burnSov(address from, uint256 amount) private returns (bool) {
-        uint256 sovSupply = ISovReignErc20(sovToken).totalSupply();
-        uint256 TVL = IPoolFactory(factory).getPoolsTVL();
-        uint256 price = IPoolFactory(factory).getTokenPrice(address(this));
+        uint256 sovSupply = IMintBurnErc20(sovToken).totalSupply();
+        uint256 TVL = IPoolController(factory).getPoolsTVL();
+        uint256 price = IPoolController(factory).getTokenPrice(address(this));
         uint256 amountSov = amount.mul(price).mul(sovSupply) / TVL;
 
         emit Burn(msg.sender, amount, amountSov);
 
-        return ISovReignErc20(sovToken).burn(from, amountSov);
+        return IMintBurnErc20(sovToken).burnFrom(from, amountSov);
     }
 
     function _accrueInterest() private returns (bool) {
@@ -219,10 +218,10 @@ contract Pool is IPool, PoolErc20 {
 
         uint256 reserves = getReserves();
         uint256 target =
-            IPoolFactory(factory).getTargetAllocation(address(this));
+            IPoolController(factory).getTargetAllocation(address(this));
 
         (uint256 _, uint256 interestRate) =
-            IPoolFactory(factory).getInterestRate(
+            IPoolController(factory).getInterestRate(
                 address(this),
                 reserve,
                 target
