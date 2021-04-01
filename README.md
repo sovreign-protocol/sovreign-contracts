@@ -1,10 +1,19 @@
-# SoVReign Contracts
+# SoV-Reign Contracts
 
-This repo has all smart contracts used by SoVReign.
+This repo has all smart contracts used by SoV-Reign.
 
 The `./contracts` folder has the following structure:
 
-- TBD.
+- governance
+- erc20
+- pool
+- periphery
+  - oracle
+  - entrypoint contracts
+- staking
+- interfaces
+- libraries
+- facets
 
 ## Contract's Architecture
 
@@ -32,4 +41,4 @@ TBD
 
 - Diamond Standard for upgradeability
   * Started from the reference implementation [here](https://github.com/mudgen/diamond-1) which was refactored
-  * The features of this repo are implemented on a single facet in [BarnFacet.sol](./contracts/facets/BarnFacet.sol)
+  * The features of this repo are on a single facet in [BarnFacet.sol](./contracts/facets/BarnFacet.sol)
