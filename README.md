@@ -24,6 +24,8 @@ TBD
 ### Dependencies
 
 * node v12.10
+* docker
+* docker-compose
 * TBD
 
 ### Build & Test Instructions
@@ -36,6 +38,15 @@ yarn test
 ### Deploy 
 
 TBD
+
+### Run Remix-IDE and point to your local folder
+
+```shell script
+docker-compose up
+```
+
+Go to [http://localhost:8080](http://localhost:8080), and choose 
+`--connect to localhost--` in the "Workspaces" dropdown menu within "File Explorers".
 
 ## References or Useful Links
 
