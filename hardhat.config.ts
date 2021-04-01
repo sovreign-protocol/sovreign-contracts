@@ -45,6 +45,13 @@ const cfg: HardhatUserConfig = {
     gasReporter: {
         enabled: (process.env.REPORT_GAS) ? true : false,
     },
+
+    paths: {
+        sources: "./contracts",
+        tests: "./test",
+        cache: "./cache",
+        artifacts: "./artifacts"
+    },
 };
 
 export default cfg;
