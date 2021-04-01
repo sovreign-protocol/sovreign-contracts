@@ -1,7 +1,7 @@
-/dist/
-/cache/
-/typechain/
-/artifacts/
+**/dist/
+**/cache/
+**/typechain/
+**/artifacts
 **/node_modules
 **/.DS_Store
 .idea/
