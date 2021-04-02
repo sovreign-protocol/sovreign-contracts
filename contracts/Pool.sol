@@ -27,8 +27,8 @@ contract Pool is IPool, PoolErc20 {
     address public override reignToken;
 
     uint256 private reserve; // uses single storage slot, accessible via getReserves
-    uint256 private excessLiquidity;
-    uint256 private interestMultiplier;
+    uint256 public excessLiquidity;
+    uint256 public interestMultiplier;
     uint256 private blockNumberLast; // uses single storage slot, accessible via getReserves
 
     uint256 private unlocked = 1;
@@ -101,6 +101,8 @@ contract Pool is IPool, PoolErc20 {
         uint256 _reserve = getReserves(); // gas savings
         uint256 balance = IERC20(token).balanceOf(address(this));
         uint256 amount = balance.sub(_reserve);
+        
+        require(amount > 0, "Can only issue positive amounts");
 
         bool feeOn = _takeFeeIn(amount);
         uint256 _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
@@ -133,7 +135,6 @@ contract Pool is IPool, PoolErc20 {
         uint256 amount = balanceOf[address(this)];
 
         bool feeOn = _takeFeeOut(amount);
-        uint256 _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
         uint256 amountWithInterest =
             (amount.mul(interestMultiplier)).div(10**18);
         require(amount > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED");
@@ -215,6 +216,11 @@ contract Pool is IPool, PoolErc20 {
         uint256 accrualBlockNumberPrior = blockNumberLast;
 
         if (accrualBlockNumberPrior == currentBlockNumber) {
+            return false;
+        }
+
+        if (totalSupply == 0) {
+            blockNumberLast = currentBlockNumber;
             return false;
         }
 

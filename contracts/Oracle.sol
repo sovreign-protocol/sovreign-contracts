@@ -36,11 +36,13 @@ contract UniswapSWOracle is IOracle {
     // mapping from pair address to a list of price observations of that pair
     mapping(address => Observation[]) public pairObservations;
 
+    address public immutable usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+
     constructor(
         address factory_,
         uint256 windowSize_,
         uint8 granularity_
-    ) public {
+    ) {
         require(granularity_ > 1, "SlidingWindowOracle: GRANULARITY");
         require(
             (periodSize = windowSize_ / granularity_) * granularity_ ==
@@ -122,12 +124,13 @@ contract UniswapSWOracle is IOracle {
     // returns the amount out corresponding to the amount in for a given token using the moving average over the time
     // range [now - [windowSize, windowSize - periodSize * 2], now]
     // update must have been called for the bucket corresponding to timestamp `now - windowSize`
-    function consult(
-        address tokenIn,
-        uint256 amountIn,
-        address tokenOut
-    ) external view override returns (uint256 amountOut) {
-        address pair = UniswapV2Library.pairFor(factory, tokenIn, tokenOut);
+    function consult(address tokenIn, uint256 amountIn)
+        external
+        view
+        override
+        returns (uint256 amountOut)
+    {
+        address pair = UniswapV2Library.pairFor(factory, tokenIn, usdc);
         Observation memory firstObservation = getFirstObservationInWindow(pair);
 
         uint256 timeElapsed = block.timestamp - firstObservation.timestamp;
@@ -143,7 +146,7 @@ contract UniswapSWOracle is IOracle {
 
         (uint256 price0Cumulative, uint256 price1Cumulative, ) =
             UniswapV2OracleLibrary.currentCumulativePrices(pair);
-        (address token0, ) = UniswapV2Library.sortTokens(tokenIn, tokenOut);
+        (address token0, ) = UniswapV2Library.sortTokens(tokenIn, usdc);
 
         if (token0 == tokenIn) {
             return

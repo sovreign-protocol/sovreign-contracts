@@ -15,11 +15,12 @@ contract OracleMock is IOracle {
 
     function update(address tokenA, address tokenB) external override {}
 
-    function consult(
-        address tokenIn,
-        uint256 amountIn,
-        address tokenOut
-    ) external view override returns (uint256 amountOut) {
+    function consult(address tokenIn, uint256 amountIn)
+        external
+        view
+        override
+        returns (uint256 amountOut)
+    {
         return amountIn;
     }
 }

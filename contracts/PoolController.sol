@@ -30,7 +30,7 @@ contract PoolController is IPoolController {
         address _sovToken,
         address _reignToken,
         address _reignDAO
-    ) public {
+    ) {
         basketBalancer = _basketBalancer;
         sovToken = _sovToken;
         reignToken = _reignToken;
@@ -78,7 +78,7 @@ contract PoolController is IPoolController {
     }
 
     function setReignDAO(address _reignDAO) external override onlyDAO {
-        _reignDAO = _reignDAO;
+        reignDAO = _reignDAO;
     }
 
     function setBaseketBalancer(address _basketBalancer)
@@ -134,7 +134,7 @@ contract PoolController is IPoolController {
     function getPoolsTVL() external view override returns (uint256) {
         uint256 tvl = 0;
         for (uint32 i = 0; i < allPools.length; i++) {
-            IPool pool = IPool(getPool[allPools[i]]);
+            IPool pool = IPool(allPools[i]);
             uint256 pool_size = pool.getReserves();
             address pool_token = pool.token();
             uint256 price = getTokenPrice(pool_token);
@@ -160,7 +160,7 @@ contract PoolController is IPoolController {
         returns (uint256)
     {
         // TODO: oracle?
-        return 1;
+        return IOracle(getOracle[pool_token]).consult(pool_token, 10**18);
     }
 
     function getReignRate(address pool)
