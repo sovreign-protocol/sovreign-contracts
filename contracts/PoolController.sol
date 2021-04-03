@@ -25,6 +25,11 @@ contract PoolController is IPoolController {
 
     event PairCreated(address indexed token, address pair, uint256);
 
+    modifier onlyDAO() {
+        require(msg.sender == reignDAO, "SoV-Reign: FORBIDDEN");
+        _;
+    }
+
     constructor(
         address _basketBalancer,
         address _sovToken,
@@ -37,34 +42,29 @@ contract PoolController is IPoolController {
         reignDAO = _reignDAO;
     }
 
-    modifier onlyDAO() {
-        require(msg.sender == reignDAO, "SoV-Reign: Forbidden");
-        _;
-    }
-
-    function allPoolsLength() external view override returns (uint256) {
-        return allPools.length;
-    }
-
-    function createPool(address token)
-        external
-        override
-        onlyDAO
-        returns (address pool)
-    {
+    function createPool(
+        address token,
+        address interestStrategy,
+        address oracle
+    ) external override onlyDAO returns (address pool) {
         require(token != address(0), "SoV-Reign: ZERO_ADDRESS");
+        require(interestStrategy != address(0), "SoV-Reign: ZERO_ADDRESS");
+        require(oracle != address(0), "SoV-Reign: ZERO_ADDRESS");
+
         require(getPool[token] == address(0), "SoV-Reign: POOL_EXISTS"); // single check is sufficient
+
         bytes memory bytecode = type(Pool).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(token));
+
         assembly {
             pool := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
 
         IPool(pool).initialize(token, sovToken, reignToken);
-        InterestStrategy interest = new InterestStrategy();
 
         getPool[token] = pool;
-        getInterestStrategy[pool] = address(interest);
+        getInterestStrategy[pool] = interestStrategy;
+        getOracle[pool] = oracle;
         allPools.push(address(pool));
         IBasketBalancer(basketBalancer).addPool(address(pool));
 
@@ -74,10 +74,12 @@ contract PoolController is IPoolController {
     }
 
     function setFeeTo(address _feeTo) external override onlyDAO {
+        require(_feeTo != address(0), "SoV-Reign: ZERO_ADDRESS");
         feeTo = _feeTo;
     }
 
     function setReignDAO(address _reignDAO) external override onlyDAO {
+        require(_reignDAO != address(0), "SoV-Reign: ZERO_ADDRESS");
         reignDAO = _reignDAO;
     }
 
@@ -86,14 +88,17 @@ contract PoolController is IPoolController {
         override
         onlyDAO
     {
+        require(_basketBalancer != address(0), "SoV-Reign: ZERO_ADDRESS");
         basketBalancer = _basketBalancer;
     }
 
     function setSovToken(address _sovToken) external override onlyDAO {
+        require(_sovToken != address(0), "SoV-Reign: ZERO_ADDRESS");
         sovToken = _sovToken;
     }
 
     function setReignToken(address _reignToken) external override onlyDAO {
+        require(_reignToken != address(0), "SoV-Reign: ZERO_ADDRESS");
         reignToken = _reignToken;
     }
 
@@ -102,11 +107,17 @@ contract PoolController is IPoolController {
         override
         onlyDAO
     {
+        require(strategy != address(0), "SoV-Reign: ZERO_ADDRESS");
         getInterestStrategy[pool] = strategy;
     }
 
     function setOracle(address oracle, address pool) external override onlyDAO {
+        require(oracle != address(0), "SoV-Reign: ZERO_ADDRESS");
         getOracle[pool] = oracle;
+    }
+
+    function allPoolsLength() external view override returns (uint256) {
+        return allPools.length;
     }
 
     function getInterestRate(
@@ -131,15 +142,25 @@ contract PoolController is IPoolController {
         return IBasketBalancer(basketBalancer).getTargetAllocation(pool);
     }
 
+    function getTokenPrice(address pool)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        //returns the amount in USDC recived for paying in 1 token, i.e the USD price of 1 token
+        address pool_token = IPool(pool).token();
+        return IOracle(getOracle[pool]).consult(pool_token, 10**18);
+    }
+
     function getPoolsTVL() external view override returns (uint256) {
         uint256 tvl = 0;
         for (uint32 i = 0; i < allPools.length; i++) {
             IPool pool = IPool(allPools[i]);
             uint256 pool_size = pool.getReserves();
-            address pool_token = pool.token();
-            uint256 price = getTokenPrice(pool_token);
+            uint256 price = getTokenPrice(allPools[i]);
             uint256 pool_value = pool_size.mul(price);
-            tvl = tvl.add(pool_value);
+            tvl = tvl.add(pool_value.div(10**18));
         }
         return tvl;
     }
@@ -153,22 +174,15 @@ contract PoolController is IPoolController {
         return false;
     }
 
-    function getTokenPrice(address pool_token)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        // TODO: oracle?
-        return IOracle(getOracle[pool_token]).consult(pool_token, 10**18);
-    }
-
     function getReignRate(address pool)
         external
         view
         override
         returns (uint256)
     {
-        return 1;
+        uint256 reign_price =
+            IOracle(getOracle[pool]).consult(reignToken, 10**18);
+
+        return reign_price;
     }
 }

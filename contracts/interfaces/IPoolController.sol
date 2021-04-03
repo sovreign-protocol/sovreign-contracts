@@ -3,7 +3,11 @@ pragma solidity 0.7.6;
 interface IPoolController {
     event PoolCreated(address indexed token, address pool, uint256);
 
-    function createPool(address token) external returns (address pool);
+    function createPool(
+        address token,
+        address interestStrategy,
+        address oracle
+    ) external returns (address pool);
 
     function feeTo() external view returns (address);
 

@@ -4,6 +4,8 @@ pragma solidity 0.7.6;
 import "../interfaces/IOracle.sol";
 
 contract OracleMock is IOracle {
+    constructor() {}
+
     function observationIndexOf(uint256 timestamp)
         external
         view
