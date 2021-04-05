@@ -21,7 +21,7 @@ contract Pool is IPool, PoolErc20 {
     uint256 public override feeIn = 2 * 10**15;
     uint256 public override feeOut = 2 * 10**15;
 
-    address public override factory;
+    address public override controllerAddress;
     address public override token;
     address public override sovToken;
     address public override reignToken;
@@ -32,6 +32,10 @@ contract Pool is IPool, PoolErc20 {
     uint256 private blockNumberLast; // uses single storage slot, accessible via getReserves
 
     uint256 private unlocked = 1;
+
+    uint256 BASE_AMOUNT = 10000 * 10**18;
+
+    IPoolController controller;
 
     modifier lock() {
         require(unlocked == 1, "UniswapV2: LOCKED");
@@ -58,19 +62,20 @@ contract Pool is IPool, PoolErc20 {
     }
 
     constructor() public {
-        factory = msg.sender;
+        controllerAddress = msg.sender;
     }
 
-    // called once by the factory at time of deployment
+    // called once by the controller at time of deployment
     function initialize(
         address _token,
         address _sov,
         address _reign
     ) external override {
-        require(msg.sender == factory, "UniswapV2: FORBIDDEN"); // sufficient check
+        require(msg.sender == controllerAddress, "UniswapV2: FORBIDDEN"); // sufficient check
         token = _token;
         sovToken = _sov;
         reignToken = _reign;
+        controller = IPoolController(msg.sender);
     }
 
     // update reserves and, on the first call per block
@@ -83,10 +88,12 @@ contract Pool is IPool, PoolErc20 {
 
     function _takeFeeIn(uint256 amount) private returns (bool feeOn) {
         //TODO
+        return true;
     }
 
     function _takeFeeOut(uint256 amount) private returns (bool feeOn) {
         //TODO
+        return true;
     }
 
     // this low-level function should be called from a contract which performs important safety checks
@@ -101,7 +108,7 @@ contract Pool is IPool, PoolErc20 {
         uint256 _reserve = getReserves(); // gas savings
         uint256 balance = IERC20(token).balanceOf(address(this));
         uint256 amount = balance.sub(_reserve);
-        
+
         require(amount > 0, "Can only issue positive amounts");
 
         bool feeOn = _takeFeeIn(amount);
@@ -131,7 +138,7 @@ contract Pool is IPool, PoolErc20 {
         uint256 _reserve = getReserves(); // gas savings
         address _token = token; // gas savings
         address _sovToken = sovToken; // gas savings
-        uint256 sovToBurn = IPoolController(factory).getPoolsTVL();
+        uint256 sovToBurn = controller.getPoolsTVL();
         uint256 amount = balanceOf[address(this)];
 
         bool feeOn = _takeFeeOut(amount);
@@ -167,8 +174,7 @@ contract Pool is IPool, PoolErc20 {
         );
 
         address _token = token;
-        uint256 reignToTokenRate =
-            IPoolController(factory).getReignRate(address(this));
+        uint256 reignToTokenRate = controller.getReignRate(address(this));
 
         uint256 amount =
             amountReign.mul(reignToTokenRate).mul(premiumFactor).div(10**36);
@@ -191,9 +197,14 @@ contract Pool is IPool, PoolErc20 {
 
     function _mintSov(address to, uint256 amount) private returns (bool) {
         uint256 sovSupply = IMintBurnErc20(sovToken).totalSupply();
-        uint256 TVL = IPoolController(factory).getPoolsTVL();
-        uint256 price = IPoolController(factory).getTokenPrice(address(this));
-        uint256 amountSov = amount.mul(price).mul(sovSupply) / TVL;
+        uint256 TVL = controller.getPoolsTVL();
+        uint256 price = controller.getTokenPrice(address(this));
+        uint256 amountSov;
+        if (sovSupply == 0) {
+            amountSov = BASE_AMOUNT;
+        } else {
+            amountSov = amount.mul(price).mul(sovSupply) / TVL;
+        }
 
         emit Mint(msg.sender, amount, amountSov);
 
@@ -202,8 +213,8 @@ contract Pool is IPool, PoolErc20 {
 
     function _burnSov(address from, uint256 amount) private returns (bool) {
         uint256 sovSupply = IMintBurnErc20(sovToken).totalSupply();
-        uint256 TVL = IPoolController(factory).getPoolsTVL();
-        uint256 price = IPoolController(factory).getTokenPrice(address(this));
+        uint256 TVL = controller.getPoolsTVL();
+        uint256 price = controller.getTokenPrice(address(this));
         uint256 amountSov = amount.mul(price).mul(sovSupply) / TVL;
 
         emit Burn(msg.sender, amount, amountSov);
@@ -225,15 +236,10 @@ contract Pool is IPool, PoolErc20 {
         }
 
         uint256 reserves = getReserves();
-        uint256 target =
-            IPoolController(factory).getTargetAllocation(address(this));
+        uint256 target = controller.getTargetAllocation(address(this));
 
         (uint256 _, uint256 interestRate) =
-            IPoolController(factory).getInterestRate(
-                address(this),
-                reserve,
-                target
-            );
+            controller.getInterestRate(address(this), reserve, target);
 
         // Calculate the number of blocks elapsed since the last accrual
         uint256 blockDelta = currentBlockNumber.sub(accrualBlockNumberPrior);

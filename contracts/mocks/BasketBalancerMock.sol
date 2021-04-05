@@ -55,7 +55,7 @@ contract BasketBalancerMock is IBasketBalancer {
         override
         returns (uint256)
     {
-        return 1000000;
+        return 500000;
     }
 
     function addPool(address pool) public override returns (uint256) {

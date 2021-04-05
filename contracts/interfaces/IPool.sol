@@ -9,7 +9,7 @@ interface IPool {
 
     function MINIMUM_LIQUIDITY() external pure returns (uint256);
 
-    function factory() external view returns (address);
+    function controllerAddress() external view returns (address);
 
     function token() external view returns (address);
 

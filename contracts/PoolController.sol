@@ -142,6 +142,15 @@ contract PoolController is IPoolController {
         return IBasketBalancer(basketBalancer).getTargetAllocation(pool);
     }
 
+    function getTargetSize(address pool) external view returns (uint256) {
+        uint256 allocation =
+            IBasketBalancer(basketBalancer).getTargetAllocation(pool);
+        uint256 tvl = getPoolsTVL();
+        uint256 targetValue = tvl.mul(allocation).div(1000000);
+        uint256 targetSize = targetValue.div(getTokenPrice(pool));
+        return targetSize.mul(10**18);
+    }
+
     function getTokenPrice(address pool)
         public
         view
@@ -153,7 +162,7 @@ contract PoolController is IPoolController {
         return IOracle(getOracle[pool]).consult(pool_token, 10**18);
     }
 
-    function getPoolsTVL() external view override returns (uint256) {
+    function getPoolsTVL() public view override returns (uint256) {
         uint256 tvl = 0;
         for (uint32 i = 0; i < allPools.length; i++) {
             IPool pool = IPool(allPools[i]);

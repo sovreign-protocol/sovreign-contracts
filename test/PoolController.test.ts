@@ -284,7 +284,7 @@ describe('PoolController', function () {
         });
 
         it('correctly relays target allocation', async function () {
-            expect(await pool_controller.getTargetAllocation(underlying1.address)).to.eq(1000000);
+            expect(await pool_controller.getTargetAllocation(underlying1.address)).to.eq(500000);
         });
 
         it('correctly relays price', async function () {
@@ -312,6 +312,7 @@ describe('PoolController', function () {
             expect(await pool_controller.isPool(userAddress)).to.be.false;
         });
 
+
         it('correctly returns TVL', async function () {
             expect(await pool_controller.getPoolsTVL()).to.eq(0)
             await depositIntoBothPools();
@@ -319,6 +320,15 @@ describe('PoolController', function () {
             expect(tvl).to.eq(
                 BigNumber.from(1400000).mul(helpers.tenPow18).mul(1)  //token1 balance * price1
                 .add(BigNumber.from(1000000).mul(helpers.tenPow18).mul(1)) //token2 balance * price2
+            )
+        });
+
+        it('correctly returns target Size', async function () {
+            expect(await pool_controller.getTargetSize(pool_address)).to.eq(0)
+            await depositIntoBothPools();
+            let targetSize = await pool_controller.getTargetSize(pool_address);
+            expect(targetSize).to.eq(
+                (await pool_controller.getPoolsTVL()).div(2).div(1)  // (TVL / 2) / price
             )
         });
 
