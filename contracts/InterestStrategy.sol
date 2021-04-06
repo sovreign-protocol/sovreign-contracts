@@ -20,6 +20,18 @@ contract InterestStrategy is InterestStrategyInterface {
 
     constructor() {}
 
+    function getDelta(uint256 reserves, uint256 target)
+        public
+        view
+        returns (int256)
+    {
+        int256 _reserves = int256(reserves);
+        int256 _target = int256(target);
+        int256 scaler = 10**18; //this allows to have a division of hole numbers
+        int256 delta = (scaler.mul(_target.sub(_reserves))).div(_target);
+        return delta;
+    }
+
     //Computes what the interest on a single blcok by getting the Yearly rate based on the curve
     function getInterestForReserve(uint256 reserves, uint256 target)
         public

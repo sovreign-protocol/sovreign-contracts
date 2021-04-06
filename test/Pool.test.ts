@@ -114,7 +114,7 @@ describe('Pool', function () {
             expect(await pool.totalSupply()).to.be.eq(0)
         });
 
-        it('syncing', async function () {
+        it('reserves are updated correctly after deposit', async function () {
             let amount = BigNumber.from(1400000).mul(helpers.tenPow18);
             await underlying1.connect(user).transfer(pool_address,amount);
             await pool.sync();
@@ -125,33 +125,38 @@ describe('Pool', function () {
 
     describe('Minting', async function () {
 
-        it('mints correct amount of Sov', async function () {
-            let amount = BigNumber.from(1400000).mul(helpers.tenPow18);
-            let base_amount = BigNumber.from(10000).mul(helpers.tenPow18);
-            await underlying1.connect(user).transfer(pool_address,amount);
-            expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount)
+
+        it('mints the base amount of SOV for an empty pool', async function () {
+            let amount1 = BigNumber.from(1400000).mul(helpers.tenPow18);
+
+            await underlying1.connect(user).transfer(pool.address,amount1);
+            expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount1)
+
             await pool.mint(userAddress);
-            expect(await sov.balanceOf(userAddress)).to.be.eq(base_amount)
-            expect(await pool.balanceOf(userAddress)).to.be.eq(amount.sub(await pool.MINIMUM_LIQUIDITY()))
+
+            let expected_amount_lp = amount1.sub(await pool.MINIMUM_LIQUIDITY())
+            let expected_amount_sov = await pool.BASE_AMOUNT(); // Base amount
+
+            expect(await sov.balanceOf(userAddress)).to.be.eq(expected_amount_sov)
+            expect(await pool.balanceOf(userAddress)).to.be.eq(expected_amount_lp)
         });
 
-        it('mints correct amount of Sov', async function () {
+        it('mints correct amount of Sov for non-empty pool', async function () {
+
             let amount1 = BigNumber.from(1400000).mul(helpers.tenPow18);
-            let amount2 = BigNumber.from(1000000).mul(helpers.tenPow18);
+
             await underlying1.connect(user).transfer(pool.address,amount1);
-
-            console.log("Reserves:" + await (await pool.getReserves()).toString())
-            console.log("Target:" + await (await pool_controller.getTargetSize(pool.address)).toString())
-
             await pool.mint(userAddress);
 
+            let amount2 = BigNumber.from(1000000).mul(helpers.tenPow18);
             
             await underlying1.connect(user).transfer(pool_address,amount2);
             await pool.mint(userAddress);
 
             let expected_amount_lp = amount1.sub(await pool.MINIMUM_LIQUIDITY()).add(amount2)
-            let expected_amount_sov = amount1.sub(await pool.MINIMUM_LIQUIDITY()).add(amount2)
-            console.log(await sov.balanceOf(userAddress))
+        
+            let new_sov = amount2.mul(await pool.BASE_AMOUNT()).div(await pool_controller.getPoolsTVL())
+            let expected_amount_sov = (await pool.BASE_AMOUNT()).add(new_sov)
 
             expect(await sov.balanceOf(userAddress)).to.be.eq(expected_amount_sov)
             expect(await pool.balanceOf(userAddress)).to.be.eq(expected_amount_lp)

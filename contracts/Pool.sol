@@ -33,7 +33,7 @@ contract Pool is IPool, PoolErc20 {
 
     uint256 private unlocked = 1;
 
-    uint256 BASE_AMOUNT = 10000 * 10**18;
+    uint256 public BASE_AMOUNT = 10000 * 10**18;
 
     IPoolController controller;
 
@@ -203,7 +203,7 @@ contract Pool is IPool, PoolErc20 {
         if (sovSupply == 0) {
             amountSov = BASE_AMOUNT;
         } else {
-            amountSov = amount.mul(price).mul(sovSupply) / TVL;
+            amountSov = amount.mul(price).mul(sovSupply).div(TVL).div(10**18);
         }
 
         emit Mint(msg.sender, amount, amountSov);
@@ -236,7 +236,7 @@ contract Pool is IPool, PoolErc20 {
         }
 
         uint256 reserves = getReserves();
-        uint256 target = controller.getTargetAllocation(address(this));
+        uint256 target = controller.getTargetSize(address(this));
 
         (uint256 _, uint256 interestRate) =
             controller.getInterestRate(address(this), reserve, target);

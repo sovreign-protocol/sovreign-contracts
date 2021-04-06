@@ -142,7 +142,12 @@ contract PoolController is IPoolController {
         return IBasketBalancer(basketBalancer).getTargetAllocation(pool);
     }
 
-    function getTargetSize(address pool) external view returns (uint256) {
+    function getTargetSize(address pool)
+        external
+        view
+        override
+        returns (uint256)
+    {
         uint256 allocation =
             IBasketBalancer(basketBalancer).getTargetAllocation(pool);
         uint256 tvl = getPoolsTVL();

@@ -37,12 +37,23 @@ describe('InterestStrategy', function () {
 
     it("returns for large numbers", async () => {
 
-        let amount1 = BigNumber.from(1400000).mul(helpers.tenPow18);
-        let amount2 = BigNumber.from(700000).mul(helpers.tenPow18);
+        let amount1 = BigNumber.from(1400000000000000).mul(helpers.tenPow18); // 1.4 * 10**33
+        let amount2 = BigNumber.from(700000000000000).mul(helpers.tenPow18);
 
         let rates = await interest.getInterestForReserve(amount1,amount2);
         expect(rates[0]).to.equal(0);
         expect(rates[1]).to.gt(0);
+    }); 
+
+    it("returns delta correctly", async () => {
+
+        let amount1 = BigNumber.from(1400000).mul(helpers.tenPow18);
+        let amount2 = BigNumber.from(700000).mul(helpers.tenPow18);
+
+        let delta = await interest.getDelta(amount1,amount2);
+        let expected = (amount2.sub(amount1)).div(amount2)
+
+        expect(delta).to.eq(expected.mul(helpers.tenPow18))
     }); 
 
 });
