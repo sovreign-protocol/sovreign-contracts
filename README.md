@@ -4,16 +4,18 @@ This repo has all smart contracts used by SoV-Reign.
 
 The `./contracts` folder has the following structure:
 
-- governance
-- tokens
-- pool
-- periphery
-  - oracle
-  - entrypoint contracts
-- staking
-- interfaces
-- libraries
-- facets
+- `./`: the root folder should contain all entrypoint contracts
+- `./governance/`
+- `./tokens/`
+- `./pool/`
+- `./periphery/`: oracles, basket balancer, interest strategy, etc.
+- `./staking/`
+
+- `./mocks/`
+- `./interfaces/`
+- `./libraries/`
+- `./facets/`
+
 
 ## Contract's Architecture
 
