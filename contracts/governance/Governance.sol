@@ -2,11 +2,13 @@
 pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
-import "./interfaces/IBarn.sol";
+import "../interfaces/IReign.sol";
+import "./Reign.sol";
 import "./Bridge.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract Governance is Bridge {
+
     using SafeMath for uint256;
 
     enum ProposalState {
@@ -95,7 +97,7 @@ contract Governance is Bridge {
     mapping(uint256 => Proposal) public proposals;
     mapping(uint256 => AbrogationProposal) public abrogationProposals;
     mapping(address => uint256) public latestProposalIds;
-    IBarn barn;
+    IReign reign;
     bool isInitialized;
     bool public isActive;
 
@@ -113,17 +115,17 @@ contract Governance is Bridge {
     receive() external payable {}
 
     // executed only once
-    function initialize(address barnAddr) public {
+    function initialize(address reignAddr) public {
         require(isInitialized == false, "Contract already initialized.");
-        require(barnAddr != address(0), "barn must not be 0x0");
+        require(reignAddr != address(0), "reign must not be 0x0");
 
-        barn = IBarn(barnAddr);
+        reign = IReign(reignAddr);
         isInitialized = true;
     }
 
     function activate() public {
         require(!isActive, "DAO already active");
-        require(barn.bondStaked() >= ACTIVATION_THRESHOLD, "Threshold not met yet");
+        require(reign.bondStaked() >= ACTIVATION_THRESHOLD, "Threshold not met yet");
 
         isActive = true;
     }
@@ -139,12 +141,12 @@ contract Governance is Bridge {
     public returns (uint256)
     {
         if (!isActive) {
-            require(barn.bondStaked() >= ACTIVATION_THRESHOLD, "DAO not yet active");
+            require(reign.bondStaked() >= ACTIVATION_THRESHOLD, "DAO not yet active");
             isActive = true;
         }
 
         require(
-            barn.votingPowerAtTs(msg.sender, block.timestamp - 1) >= _getCreationThreshold(),
+            reign.votingPowerAtTs(msg.sender, block.timestamp - 1) >= _getCreationThreshold(),
             "Creation threshold not met"
         );
         require(
@@ -243,7 +245,7 @@ contract Governance is Bridge {
         // exit if user already voted
         require(receipt.hasVoted == false || receipt.hasVoted && receipt.support != support, "Already voted this option");
 
-        uint256 votes = barn.votingPowerAtTs(msg.sender, _getSnapshotTimestamp(proposal));
+        uint256 votes = reign.votingPowerAtTs(msg.sender, _getSnapshotTimestamp(proposal));
         require(votes > 0, "no voting power");
 
         // means it changed its vote
@@ -274,7 +276,7 @@ contract Governance is Bridge {
         Proposal storage proposal = proposals[proposalId];
         Receipt storage receipt = proposal.receipts[msg.sender];
 
-        uint256 votes = barn.votingPowerAtTs(msg.sender, _getSnapshotTimestamp(proposal));
+        uint256 votes = reign.votingPowerAtTs(msg.sender, _getSnapshotTimestamp(proposal));
 
         require(receipt.hasVoted, "Cannot cancel if not voted yet");
 
@@ -301,7 +303,7 @@ contract Governance is Bridge {
     function startAbrogationProposal(uint256 proposalId, string memory description) public {
         require(state(proposalId) == ProposalState.Queued, "Proposal must be in queue");
         require(
-            barn.votingPowerAtTs(msg.sender, block.timestamp - 1) >= _getCreationThreshold(),
+            reign.votingPowerAtTs(msg.sender, block.timestamp - 1) >= _getCreationThreshold(),
             "Creation threshold not met"
         );
 
@@ -349,7 +351,7 @@ contract Governance is Bridge {
             "Already voted this option"
         );
 
-        uint256 votes = barn.votingPowerAtTs(msg.sender, abrogationProposal.createTime - 1);
+        uint256 votes = reign.votingPowerAtTs(msg.sender, abrogationProposal.createTime - 1);
         require(votes > 0, "no voting power");
 
         // means it changed its vote
@@ -385,7 +387,7 @@ contract Governance is Bridge {
             "Abrogation Proposal not active"
         );
 
-        uint256 votes = barn.votingPowerAtTs(msg.sender, abrogationProposal.createTime - 1);
+        uint256 votes = reign.votingPowerAtTs(msg.sender, abrogationProposal.createTime - 1);
 
         require(receipt.hasVoted, "Cannot cancel if not voted yet");
 
@@ -487,7 +489,7 @@ contract Governance is Bridge {
         Proposal storage proposal = proposals[proposalId];
 
         if (msg.sender == proposal.proposer ||
-            barn.votingPower(proposal.proposer) < _getCreationThreshold()
+            reign.votingPower(proposal.proposer) < _getCreationThreshold()
         ) {
             return true;
         }
@@ -520,7 +522,7 @@ contract Governance is Bridge {
     }
 
     function _getCreationThreshold() internal view returns (uint256) {
-        return barn.bondStaked().div(100);
+        return reign.bondStaked().div(100);
     }
 
     // Returns the timestamp of the snapshot for a given proposal
@@ -531,7 +533,7 @@ contract Governance is Bridge {
     }
 
     function _getQuorum(Proposal storage proposal) internal view returns (uint256) {
-        return barn.bondStakedAtTs(_getSnapshotTimestamp(proposal)).mul(proposal.parameters.minQuorum).div(100);
+        return reign.bondStakedAtTs(_getSnapshotTimestamp(proposal)).mul(proposal.parameters.minQuorum).div(100);
     }
 
     function _proposalAbrogated(uint256 proposalId) internal view returns (bool) {
@@ -542,6 +544,6 @@ contract Governance is Bridge {
             return false;
         }
 
-        return cp.forVotes >= barn.bondStakedAtTs(cp.createTime - 1).div(2);
+        return cp.forVotes >= reign.bondStakedAtTs(cp.createTime - 1).div(2);
     }
 }

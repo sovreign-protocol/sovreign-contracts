@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.7.1;
 
-import "../interfaces/IBarn.sol";
+import "../interfaces/IReign.sol";
 
-contract GovernanceBarnMock {
+contract GovernanceReignMock {
+
     uint256 private _bondStaked;
     mapping(address => uint256) private _votingPowerAtTs;
     bool public lockCreatorBalanceHasBeenCalled;

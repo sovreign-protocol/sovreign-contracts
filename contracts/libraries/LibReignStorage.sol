@@ -5,9 +5,10 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IRewards.sol";
 
-library LibBarnStorage {
+library LibReignStorage {
+
     bytes32 constant STORAGE_POSITION =
-        keccak256("com.barnbridge.barn.storage");
+        keccak256("ch.dialectic.reign.storage");
 
     struct Checkpoint {
         uint256 timestamp;
@@ -36,7 +37,7 @@ library LibBarnStorage {
         IRewards rewards;
     }
 
-    function barnStorage() internal pure returns (Storage storage ds) {
+    function reignStorage() internal pure returns (Storage storage ds) {
         bytes32 position = STORAGE_POSITION;
         assembly {
             ds.slot := position

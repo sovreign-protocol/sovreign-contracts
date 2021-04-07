@@ -1,11 +1,11 @@
 pragma solidity 0.7.6;
-import "./interfaces/IPoolController.sol";
-import "./interfaces/IBasketBalancer.sol";
-import "./interfaces/InterestStrategyInterface.sol";
-import "./interfaces/IPool.sol";
-import "./interfaces/IOracle.sol";
+import "../interfaces/IPoolController.sol";
+import "../interfaces/IBasketBalancer.sol";
+import "../interfaces/InterestStrategyInterface.sol";
+import "../interfaces/IPool.sol";
+import "../interfaces/IOracle.sol";
 import "./Pool.sol";
-import "./InterestStrategy.sol";
+import "../periphery/InterestStrategy.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract PoolController is IPoolController {

@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 contract RewardsMock {
+
     bool public called;
     address public calledWithUser;
 
@@ -9,4 +10,5 @@ contract RewardsMock {
         called = true;
         calledWithUser = user;
     }
+
 }

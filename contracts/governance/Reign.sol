@@ -2,15 +2,16 @@
 pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
-import "./interfaces/IDiamondCut.sol";
-import "./interfaces/IDiamondLoupe.sol";
-import "./libraries/LibDiamond.sol";
-import "./libraries/LibOwnership.sol";
-import "./libraries/LibDiamondStorage.sol";
-import "./interfaces/IERC165.sol";
-import "./interfaces/IERC173.sol";
+import "../interfaces/IDiamondCut.sol";
+import "../interfaces/IDiamondLoupe.sol";
+import "../libraries/LibDiamond.sol";
+import "../libraries/LibOwnership.sol";
+import "../libraries/LibDiamondStorage.sol";
+import "../interfaces/IERC165.sol";
+import "../interfaces/IERC173.sol";
 
-contract Barn {
+contract Reign {
+
     constructor(IDiamondCut.FacetCut[] memory _diamondCut, address _owner)
         payable
     {

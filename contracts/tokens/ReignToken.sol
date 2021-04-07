@@ -1,14 +1,15 @@
 pragma solidity 0.7.6;
 
-import "./interfaces/IMintBurnErc20.sol";
-import "./interfaces/IPoolController.sol";
+import "../interfaces/IMintBurnErc20.sol";
+import "../interfaces/IPoolController.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract SovToken is IMintBurnErc20 {
+contract ReignToken is IMintBurnErc20 {
+
     using SafeMath for uint256;
 
-    string public constant override name = "Store of Value Token";
-    string public constant override symbol = "SOV";
+    string public constant override name = "SoV-Reign Governance Token";
+    string public constant override symbol = "REIGN";
     uint8 public constant override decimals = 18;
     uint256 public override totalSupply;
     mapping(address => uint256) public override balanceOf;
@@ -38,10 +39,7 @@ contract SovToken is IMintBurnErc20 {
     }
 
     function mint(address to, uint256 value) external override returns (bool) {
-        require(
-            IPoolController(controller).isPool(msg.sender),
-            "Only a Pool can do this"
-        );
+        require(msg.sender == controller, "Only Controller can do this");
 
         _mint(to, value);
         emit Mint(to, value);

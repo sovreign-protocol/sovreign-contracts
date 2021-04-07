@@ -1,11 +1,12 @@
 pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
-import "./interfaces/IBarn.sol";
-import "./interfaces/IBasketBalancer.sol";
+import "../interfaces/IReign.sol";
+import "../interfaces/IBasketBalancer.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract BasketBalancer is IBasketBalancer {
+
     using SafeMath for uint256;
 
     address[] allPools;
@@ -22,7 +23,7 @@ contract BasketBalancer is IBasketBalancer {
 
     uint256 FULL_ALLOCATION = 1000000;
 
-    IBarn barn;
+    IReign reign;
 
     address DAO;
 
@@ -34,7 +35,7 @@ contract BasketBalancer is IBasketBalancer {
     constructor(
         address[] memory newPools,
         uint256[] memory newAllocation,
-        address barnAddress,
+        address reignAddress,
         address dao
     ) {
         uint256 amountAllocated = 0;
@@ -49,7 +50,7 @@ contract BasketBalancer is IBasketBalancer {
         );
 
         allPools = newPools;
-        barn = IBarn(barnAddress);
+        reign = IReign(reignAddress);
         DAO = dao;
     }
 
@@ -59,7 +60,7 @@ contract BasketBalancer is IBasketBalancer {
     ) public override {
         require(pools.length == allocations.length, "Need to have same length");
 
-        require(barn.balanceOf(msg.sender) > 0, "Not allowed to vote");
+        require(reign.balanceOf(msg.sender) > 0, "Not allowed to vote");
 
         AllocationVote memory currentVote = allocationVotes[msg.sender];
 
@@ -107,8 +108,8 @@ contract BasketBalancer is IBasketBalancer {
         for (uint256 i = 0; i < voters.length; i++) {
             address voter = voters[i];
 
-            uint256 votingPower = barn.balanceOf(voter);
-            uint256 totalPower = barn.bondStaked();
+            uint256 votingPower = reign.balanceOf(voter);
+            uint256 totalPower = reign.bondStaked();
             uint256 remainingPower = totalPower.sub(votingPower);
 
             AllocationVote storage votersVote = allocationVotes[voter];

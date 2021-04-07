@@ -1,8 +1,9 @@
-**/dist/
-**/cache/
-**/typechain/
+**/dist
+**/cache
+**/typechain
 **/artifacts
 **/node_modules
 **/.DS_Store
-.idea/
+abi/
+.idea
 **/coverage

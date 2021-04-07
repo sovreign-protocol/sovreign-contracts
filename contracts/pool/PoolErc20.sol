@@ -1,29 +1,26 @@
 pragma solidity 0.7.6;
 
-import "./interfaces/IMintBurnErc20.sol";
-import "./interfaces/IPoolController.sol";
+import "../interfaces/IPoolErc20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract ReignToken is IMintBurnErc20 {
+contract PoolErc20 is IPoolErc20 {
+
     using SafeMath for uint256;
 
-    string public constant override name = "SoV-Reign Governance Token";
-    string public constant override symbol = "REIGN";
+    string public constant override name = "Uniswap V2";
+    string public constant override symbol = "UNI-V2";
     uint8 public constant override decimals = 18;
     uint256 public override totalSupply;
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
 
-    address public controller;
+    bytes32 public override DOMAIN_SEPARATOR;
+    // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+    bytes32 public constant override PERMIT_TYPEHASH =
+        0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
+    mapping(address => uint256) public override nonces;
 
-    constructor(address _controller) {
-        controller = _controller;
-    }
-
-    function setController(address _controller) public {
-        require(msg.sender == controller, "Only Controller can do this");
-        controller = _controller;
-    }
+    constructor() public {}
 
     function _mint(address to, uint256 value) internal {
         totalSupply = totalSupply.add(value);
@@ -35,29 +32,6 @@ contract ReignToken is IMintBurnErc20 {
         balanceOf[from] = balanceOf[from].sub(value);
         totalSupply = totalSupply.sub(value);
         emit Transfer(from, address(0), value);
-    }
-
-    function mint(address to, uint256 value) external override returns (bool) {
-        require(msg.sender == controller, "Only Controller can do this");
-
-        _mint(to, value);
-        emit Mint(to, value);
-        return true;
-    }
-
-    function burnFrom(address from, uint256 value)
-        external
-        override
-        returns (bool)
-    {
-        require(
-            IPoolController(controller).isPool(msg.sender),
-            "Only a Pool can do this"
-        );
-
-        _burn(from, value);
-        emit Burn(from, value);
-        return true;
     }
 
     function _approve(
@@ -109,5 +83,40 @@ contract ReignToken is IMintBurnErc20 {
         }
         _transfer(from, to, value);
         return true;
+    }
+
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external override {
+        require(deadline >= block.timestamp, "UniswapV2: EXPIRED");
+        bytes32 digest =
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    DOMAIN_SEPARATOR,
+                    keccak256(
+                        abi.encode(
+                            PERMIT_TYPEHASH,
+                            owner,
+                            spender,
+                            value,
+                            nonces[owner]++,
+                            deadline
+                        )
+                    )
+                )
+            );
+        address recoveredAddress = ecrecover(digest, v, r, s);
+        require(
+            recoveredAddress != address(0) && recoveredAddress == owner,
+            "UniswapV2: INVALID_SIGNATURE"
+        );
+        _approve(owner, spender, value);
     }
 }
