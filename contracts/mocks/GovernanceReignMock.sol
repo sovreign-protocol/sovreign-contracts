@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.7.1;
 
-import "../../interfaces/IReign.sol";
+import "../interfaces/IReign.sol";
 
 contract GovernanceReignMock {
 

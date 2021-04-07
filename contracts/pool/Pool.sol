@@ -1,11 +1,11 @@
 pragma solidity 0.7.6;
 
 import "./PoolErc20.sol";
-import "./libraries/Math.sol";
-import "./interfaces/IERC20.sol";
-import "./interfaces/IMintBurnErc20.sol";
-import "./interfaces/IPool.sol";
-import "./interfaces/IPoolController.sol";
+import "../libraries/Math.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/IMintBurnErc20.sol";
+import "../interfaces/IPool.sol";
+import "../interfaces/IPoolController.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract Pool is IPool, PoolErc20 {

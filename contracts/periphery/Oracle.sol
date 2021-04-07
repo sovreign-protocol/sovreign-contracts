@@ -6,10 +6,10 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./libraries/UniswapV2Library.sol";
-import "./libraries/UniswapV2OracleLibrary.sol";
+import "../libraries/UniswapV2Library.sol";
+import "../libraries/UniswapV2OracleLibrary.sol";
 
-import "./interfaces/IOracle.sol";
+import "../interfaces/IOracle.sol";
 
 // sliding window oracle that uses observations collected over a window to provide moving price averages in the past
 // `windowSize` with a precision of `windowSize / granularity`

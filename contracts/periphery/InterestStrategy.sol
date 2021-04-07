@@ -2,7 +2,7 @@
 
 pragma solidity 0.7.6;
 
-import "./interfaces/InterestStrategyInterface.sol";
+import "../interfaces/InterestStrategyInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";

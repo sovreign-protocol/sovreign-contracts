@@ -1,7 +1,7 @@
 pragma solidity 0.7.6;
 
-import "./interfaces/IMintBurnErc20.sol";
-import "./interfaces/IPoolController.sol";
+import "../interfaces/IMintBurnErc20.sol";
+import "../interfaces/IPoolController.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract SovToken is IMintBurnErc20 {

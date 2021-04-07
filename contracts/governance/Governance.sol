@@ -3,7 +3,7 @@ pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "../interfaces/IReign.sol";
-import "../Reign.sol";
+import "./Reign.sol";
 import "./Bridge.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
