@@ -125,8 +125,7 @@ describe('Pool', function () {
 
     describe('Minting', async function () {
 
-
-        it('mints the base amount of SOV for an empty pool', async function () {
+        it('mints the base amount of SoV for an empty pool', async function () {
             let amount1 = BigNumber.from(1400000).mul(helpers.tenPow18);
 
             await underlying1.connect(user).transfer(pool.address,amount1);
@@ -149,6 +148,27 @@ describe('Pool', function () {
             await pool.mint(userAddress);
 
             let amount2 = BigNumber.from(1000000).mul(helpers.tenPow18);
+            
+            await underlying1.connect(user).transfer(pool_address,amount2);
+            await pool.mint(userAddress);
+
+            let expected_amount_lp = amount1.sub(await pool.MINIMUM_LIQUIDITY()).add(amount2)
+        
+            let new_sov = amount2.mul(await pool.BASE_AMOUNT()).div(await pool_controller.getPoolsTVL())
+            let expected_amount_sov = (await pool.BASE_AMOUNT()).add(new_sov)
+
+            expect(await sov.balanceOf(userAddress)).to.be.eq(expected_amount_sov)
+            expect(await pool.balanceOf(userAddress)).to.be.eq(expected_amount_lp)
+        });
+
+        it('mints correct amounts for very small balances', async function () {
+
+            let amount1 = BigNumber.from(1001); // min-liquidity +1
+
+            await underlying1.connect(user).transfer(pool.address,amount1);
+            await pool.mint(userAddress);
+
+            let amount2 = BigNumber.from(1);
             
             await underlying1.connect(user).transfer(pool_address,amount2);
             await pool.mint(userAddress);

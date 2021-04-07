@@ -46,8 +46,6 @@ interface IPoolController {
 
     function getReignRate(address) external view returns (uint256);
 
-    function getTargetAllocation(address) external view returns (uint256);
-
     function getTargetSize(address) external view returns (uint256);
 
     function getInterestRate(

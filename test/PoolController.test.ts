@@ -283,10 +283,6 @@ describe('PoolController', function () {
             expect(new_pool).to.eq(last_pool);
         });
 
-        it('correctly relays target allocation', async function () {
-            expect(await pool_controller.getTargetAllocation(underlying1.address)).to.eq(500000);
-        });
-
         it('correctly relays price', async function () {
             //Mock Oracle returns 1
             expect(await pool_controller.getTokenPrice(pool_address)).to.eq(BigNumber.from(10).pow(18));
