@@ -13,7 +13,7 @@
       },
       {
         "internalType": "address",
-        "name": "_barn",
+        "name": "_reign",
         "type": "address"
       }
     ],
@@ -73,19 +73,6 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "barn",
-    "outputs": [
-      {
-        "internalType": "contract IBarn",
-        "name": "",
-        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -223,6 +210,19 @@
   },
   {
     "inputs": [],
+    "name": "reign",
+    "outputs": [
+      {
+        "internalType": "contract IReign",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "renounceOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -245,11 +245,11 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_barn",
+        "name": "_reign",
         "type": "address"
       }
     ],
-    "name": "setBarn",
+    "name": "setReign",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

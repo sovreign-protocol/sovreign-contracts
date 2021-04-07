@@ -589,7 +589,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "barnAddr",
+        "name": "reignAddr",
         "type": "address"
       }
     ],

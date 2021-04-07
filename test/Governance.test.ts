@@ -3,11 +3,11 @@ import { BigNumber, ethers as ejs, Signer } from 'ethers';
 import * as helpers from './helpers/governance-helpers';
 import { moveAtTimestamp } from './helpers/helpers';
 import { expect } from 'chai';
-import { GovernanceBarnMock, Governance } from '../typechain';
+import { GovernanceReignMock, Governance } from '../typechain';
 
 describe('Governance', function () {
 
-    let governance: Governance, barn: GovernanceBarnMock;
+    let governance: Governance, reign: GovernanceReignMock;
     let user: Signer, userAddress: string;
     let voter1: Signer, voter2: Signer, voter3: Signer;
     let snapshotId: any;
@@ -30,9 +30,9 @@ describe('Governance', function () {
     const amount = BigNumber.from(28000).mul(BigNumber.from(10).pow(18));
     before(async function () {
         await setupSigners();
-        barn = await helpers.deployBarn();
+        reign = await helpers.deployReign();
         governance = await helpers.deployGovernance();
-        await governance.initialize(barn.address);
+        await governance.initialize(reign.address);
 
         warmUpDuration = (await governance.warmUpDuration()).toNumber();
         activeDuration = (await governance.activeDuration()).toNumber();
@@ -71,13 +71,13 @@ describe('Governance', function () {
         });
 
         it('activates if threshold is met', async function () {
-            await barn.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
+            await reign.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
             await expect(governance.activate()).to.not.be.reverted;
             expect(await governance.isActive()).to.be.true;
         });
 
         it('reverts if already activated', async function () {
-            await barn.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
+            await reign.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
             await governance.activate();
 
             await expect(governance.activate()).to.be.revertedWith('DAO already active');
@@ -86,13 +86,13 @@ describe('Governance', function () {
 
     describe('propose', function () {
         before(async function () {
-            await barn.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
+            await reign.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
             await governance.activate();
-            await barn.setBondStaked(0);
+            await reign.setBondStaked(0);
         });
 
         it('create new proposal revert reasons', async function () {
-            await barn.setBondStaked(amount);
+            await reign.setBondStaked(amount);
 
             const targets = [helpers.ZERO_ADDRESS];
             const targetsMismatch = [helpers.ZERO_ADDRESS, helpers.ZERO_ADDRESS];
@@ -107,7 +107,7 @@ describe('Governance', function () {
             await expect(governance.connect(user)
                 .propose(targets, values, signatures, callDatas, 'description', 'title'))
                 .to.be.revertedWith('Creation threshold not met');
-            await barn.setVotingPower(userAddress, amount.div(10));
+            await reign.setVotingPower(userAddress, amount.div(10));
             await expect(governance.connect(user)
                 .propose(targetsMismatch, values, signatures, callDatas, 'description', 'title'))
                 .to.be.revertedWith('Proposal function information arity mismatch');
@@ -138,8 +138,8 @@ describe('Governance', function () {
         });
 
         it('create new proposal', async function () {
-            await barn.setBondStaked(amount);
-            await barn.setVotingPower(userAddress, amount.div(10));
+            await reign.setBondStaked(amount);
+            await reign.setVotingPower(userAddress, amount.div(10));
 
             const targets = [helpers.ZERO_ADDRESS];
             const values = ['0'];
@@ -167,8 +167,8 @@ describe('Governance', function () {
         });
 
         it('start vote && quorum', async function () {
-            await barn.setBondStaked(amount);
-            await barn.setVotingPower(userAddress, amount.div(10));
+            await reign.setBondStaked(amount);
+            await reign.setVotingPower(userAddress, amount.div(10));
 
             await createTestProposal();
 
@@ -185,11 +185,11 @@ describe('Governance', function () {
         });
 
         it('cast, cancel and change vote', async function () {
-            await barn.setBondStaked(amount);
-            await barn.setVotingPower(userAddress, amount.div(10));
-            await barn.setVotingPower(await voter1.getAddress(), amount.div(10));
-            await barn.setVotingPower(await voter2.getAddress(), amount.div(10));
-            await barn.setVotingPower(await voter3.getAddress(), amount.div(10));
+            await reign.setBondStaked(amount);
+            await reign.setVotingPower(userAddress, amount.div(10));
+            await reign.setVotingPower(await voter1.getAddress(), amount.div(10));
+            await reign.setVotingPower(await voter2.getAddress(), amount.div(10));
+            await reign.setVotingPower(await voter3.getAddress(), amount.div(10));
 
             await createTestProposal();
 
@@ -223,8 +223,8 @@ describe('Governance', function () {
         });
 
         it('castVote fails if user does not have voting power', async () => {
-            await barn.setBondStaked(amount);
-            await barn.setVotingPower(userAddress, amount.div(10));
+            await reign.setBondStaked(amount);
+            await reign.setVotingPower(userAddress, amount.div(10));
             await createTestProposal();
 
             const ts = await helpers.getCurrentBlockchainTimestamp();
@@ -302,7 +302,7 @@ describe('Governance', function () {
             await helpers.moveAtTimestamp((proposal.eta).toNumber() + 1);
             await governance.execute(1);
             expect(await governance.state(1)).to.be.equal(ProposalState.Executed);
-            expect(await barn.withdrawHasBeenCalled()).to.be.true;
+            expect(await reign.withdrawHasBeenCalled()).to.be.true;
         });
 
         it('cannot execute proposals that are not queued', async function () {
@@ -388,14 +388,14 @@ describe('Governance', function () {
             await helpers.moveAtTimestamp((proposal.eta).toNumber() + 1);
             await governance.execute(1);
             expect(await governance.state(1)).to.be.equal(ProposalState.Executed);
-            expect(await barn.withdrawHasBeenCalled()).to.be.true;
+            expect(await reign.withdrawHasBeenCalled()).to.be.true;
             await expect(governance.connect(user).cancelProposal(1))
                 .to.be.revertedWith('Proposal in state that does not allow cancellation');
         });
 
         it('fail for invalid quorum', async function () {
-            await barn.setBondStaked(amount);
-            await barn.setVotingPower(userAddress, amount.div(2));
+            await reign.setBondStaked(amount);
+            await reign.setVotingPower(userAddress, amount.div(2));
 
             const targets = [governance.address];
             const signatures = ['setMinQuorum(uint256)'];
@@ -418,9 +418,9 @@ describe('Governance', function () {
         });
 
         it('fail for invalid minimum threshold', async function () {
-            await barn.setBondStaked(amount);
-            await barn.setVotingPower(userAddress, amount.div(2));
-            await barn.setVotingPower(await voter1.getAddress(), amount.div(2));
+            await reign.setBondStaked(amount);
+            await reign.setVotingPower(userAddress, amount.div(2));
+            await reign.setVotingPower(await voter1.getAddress(), amount.div(2));
 
             const targets = [governance.address];
             const signatures = ['setAcceptanceThreshold(uint256)'];
@@ -458,8 +458,8 @@ describe('Governance', function () {
 
         it('test change periods', async function () {
             await expect(governance.setActiveDuration(1)).to.be.revertedWith('Only DAO can call');
-            await barn.setBondStaked(amount);
-            await barn.setVotingPower(userAddress, amount.div(2));
+            await reign.setBondStaked(amount);
+            await reign.setVotingPower(userAddress, amount.div(2));
             const targets = [
                 governance.address,
                 governance.address,
@@ -535,7 +535,7 @@ describe('Governance', function () {
             await expect(governance.connect(voter1).cancelProposal(1))
                 .to.be.revertedWith('Cancellation requirements not met');
 
-            await barn.setVotingPower(userAddress, 0);
+            await reign.setVotingPower(userAddress, 0);
 
             await expect(governance.connect(voter1).cancelProposal(1)).to.not.be.reverted;
             expect(await governance.state(1)).to.be.equal(ProposalState.Canceled);
@@ -572,7 +572,7 @@ describe('Governance', function () {
                 .to.be.revertedWith('Proposal in state that does not allow cancellation');
 
             // try cancelling with another use and creator balance below threshold
-            await barn.setVotingPower(userAddress, 0);
+            await reign.setVotingPower(userAddress, 0);
             await expect(governance.connect(voter1).cancelProposal(1))
                 .to.be.revertedWith('Proposal in state that does not allow cancellation');
 
@@ -742,7 +742,7 @@ describe('Governance', function () {
             await expect(governance.connect(somebody).startAbrogationProposal(1, 'description'))
                 .to.be.revertedWith('Creation threshold not met');
 
-            await barn.setVotingPower(await somebody.getAddress(), amount);
+            await reign.setVotingPower(await somebody.getAddress(), amount);
 
             await expect(governance.connect(somebody).startAbrogationProposal(1, 'description'))
                 .to.not.be.reverted;
@@ -779,7 +779,7 @@ describe('Governance', function () {
                 await prepareProposalForAbrogation();
                 await governance.connect(user).startAbrogationProposal(1, 'description');
 
-                await barn.setVotingPower(await voter3.getAddress(), 0);
+                await reign.setVotingPower(await voter3.getAddress(), 0);
 
                 await expect(governance.connect(voter3).abrogationProposal_castVote(1, true))
                     .to.be.revertedWith('no voting power');
@@ -960,9 +960,9 @@ describe('Governance', function () {
         });
 
         it('parameters changed mid-flight do not affect running proposals', async () => {
-            await barn.setBondStaked(amount);
-            await barn.setVotingPower(userAddress, amount.div(2));
-            await barn.setVotingPower(await voter1.getAddress(), amount.div(2));
+            await reign.setBondStaked(amount);
+            await reign.setVotingPower(userAddress, amount.div(2));
+            await reign.setVotingPower(await voter1.getAddress(), amount.div(2));
 
             const parameters = {
                 warmUpDuration: await governance.warmUpDuration(),
@@ -1113,15 +1113,15 @@ describe('Governance', function () {
     }
 
     async function setupEnv () {
-        await barn.setBondStaked(amount);
-        await barn.setVotingPower(userAddress, amount.div(5));
-        await barn.setVotingPower(await voter1.getAddress(), amount.div(20));
-        await barn.setVotingPower(await voter2.getAddress(), amount.div(5));
-        await barn.setVotingPower(await voter3.getAddress(), amount.div(5));
+        await reign.setBondStaked(amount);
+        await reign.setVotingPower(userAddress, amount.div(5));
+        await reign.setVotingPower(await voter1.getAddress(), amount.div(20));
+        await reign.setVotingPower(await voter2.getAddress(), amount.div(5));
+        await reign.setVotingPower(await voter3.getAddress(), amount.div(5));
     }
 
     async function createTestProposal () {
-        const targets = [barn.address];
+        const targets = [reign.address];
         const values = [0];
         const signatures = ['withdraw(uint256)'];
         const callDatas = [ejs.utils.defaultAbiCoder.encode(['uint256'], [1])];

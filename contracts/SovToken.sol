@@ -5,6 +5,7 @@ import "./interfaces/IPoolController.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract SovToken is IMintBurnErc20 {
+
     using SafeMath for uint256;
 
     string public constant override name = "Store of Value Token";
@@ -113,4 +114,5 @@ contract SovToken is IMintBurnErc20 {
         _transfer(from, to, value);
         return true;
     }
+
 }

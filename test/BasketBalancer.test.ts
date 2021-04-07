@@ -3,7 +3,7 @@ import { BigNumber, Signer } from 'ethers';
 import * as helpers from './helpers/helpers';
 import * as time from './helpers/time';
 import { expect } from 'chai';
-import { BarnMock, Erc20Mock, Rewards,BasketBalancer } from '../typechain';
+import { ReignMock, Erc20Mock, Rewards, BasketBalancer } from '../typechain';
 import * as deploy from './helpers/deploy';
 
 const address1 = '0x0000000000000000000000000000000000000001';
@@ -12,7 +12,7 @@ const address3 = '0x0000000000000000000000000000000000000003';
 
 describe('BasketBalancer', function () {
 
-    let barn: BarnMock, bond: Erc20Mock, rewards: Rewards, balancer: BasketBalancer;
+    let reign: ReignMock, bond: Erc20Mock, rewards: Rewards, balancer: BasketBalancer;
 
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
@@ -30,20 +30,20 @@ describe('BasketBalancer', function () {
         await setupSigners();
         await setupContracts();
 
-        barn = (await deploy.deployContract('BarnMock')) as BarnMock;
+        reign = (await deploy.deployContract('ReignMock')) as ReignMock;
 
         rewards = (await deploy.deployContract(
             'Rewards',
-            [await treasury.getAddress(), bond.address, barn.address])
+            [await treasury.getAddress(), bond.address, reign.address])
         ) as Rewards;
 
         var allocation = [500000,500000]
         balancer = (await deploy.deployContract(
             'BasketBalancer', 
-            [pools,allocation,barn.address,flyingParrotAddress])
+            [pools,allocation,reign.address,flyingParrotAddress])
             ) as BasketBalancer;
 
-        await barn.setRewards(rewards.address);
+        await reign.setRewards(rewards.address);
     });
 
     beforeEach(async function () {
@@ -77,8 +77,8 @@ describe('BasketBalancer', function () {
         });
 
         it('can vote with correct allocation', async function () {
-            await barn.deposit(userAddress, 100);
-            await barn.deposit(flyingParrotAddress, 200);
+            await reign.deposit(userAddress, 100);
+            await reign.deposit(flyingParrotAddress, 200);
 
             await balancer.connect(user).updateAllocationVote(pools, [200000,800000]);
 
@@ -95,8 +95,8 @@ describe('BasketBalancer', function () {
         });
 
         it('can not vote wth insufficient allocation', async function () {
-            await barn.deposit(userAddress, 100);
-            await barn.deposit(flyingParrotAddress, 200);
+            await reign.deposit(userAddress, 100);
+            await reign.deposit(flyingParrotAddress, 200);
 
             await expect( 
                 balancer.connect(user).updateAllocationVote(pools, [BigNumber.from(100000),BigNumber.from(700000)])

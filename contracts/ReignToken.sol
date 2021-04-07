@@ -5,6 +5,7 @@ import "./interfaces/IPoolController.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract ReignToken is IMintBurnErc20 {
+
     using SafeMath for uint256;
 
     string public constant override name = "SoV-Reign Governance Token";

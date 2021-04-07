@@ -2,13 +2,13 @@
 pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IBarn.sol";
-import "../libraries/LibBarnStorage.sol";
+import "../interfaces/IReign.sol";
+import "../libraries/LibReignStorage.sol";
 import "../libraries/LibOwnership.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract BarnFacet {
+contract ReignFacet {
     using SafeMath for uint256;
 
     uint256 public constant MAX_LOCK = 365 days;
@@ -35,12 +35,12 @@ contract BarnFacet {
         uint256 to_newDelegatedPower
     );
 
-    function initBarn(address _bond, address _rewards) public {
+    function initReign(address _bond, address _rewards) public {
         require(_bond != address(0), "BOND address must not be 0x0");
 
-        LibBarnStorage.Storage storage ds = LibBarnStorage.barnStorage();
+        LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
-        require(!ds.initialized, "Barn: already initialized");
+        require(!ds.initialized, "Reign: already initialized");
         LibOwnership.enforceIsContractOwner();
 
         ds.initialized = true;
@@ -53,7 +53,7 @@ contract BarnFacet {
     function deposit(uint256 amount) public {
         require(amount > 0, "Amount must be greater than 0");
 
-        LibBarnStorage.Storage storage ds = LibBarnStorage.barnStorage();
+        LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
         uint256 allowance = ds.bond.allowance(msg.sender, address(this));
         require(allowance >= amount, "Token allowance too small");
 
@@ -99,7 +99,7 @@ contract BarnFacet {
         uint256 balance = balanceOf(msg.sender);
         require(balance >= amount, "Insufficient balance");
 
-        LibBarnStorage.Storage storage ds = LibBarnStorage.barnStorage();
+        LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
         // this must be called before the user's balance is updated so the rewards contract can calculate
         // the amount owed correctly
@@ -140,10 +140,10 @@ contract BarnFacet {
         require(timestamp <= block.timestamp + MAX_LOCK, "Timestamp too big");
         require(balanceOf(msg.sender) > 0, "Sender has no balance");
 
-        LibBarnStorage.Storage storage ds = LibBarnStorage.barnStorage();
-        LibBarnStorage.Stake[] storage checkpoints =
+        LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
+        LibReignStorage.Stake[] storage checkpoints =
             ds.userStakeHistory[msg.sender];
-        LibBarnStorage.Stake storage currentStake =
+        LibReignStorage.Stake storage currentStake =
             checkpoints[checkpoints.length - 1];
 
         require(
@@ -168,7 +168,7 @@ contract BarnFacet {
         uint256 senderBalance = balanceOf(msg.sender);
         require(senderBalance > 0, "No balance to delegate");
 
-        LibBarnStorage.Storage storage ds = LibBarnStorage.barnStorage();
+        LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
         emit Delegate(msg.sender, to);
 
@@ -223,7 +223,7 @@ contract BarnFacet {
         view
         returns (uint256)
     {
-        LibBarnStorage.Stake memory stake = stakeAtTs(user, timestamp);
+        LibReignStorage.Stake memory stake = stakeAtTs(user, timestamp);
 
         return stake.amount;
     }
@@ -232,14 +232,14 @@ contract BarnFacet {
     function stakeAtTs(address user, uint256 timestamp)
         public
         view
-        returns (LibBarnStorage.Stake memory)
+        returns (LibReignStorage.Stake memory)
     {
-        LibBarnStorage.Storage storage ds = LibBarnStorage.barnStorage();
-        LibBarnStorage.Stake[] storage stakeHistory = ds.userStakeHistory[user];
+        LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
+        LibReignStorage.Stake[] storage stakeHistory = ds.userStakeHistory[user];
 
         if (stakeHistory.length == 0 || timestamp < stakeHistory[0].timestamp) {
             return
-                LibBarnStorage.Stake(
+                LibReignStorage.Stake(
                     block.timestamp,
                     0,
                     block.timestamp,
@@ -278,7 +278,7 @@ contract BarnFacet {
         view
         returns (uint256)
     {
-        LibBarnStorage.Stake memory stake = stakeAtTs(user, timestamp);
+        LibReignStorage.Stake memory stake = stakeAtTs(user, timestamp);
 
         uint256 ownVotingPower;
 
@@ -306,7 +306,7 @@ contract BarnFacet {
     function bondStakedAtTs(uint256 timestamp) public view returns (uint256) {
         return
             _checkpointsBinarySearch(
-                LibBarnStorage.barnStorage().bondStakedHistory,
+                LibReignStorage.reignStorage().bondStakedHistory,
                 timestamp
             );
     }
@@ -324,7 +324,7 @@ contract BarnFacet {
     {
         return
             _checkpointsBinarySearch(
-                LibBarnStorage.barnStorage().delegatedPowerHistory[user],
+                LibReignStorage.reignStorage().delegatedPowerHistory[user],
                 timestamp
             );
     }
@@ -341,21 +341,21 @@ contract BarnFacet {
         view
         returns (uint256)
     {
-        LibBarnStorage.Stake memory stake = stakeAtTs(user, timestamp);
+        LibReignStorage.Stake memory stake = stakeAtTs(user, timestamp);
 
         return _stakeMultiplier(stake, timestamp);
     }
 
     // userLockedUntil returns the timestamp until the user's balance is locked
     function userLockedUntil(address user) public view returns (uint256) {
-        LibBarnStorage.Stake memory c = stakeAtTs(user, block.timestamp);
+        LibReignStorage.Stake memory c = stakeAtTs(user, block.timestamp);
 
         return c.expiryTimestamp;
     }
 
     // userDelegatedTo returns the address to which a user delegated their voting power; address(0) if not delegated
     function userDelegatedTo(address user) public view returns (address) {
-        LibBarnStorage.Stake memory c = stakeAtTs(user, block.timestamp);
+        LibReignStorage.Stake memory c = stakeAtTs(user, block.timestamp);
 
         return c.delegatedTo;
     }
@@ -363,7 +363,7 @@ contract BarnFacet {
     // _checkpointsBinarySearch executes a binary search on a list of checkpoints that's sorted chronologically
     // looking for the closest checkpoint that matches the specified timestamp
     function _checkpointsBinarySearch(
-        LibBarnStorage.Checkpoint[] storage checkpoints,
+        LibReignStorage.Checkpoint[] storage checkpoints,
         uint256 timestamp
     ) internal view returns (uint256) {
         if (checkpoints.length == 0 || timestamp < checkpoints[0].timestamp) {
@@ -392,7 +392,7 @@ contract BarnFacet {
 
     // _stakeMultiplier calculates the multiplier for the given stake at the given timestamp
     function _stakeMultiplier(
-        LibBarnStorage.Stake memory stake,
+        LibReignStorage.Stake memory stake,
         uint256 timestamp
     ) internal view returns (uint256) {
         if (timestamp >= stake.expiryTimestamp) {
@@ -411,12 +411,12 @@ contract BarnFacet {
     // if there's already a checkpoint for the same timestamp, the amount is updated
     // otherwise, a new checkpoint is inserted
     function _updateUserBalance(
-        LibBarnStorage.Stake[] storage checkpoints,
+        LibReignStorage.Stake[] storage checkpoints,
         uint256 amount
     ) internal {
         if (checkpoints.length == 0) {
             checkpoints.push(
-                LibBarnStorage.Stake(
+                LibReignStorage.Stake(
                     block.timestamp,
                     amount,
                     block.timestamp,
@@ -424,14 +424,14 @@ contract BarnFacet {
                 )
             );
         } else {
-            LibBarnStorage.Stake storage old =
+            LibReignStorage.Stake storage old =
                 checkpoints[checkpoints.length - 1];
 
             if (old.timestamp == block.timestamp) {
                 old.amount = amount;
             } else {
                 checkpoints.push(
-                    LibBarnStorage.Stake(
+                    LibReignStorage.Stake(
                         block.timestamp,
                         amount,
                         old.expiryTimestamp,
@@ -446,14 +446,14 @@ contract BarnFacet {
     // it assumes that if the user already has a balance, which is checked for in the lock function
     // then there must be at least 1 checkpoint
     function _updateUserLock(
-        LibBarnStorage.Stake[] storage checkpoints,
+        LibReignStorage.Stake[] storage checkpoints,
         uint256 expiryTimestamp
     ) internal {
-        LibBarnStorage.Stake storage old = checkpoints[checkpoints.length - 1];
+        LibReignStorage.Stake storage old = checkpoints[checkpoints.length - 1];
 
         if (old.timestamp < block.timestamp) {
             checkpoints.push(
-                LibBarnStorage.Stake(
+                LibReignStorage.Stake(
                     block.timestamp,
                     old.amount,
                     expiryTimestamp,
@@ -469,14 +469,14 @@ contract BarnFacet {
     // it assumes that if the user already has a balance, which is checked for in the delegate function
     // then there must be at least 1 checkpoint
     function _updateUserDelegatedTo(
-        LibBarnStorage.Stake[] storage checkpoints,
+        LibReignStorage.Stake[] storage checkpoints,
         address to
     ) internal {
-        LibBarnStorage.Stake storage old = checkpoints[checkpoints.length - 1];
+        LibReignStorage.Stake storage old = checkpoints[checkpoints.length - 1];
 
         if (old.timestamp < block.timestamp) {
             checkpoints.push(
-                LibBarnStorage.Stake(
+                LibReignStorage.Stake(
                     block.timestamp,
                     old.amount,
                     old.expiryTimestamp,
@@ -490,7 +490,7 @@ contract BarnFacet {
 
     // _updateDelegatedPower updates the power delegated TO the user in the checkpoints history
     function _updateDelegatedPower(
-        LibBarnStorage.Checkpoint[] storage checkpoints,
+        LibReignStorage.Checkpoint[] storage checkpoints,
         uint256 amount
     ) internal {
         if (
@@ -498,10 +498,10 @@ contract BarnFacet {
             checkpoints[checkpoints.length - 1].timestamp < block.timestamp
         ) {
             checkpoints.push(
-                LibBarnStorage.Checkpoint(block.timestamp, amount)
+                LibReignStorage.Checkpoint(block.timestamp, amount)
             );
         } else {
-            LibBarnStorage.Checkpoint storage old =
+            LibReignStorage.Checkpoint storage old =
                 checkpoints[checkpoints.length - 1];
             old.amount = amount;
         }
@@ -509,7 +509,7 @@ contract BarnFacet {
 
     // _updateLockedBond stores the new `amount` into the BOND locked history
     function _updateLockedBond(uint256 amount) internal {
-        LibBarnStorage.Storage storage ds = LibBarnStorage.barnStorage();
+        LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
         if (
             ds.bondStakedHistory.length == 0 ||
@@ -517,10 +517,10 @@ contract BarnFacet {
             block.timestamp
         ) {
             ds.bondStakedHistory.push(
-                LibBarnStorage.Checkpoint(block.timestamp, amount)
+                LibReignStorage.Checkpoint(block.timestamp, amount)
             );
         } else {
-            LibBarnStorage.Checkpoint storage old =
+            LibReignStorage.Checkpoint storage old =
                 ds.bondStakedHistory[ds.bondStakedHistory.length - 1];
             old.amount = amount;
         }

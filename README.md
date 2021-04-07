@@ -5,7 +5,7 @@ This repo has all smart contracts used by SoV-Reign.
 The `./contracts` folder has the following structure:
 
 - governance
-- erc20
+- tokens
 - pool
 - periphery
   - oracle
