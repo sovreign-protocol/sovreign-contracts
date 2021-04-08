@@ -27,7 +27,7 @@ interface IPool {
 
     function mint(address to) external returns (uint256 liquidity);
 
-    function burn(address to) external returns (uint256 amountSov);
+    function burn(address to, uint256 amount) external returns (bool);
 
     function redeem(address to, uint256 amountReign) external;
 

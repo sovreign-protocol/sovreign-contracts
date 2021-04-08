@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
@@ -6,7 +7,6 @@ import "../interfaces/IBasketBalancer.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract BasketBalancer is IBasketBalancer {
-
     using SafeMath for uint256;
 
     address[] allPools;

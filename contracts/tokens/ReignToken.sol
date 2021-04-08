@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.7.6;
 
 import "../interfaces/IMintBurnErc20.sol";
@@ -5,7 +6,6 @@ import "../interfaces/IPoolController.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract ReignToken is IMintBurnErc20 {
-
     using SafeMath for uint256;
 
     string public constant override name = "SoV-Reign Governance Token";

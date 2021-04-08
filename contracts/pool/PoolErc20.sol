@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.7.6;
 
 import "../interfaces/IPoolErc20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract PoolErc20 is IPoolErc20 {
-
     using SafeMath for uint256;
 
     string public constant override name = "Uniswap V2";

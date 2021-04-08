@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 contract Test2Facet {
-    function test1Func1() external view returns (uint256) {
+    function test1Func1() external pure returns (uint256) {
         return 1234;
     }
 }

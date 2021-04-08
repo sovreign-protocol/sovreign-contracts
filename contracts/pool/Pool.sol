@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.7.6;
 
 import "./PoolErc20.sol";
-import "../libraries/Math.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IMintBurnErc20.sol";
 import "../interfaces/IPool.sol";
@@ -48,11 +48,7 @@ contract Pool is IPool, PoolErc20 {
         _reserve = reserve;
     }
 
-    function _safeTransfer(
-        address token,
-        address to,
-        uint256 value
-    ) private {
+    function _safeTransfer(address to, uint256 value) private {
         (bool success, bytes memory data) =
             token.call(abi.encodeWithSelector(SELECTOR, to, value));
         require(
@@ -61,7 +57,7 @@ contract Pool is IPool, PoolErc20 {
         );
     }
 
-    constructor() public {
+    constructor() {
         controllerAddress = msg.sender;
     }
 
@@ -86,15 +82,17 @@ contract Pool is IPool, PoolErc20 {
         emit Sync(reserve);
     }
 
-    function _takeFeeIn(uint256 amount) private returns (bool feeOn) {
+    /*
+    function _takeFeeIn(uint256 amount) private pure returns (bool feeOn) {
         //TODO
         return true;
     }
 
-    function _takeFeeOut(uint256 amount) private returns (bool feeOn) {
+    function _takeFeeOut(uint256 amount) private pure returns (bool feeOn) {
         //TODO
         return true;
     }
+    */
 
     // this low-level function should be called from a contract which performs important safety checks
     function mint(address to)
@@ -111,7 +109,7 @@ contract Pool is IPool, PoolErc20 {
 
         require(amount > 0, "Can only issue positive amounts");
 
-        bool feeOn = _takeFeeIn(amount);
+        //bool feeOn = _takeFeeIn(amount);
         uint256 _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
         if (_totalSupply == 0) {
             liquidity = amount.sub(MINIMUM_LIQUIDITY);
@@ -127,28 +125,23 @@ contract Pool is IPool, PoolErc20 {
         _mintSov(to, amount);
     }
 
-    function burn(address to)
+    function burn(address to, uint256 amount)
         external
         override
         lock
-        returns (uint256 amountSov)
+        returns (bool)
     {
         _accrueInterest();
-
-        uint256 _reserve = getReserves(); // gas savings
         address _token = token; // gas savings
-        address _sovToken = sovToken; // gas savings
-        uint256 sovToBurn = controller.getPoolsTVL();
-        uint256 amount = balanceOf[address(this)];
 
-        bool feeOn = _takeFeeOut(amount);
+        //bool feeOn = _takeFeeOut(amount);
         uint256 amountWithInterest =
             (amount.mul(interestMultiplier)).div(10**18);
         require(amount > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED");
         //Burn LP tokens
         _burn(address(this), amount);
         //Withdraw only with interest applied
-        _safeTransfer(_token, to, amountWithInterest);
+        _safeTransfer(to, amountWithInterest);
         uint256 balance = IERC20(_token).balanceOf(address(this));
         _updateReserves(balance);
 
@@ -158,11 +151,7 @@ contract Pool is IPool, PoolErc20 {
     // force balances to match reserves
     function skim(address to) external override lock {
         address _token = token; // gas savings
-        _safeTransfer(
-            _token,
-            to,
-            IERC20(_token).balanceOf(address(this)).sub(reserve)
-        );
+        _safeTransfer(to, IERC20(_token).balanceOf(address(this)).sub(reserve));
     }
 
     function redeem(address to, uint256 amountReign) external override lock {
@@ -184,7 +173,7 @@ contract Pool is IPool, PoolErc20 {
         excessLiquidity = excessLiquidity.sub(amount);
 
         IMintBurnErc20(reignToken).burnFrom(to, amountReign);
-        _safeTransfer(_token, to, amount);
+        _safeTransfer(to, amount);
 
         uint256 balance = IERC20(_token).balanceOf(address(this));
         _updateReserves(balance);
@@ -235,7 +224,7 @@ contract Pool is IPool, PoolErc20 {
             return false;
         }
 
-        uint256 reserves = getReserves();
+        //uint256 reserves = getReserves();
         uint256 target = controller.getTargetSize(address(this));
 
         (uint256 _, uint256 interestRate) =
@@ -256,6 +245,8 @@ contract Pool is IPool, PoolErc20 {
         );
 
         emit AccrueInterest(excessLiquidity, interestMultiplier);
+
+        return true;
     }
 
     function setFeeIn(uint256 feeInNew) external override {

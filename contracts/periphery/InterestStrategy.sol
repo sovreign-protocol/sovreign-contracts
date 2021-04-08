@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 
 pragma solidity 0.7.6;
 
@@ -22,7 +22,7 @@ contract InterestStrategy is InterestStrategyInterface {
 
     function getDelta(uint256 reserves, uint256 target)
         public
-        view
+        pure
         returns (int256)
     {
         int256 _reserves = int256(reserves);
