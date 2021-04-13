@@ -25,15 +25,18 @@ contract Pool is IPool, PoolErc20 {
     address public override token;
     address public override sovToken;
     address public override reignToken;
+    address public override treasoury;
 
     uint256 private reserve; // uses single storage slot, accessible via getReserves
-    uint256 public excessLiquidity;
-    uint256 public interestMultiplier;
-    uint256 private blockNumberLast; // uses single storage slot, accessible via getReserves
+    uint256 public BASE_MULTIPLIER = 10**18;
+    uint256 public depositFeeMultiplier = 100000;
+    uint256 public withdrawFeeMultiplier;
+    uint256 public interestRateLast;
+    uint256 public blockNumberLast;
 
     uint256 private unlocked = 1;
 
-    uint256 public BASE_AMOUNT = 10000 * 10**18;
+    uint256 public BASE_SVR_AMOUNT = 10000 * 10**18;
 
     IPoolController controller;
 
@@ -49,12 +52,7 @@ contract Pool is IPool, PoolErc20 {
     }
 
     function _safeTransfer(address to, uint256 value) private {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(SELECTOR, to, value));
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "UniswapV2: TRANSFER_FAILED"
-        );
+        IERC20(token).transfer(to, value);
     }
 
     constructor() {
@@ -64,21 +62,22 @@ contract Pool is IPool, PoolErc20 {
     // called once by the controller at time of deployment
     function initialize(
         address _token,
+        address _tresoury,
         address _sov,
         address _reign
     ) external override {
         require(msg.sender == controllerAddress, "UniswapV2: FORBIDDEN"); // sufficient check
         token = _token;
+        treasoury = _tresoury;
         sovToken = _sov;
         reignToken = _reign;
         controller = IPoolController(msg.sender);
     }
 
     // update reserves and, on the first call per block
-    function _updateReserves(uint256 balance) private {
-        require(balance <= uint256(-1), "UniswapV2: OVERFLOW");
-        reserve = uint256(balance);
-        blockNumberLast = block.number;
+    function _updateReserves() private {
+        address _token = token;
+        reserve = IERC20(_token).balanceOf(address(this));
         emit Sync(reserve);
     }
 
@@ -101,13 +100,25 @@ contract Pool is IPool, PoolErc20 {
         lock
         returns (uint256 liquidity)
     {
-        _accrueInterest();
-
         uint256 _reserve = getReserves(); // gas savings
         uint256 balance = IERC20(token).balanceOf(address(this));
         uint256 amount = balance.sub(_reserve);
 
-        require(amount > 0, "Can only issue positive amounts");
+        uint256 depositFee = getDepositFeeReign(amount);
+
+        if (depositFee > 0) {
+            IMintBurnErc20 reign = IMintBurnErc20(reignToken);
+
+            require(amount > 0, "Can only issue positive amounts");
+
+            require(
+                reign.allowance(msg.sender, address(this)) >= depositFee,
+                "Insufficient allowance"
+            );
+            uint256 toTreasoury = depositFee.div(2);
+            reign.transferFrom(msg.sender, treasoury, toTreasoury);
+            reign.burnFrom(msg.sender, depositFee.sub(toTreasoury));
+        }
 
         //bool feeOn = _takeFeeIn(amount);
         uint256 _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
@@ -120,68 +131,93 @@ contract Pool is IPool, PoolErc20 {
         require(liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED");
         //Mint LP Tokens
         _mint(to, liquidity);
-        _updateReserves(balance);
+
+        _updateReserves();
+
+        _accrueInterest();
 
         _mintSov(to, amount);
     }
 
-    function burn(address to, uint256 amount)
-        external
-        override
-        lock
-        returns (bool)
-    {
-        _accrueInterest();
-        address _token = token; // gas savings
+    function burn(uint256 amount) external override lock returns (bool) {
+        require(amount > 0, "Can only burn positive amounts");
 
-        //bool feeOn = _takeFeeOut(amount);
-        uint256 amountWithInterest =
-            (amount.mul(interestMultiplier)).div(10**18);
-        require(amount > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED");
+        address _token = token; // gas savings
+        address to = msg.sender;
+
+        uint256 withdrawFee = getWithdrawFeeReign(amount);
+
+        if (withdrawFee > 0) {
+            IMintBurnErc20 reign = IMintBurnErc20(reignToken);
+
+            require(
+                reign.allowance(msg.sender, address(this)) >= withdrawFee,
+                "Insufficient allowance"
+            );
+            uint256 toTreasoury = withdrawFee.div(2);
+            reign.transferFrom(msg.sender, treasoury, toTreasoury);
+            reign.burnFrom(msg.sender, withdrawFee.sub(toTreasoury));
+        }
+
         //Burn LP tokens
-        _burn(address(this), amount);
+        _burn(msg.sender, amount);
         //Withdraw only with interest applied
-        _safeTransfer(to, amountWithInterest);
-        uint256 balance = IERC20(_token).balanceOf(address(this));
-        _updateReserves(balance);
+        IERC20(_token).transfer(to, amount);
 
         _burnSov(to, amount);
+
+        _updateReserves();
+
+        _accrueInterest();
     }
 
     // force balances to match reserves
     function skim(address to) external override lock {
         address _token = token; // gas savings
-        _safeTransfer(to, IERC20(_token).balanceOf(address(this)).sub(reserve));
+        IERC20(token).transfer(
+            to,
+            IERC20(_token).balanceOf(address(this)).sub(reserve)
+        );
     }
 
-    function redeem(address to, uint256 amountReign) external override lock {
-        _accrueInterest();
+    function getDepositFeeReign(uint256 amount) public view returns (uint256) {
+        uint256 target = controller.getTargetSize(address(this));
 
-        require(
-            IMintBurnErc20(reignToken).balanceOf(msg.sender) > amountReign,
-            "insufficient balance"
-        );
+        if (target == 0 || reserve == 0) {
+            return 0;
+        }
 
-        address _token = token;
-        uint256 reignToTokenRate = controller.getReignRate(address(this));
+        (uint256 _, uint256 interestRate) =
+            controller.getInterestRate(
+                address(this),
+                reserve.add(amount),
+                target
+            );
+        return
+            (
+                interestRate
+                    .mul(depositFeeMultiplier)
+                    .mul(amount)
+                    .mul(controller.getTokenPrice(address(this)))
+                    .div(controller.getReignPrice())
+            )
+                .div(10**18);
+    }
 
-        uint256 amount =
-            amountReign.mul(reignToTokenRate).mul(premiumFactor).div(10**36);
-
-        require(excessLiquidity > amount, "insufficient excess liquidty");
-
-        excessLiquidity = excessLiquidity.sub(amount);
-
-        IMintBurnErc20(reignToken).burnFrom(to, amountReign);
-        _safeTransfer(to, amount);
-
-        uint256 balance = IERC20(_token).balanceOf(address(this));
-        _updateReserves(balance);
+    function getWithdrawFeeReign(uint256 amount) public view returns (uint256) {
+        return
+            (
+                withdrawFeeMultiplier
+                    .mul(amount)
+                    .mul(controller.getTokenPrice(address(this)))
+                    .div(controller.getReignPrice())
+            )
+                .div(10**18);
     }
 
     // force reserves to match balances
     function sync() external override lock {
-        _updateReserves(IERC20(token).balanceOf(address(this)));
+        _updateReserves();
     }
 
     function _mintSov(address to, uint256 amount) private returns (bool) {
@@ -190,7 +226,7 @@ contract Pool is IPool, PoolErc20 {
         uint256 price = controller.getTokenPrice(address(this));
         uint256 amountSov;
         if (sovSupply == 0) {
-            amountSov = BASE_AMOUNT;
+            amountSov = BASE_SVR_AMOUNT;
         } else {
             amountSov = amount.mul(price).mul(sovSupply).div(TVL).div(10**18);
         }
@@ -204,47 +240,57 @@ contract Pool is IPool, PoolErc20 {
         uint256 sovSupply = IMintBurnErc20(sovToken).totalSupply();
         uint256 TVL = controller.getPoolsTVL();
         uint256 price = controller.getTokenPrice(address(this));
-        uint256 amountSov = amount.mul(price).mul(sovSupply) / TVL;
+        uint256 amountSov =
+            amount.mul(price).mul(sovSupply).div(TVL).div(10**18);
 
         emit Burn(msg.sender, amount, amountSov);
 
         return IMintBurnErc20(sovToken).burnFrom(from, amountSov);
     }
 
-    function _accrueInterest() private returns (bool) {
-        uint256 currentBlockNumber = block.number;
-        uint256 accrualBlockNumberPrior = blockNumberLast;
+    function _accrueInterest() public returns (bool) {
+        uint256 _currentBlockNumber = block.number;
+        uint256 _accrualBlockNumberPrior = blockNumberLast;
 
-        if (accrualBlockNumberPrior == currentBlockNumber) {
+        if (_accrualBlockNumberPrior == _currentBlockNumber) {
             return false;
         }
 
         if (totalSupply == 0) {
-            blockNumberLast = currentBlockNumber;
+            blockNumberLast = _currentBlockNumber;
             return false;
         }
 
-        //uint256 reserves = getReserves();
-        uint256 target = controller.getTargetSize(address(this));
+        uint256 _reserves = getReserves();
+        uint256 _target = controller.getTargetSize(address(this));
 
-        (uint256 _, uint256 interestRate) =
-            controller.getInterestRate(address(this), reserve, target);
+        (uint256 _, uint256 _interestRate) =
+            controller.getInterestRate(address(this), _reserves, _target);
 
         // Calculate the number of blocks elapsed since the last accrual
-        uint256 blockDelta = currentBlockNumber.sub(accrualBlockNumberPrior);
+        uint256 _blockDelta = _currentBlockNumber.sub(_accrualBlockNumberPrior);
 
-        // new = old * (1 - (interest % * blocks ))
-        uint256 excessLiquidityNew =
-            totalSupply.mul(interestRate.mul(blockDelta));
+        uint256 _accumulatedInterest = _interestRate.mul(_blockDelta);
+        if (_interestRate == 0) {
+            withdrawFeeMultiplier = 0;
+        } else if (_interestRate > interestRateLast) {
+            withdrawFeeMultiplier = withdrawFeeMultiplier.add(
+                _accumulatedInterest
+            );
+        } else if (_interestRate < interestRateLast) {
+            if (withdrawFeeMultiplier > _accumulatedInterest) {
+                withdrawFeeMultiplier = withdrawFeeMultiplier.sub(
+                    _accumulatedInterest
+                );
+            } else {
+                withdrawFeeMultiplier = 0;
+            }
+        } // if interest is the same as last do not change it
 
-        blockNumberLast = currentBlockNumber;
-        excessLiquidity = excessLiquidity + excessLiquidityNew;
+        blockNumberLast = _currentBlockNumber;
+        interestRateLast = _interestRate;
 
-        interestMultiplier = (totalSupply.mul(10**18).sub(excessLiquidity)).div(
-            totalSupply
-        );
-
-        emit AccrueInterest(excessLiquidity, interestMultiplier);
+        emit AccrueInterest(depositFeeMultiplier, withdrawFeeMultiplier);
 
         return true;
     }
@@ -255,9 +301,5 @@ contract Pool is IPool, PoolErc20 {
 
     function setFeeOut(uint256 feeOutNew) external override {
         feeOut = feeOutNew;
-    }
-
-    function setPremiumFactor(uint256 premiumFactorNew) external override {
-        premiumFactor = premiumFactorNew;
     }
 }

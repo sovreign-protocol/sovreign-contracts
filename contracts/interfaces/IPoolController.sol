@@ -18,24 +18,23 @@ interface IPoolController {
 
     function setOracle(address, address) external;
 
-    function setReignDAO(address _reignDAO) external;
+    function setTreasoury(address) external;
 
-    function setBaseketBalancer(address _basketBalancer) external;
+    function setReignDAO(address) external;
 
-    function setSovToken(address _sovToken) external;
+    function setBaseketBalancer(address) external;
 
-    function setReignToken(address _reignToken) external;
+    function setSovToken(address) external;
 
-    function getPool(address token) external view returns (address pool);
+    function setReignToken(address) external;
 
-    function getInterestStrategy(address token)
-        external
-        view
-        returns (address pool);
+    function getPool(address) external view returns (address);
 
-    function getOracle(address token) external view returns (address oracle);
+    function getInterestStrategy(address) external view returns (address);
 
-    function allPools(uint256) external view returns (address pool);
+    function getOracle(address) external view returns (address);
+
+    function allPools(uint256) external view returns (address);
 
     function isPool(address) external view returns (bool);
 
@@ -45,7 +44,7 @@ interface IPoolController {
 
     function getTokenPrice(address) external view returns (uint256);
 
-    function getReignRate(address) external view returns (uint256);
+    function getReignPrice() external view returns (uint256);
 
     function getTargetSize(address) external view returns (uint256);
 

@@ -16,6 +16,7 @@ contract PoolController is IPoolController {
     address public basketBalancer;
     address public sovToken;
     address public reignToken;
+    address public treasoury;
 
     address public reignDAO;
 
@@ -35,12 +36,14 @@ contract PoolController is IPoolController {
         address _basketBalancer,
         address _sovToken,
         address _reignToken,
-        address _reignDAO
+        address _reignDAO,
+        address _treasoury
     ) {
         basketBalancer = _basketBalancer;
         sovToken = _sovToken;
         reignToken = _reignToken;
         reignDAO = _reignDAO;
+        treasoury = _treasoury;
     }
 
     function createPool(
@@ -61,7 +64,7 @@ contract PoolController is IPoolController {
             pool := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
 
-        IPool(pool).initialize(token, sovToken, reignToken);
+        IPool(pool).initialize(token, treasoury, sovToken, reignToken);
 
         getPool[token] = pool;
         getInterestStrategy[pool] = interestStrategy;
@@ -77,6 +80,11 @@ contract PoolController is IPoolController {
     function setFeeTo(address _feeTo) external override onlyDAO {
         require(_feeTo != address(0), "SoV-Reign: ZERO_ADDRESS");
         feeTo = _feeTo;
+    }
+
+    function setTreasoury(address _treasoury) external override onlyDAO {
+        require(_treasoury != address(0), "SoV-Reign: ZERO_ADDRESS");
+        treasoury = _treasoury;
     }
 
     function setReignDAO(address _reignDAO) external override onlyDAO {
@@ -180,14 +188,9 @@ contract PoolController is IPoolController {
         return false;
     }
 
-    function getReignRate(address pool)
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function getReignPrice() external view override returns (uint256) {
         uint256 reign_price =
-            IOracle(getOracle[pool]).consult(reignToken, 10**18);
+            IOracle(getOracle[allPools[0]]).consult(reignToken, 10**18);
 
         return reign_price;
     }

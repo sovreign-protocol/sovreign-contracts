@@ -51,14 +51,15 @@ contract BasketBalancerMock is IBasketBalancer {
 
     function getTargetAllocation(address pool)
         public
-        pure
+        view
         override
         returns (uint256)
     {
-        return 500000;
+        return poolAllocation[pool];
     }
 
     function addPool(address pool) public override returns (uint256) {
+        poolAllocation[pool] = 500000;
         return allPools.length;
     }
 

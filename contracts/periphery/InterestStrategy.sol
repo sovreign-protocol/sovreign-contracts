@@ -14,21 +14,31 @@ contract InterestStrategy is InterestStrategyInterface {
     using SignedSafeMath for int256;
 
     uint256 public constant blocksPerYear = 2102400;
+    int256 public constant scaler = 10**18;
+    uint256 public constant magnitudeAdjust = 48;
 
-    uint256 multiplier = 3 * 10**12;
-    uint256 offsett = 2 * 10**36;
+    uint256 multiplier;
+    uint256 offsett;
 
-    constructor() {}
+    int256 max = 20 * 10**18;
+    int256 min = -20 * 10**18;
+
+    constructor(uint256 _multiplier, uint256 _offsett) {
+        multiplier = _multiplier;
+        offsett = _offsett;
+    }
 
     function getDelta(uint256 reserves, uint256 target)
         public
-        pure
+        view
         returns (int256)
     {
         int256 _reserves = int256(reserves);
         int256 _target = int256(target);
-        int256 scaler = 10**18; //this allows to have a division of hole numbers
-        int256 delta = (scaler.mul(_target.sub(_reserves))).div(_target);
+        int256 delta =
+            ((scaler.mul(_target.sub(_reserves))).div(_target)).mul(100);
+        if (delta > max) return max;
+        if (delta < min) return min;
         return delta;
     }
 
@@ -39,30 +49,40 @@ contract InterestStrategy is InterestStrategyInterface {
         override
         returns (uint256, uint256)
     {
-        int256 _reserves = int256(reserves);
-        int256 _target = int256(target);
-        int256 scaler = 10**18; //this allows to have a division of hole numbers
-        int256 delta = (scaler.mul(_target.sub(_reserves))).div(_target);
+        require(
+            reserves > 0,
+            "SoV-Reign InterestStrategy: reserves can not be 0"
+        );
+
+        require(
+            target > 0,
+            "SoV-Reign InterestStrategy: reserves can not be 0"
+        );
+
+        int256 delta = getDelta(reserves, target);
         int256 interestInt =
-            int256(multiplier).mul(delta.mul(delta).mul(delta)).div(scaler);
+            int256(multiplier).mul(delta.mul(delta).mul(delta));
 
         uint256 positive;
         uint256 negative;
 
         if (interestInt >= 0) {
             uint256 interest = uint256(interestInt);
-            positive = (interest / (blocksPerYear)).add(offsett);
+            positive = (interest.div(blocksPerYear)).add(offsett);
         } else {
-            negative = (uint256(interestInt.mul(-1)) / (blocksPerYear));
+            negative = (uint256(interestInt.mul(-1)).div(blocksPerYear));
             if (negative < offsett) {
-                positive = offsett - negative;
+                positive = offsett.sub(negative);
                 negative = 0;
             } else {
-                negative = negative - offsett;
+                negative = negative.sub(offsett);
             }
         }
 
-        return (positive / 10**25, negative / 10**25);
+        return (
+            positive.div(10**magnitudeAdjust),
+            negative.div(10**magnitudeAdjust)
+        );
     }
 
     //Sets the offsett to a new value

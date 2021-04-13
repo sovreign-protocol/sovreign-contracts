@@ -5,40 +5,44 @@ import * as helpers from './helpers/helpers';
 
 import { 
     Erc20Mock, BasketBalancerMock, PoolController, Pool, SovToken, ReignToken, OracleMock, InterestStrategy
- } from '../typechain';
+} from '../typechain';
 import * as deploy from './helpers/deploy';
 
 
 describe('Pool', function () {
 
-    let  sov: SovToken, reign: ReignToken, underlying1: Erc20Mock
-    let  balancer: BasketBalancerMock, pool_controller:PoolController;
-    let  oracle:OracleMock, intrestStaretgy: InterestStrategy;
-    let  pool:Pool;
+    let  sov: SovToken, reign: ReignToken, underlying1: Erc20Mock, underlying2: Erc20Mock
+    let  balancer: BasketBalancerMock, poolController:PoolController;
+    let  oracle:OracleMock, interestStrategy: InterestStrategy;
+    let  pool:Pool, pool2:Pool;
 
     let user: Signer, userAddress: string;
+    let treasury: Signer, treasuryAddress: string;
     let reignDAO: Signer, reignDAOAddress: string;
     let newAddress:string;
 
-    let pool_address:string;
 
     before(async function () {
 
         await setupSigners();
-
         
         underlying1 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
+        underlying2 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
         
         oracle = (await deploy.deployContract('OracleMock')) as OracleMock;
-        intrestStaretgy = (await deploy.deployContract('InterestStrategy')) as InterestStrategy;
+
+
+        let multiplier = BigNumber.from(3).mul(10**10);
+        let offset = BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)));
+        interestStrategy = (await deploy.deployContract(
+            'InterestStrategy',[multiplier, offset])
+            ) as InterestStrategy;;
  
 
         balancer = (
-            await deploy.deployContract('BasketBalancerMock',[[underlying1.address], [1000000]])
+            await deploy.deployContract('BasketBalancerMock',[[], []])
         ) as BasketBalancerMock;
-        
-
-        await setupContracts();
+    
    
     });
 
@@ -47,24 +51,36 @@ describe('Pool', function () {
         sov = (await deploy.deployContract('SovToken', [userAddress])) as SovToken;
         reign = (await deploy.deployContract('ReignToken', [userAddress])) as ReignToken;
 
-        pool_controller = (
-            await deploy.deployContract('PoolController', [balancer.address, sov.address, reign.address, reignDAOAddress])
+        poolController = (
+            await deploy.deployContract('PoolController', [
+                balancer.address, sov.address, reign.address, reignDAOAddress, treasuryAddress
+            ])
         ) as PoolController; 
 
-        await pool_controller.connect(reignDAO).createPool(
-            underlying1.address, intrestStaretgy.address, oracle.address
+        await poolController.connect(reignDAO).createPool(
+            underlying1.address, interestStrategy.address, oracle.address
         )
 
-        pool_address = await pool_controller.allPools(0);
+        let poolAddress = await poolController.allPools(0);
 
         //connect to deployed pool
         pool = (await deploy.deployContract('Pool')) as Pool;
-        pool = pool.attach(pool_address);
+        pool = pool.attach(poolAddress);
 
-        sov.connect(user).setController(pool_controller.address)
-        reign.connect(user).setController(pool_controller.address)
+        await poolController.connect(reignDAO).createPool(
+            underlying2.address, interestStrategy.address, oracle.address
+        )
+
+        let pool2Address = await poolController.allPools(1);
+
+        //connect to deployed pool
+        pool2 = (await deploy.deployContract('Pool')) as Pool;
+        pool2 = pool2.attach(pool2Address);
 
         await setupContracts()
+
+        sov.connect(user).setController(poolController.address)
+        reign.connect(user).setController(poolController.address)
         
 
     })
@@ -72,12 +88,11 @@ describe('Pool', function () {
 
     describe('General', function () {
         it('should be deployed', async function () {
-            expect(pool_controller.address).to.not.eql(0).and.to.not.be.empty;
+            expect(poolController.address).to.not.eql(0).and.to.not.be.empty;
             expect(pool.address).to.not.eql(0).and.to.not.be.empty;
         });
     
     });
-
 
 
     describe('Getters and Setters', async function () {
@@ -85,7 +100,7 @@ describe('Pool', function () {
         it('returns correct Factory address', async function () {
             expect(
                 await pool.controllerAddress()
-            ).to.eq(pool_controller.address);
+            ).to.eq(poolController.address);
         });
 
         it('returns correct Sov Token address', async function () {
@@ -115,89 +130,286 @@ describe('Pool', function () {
         });
 
         it('reserves are updated correctly after deposit', async function () {
-            let amount = BigNumber.from(1400000).mul(helpers.tenPow18);
-            await underlying1.connect(user).transfer(pool_address,amount);
+            let amount = BigNumber.from(1100000).mul(helpers.tenPow18);
+            await underlying1.connect(user).transfer(pool.address,amount);
             await pool.sync();
             expect(await pool.getReserves()).to.be.eq(amount)
         });
 
     });
 
+    describe('Computing Fees', async function () {
+
+        it('returns correct expected deposit fee', async function () {
+            await mintSVR(11000,pool);
+            await mintSVR(10000,pool2);
+
+            let amount = BigNumber.from(1000)
+
+            let target = await poolController.getTargetSize(pool.address)
+            let reservesAfter = (await pool.getReserves()).add(amount)
+
+            let expectedDepositFee = (await poolController.getInterestRate(pool.address,reservesAfter,target))[1]
+            .mul(await pool.depositFeeMultiplier())
+            .mul(amount)
+            .mul(await poolController.getTokenPrice(pool.address))
+            .div(await poolController.getReignPrice())
+            .div(helpers.tenPow18)
+            
+            expect(await pool.getDepositFeeReign(amount)).to.be.not.eq(BigNumber.from(0))
+            expect(await pool.getDepositFeeReign(amount)).to.be.eq(expectedDepositFee)
+        });
+
+        it('returns correct expected withdraw Fee', async function () {
+            await mintSVR(10000,pool);
+
+            let amount = BigNumber.from(1000)
+
+            let expectedWithdrawFee = (await pool.withdrawFeeMultiplier())
+            .mul(amount)
+            .mul(await poolController.getTokenPrice(pool.address))
+            .div(await poolController.getReignPrice())
+            .div(helpers.tenPow18)
+            
+
+            expect(await pool.getWithdrawFeeReign(amount)).to.be.eq(expectedWithdrawFee)
+        });
+
+
+        it('returns correct withdraw fee multiplier', async function () {
+            let blockBefore = await pool.blockNumberLast();
+            await mintSVR(10000,pool);
+            let blockAfter = await pool.blockNumberLast();
+
+            let blockDelta = blockAfter.sub(blockBefore)
+
+            let expectedWithdrawFeeMultiplier = (await interestStrategy.getInterestForReserve(2,1))[1]
+            .mul(blockDelta)
+
+            expect(await pool.withdrawFeeMultiplier()).to.not.be.eq(BigNumber.from(0))
+            expect(await pool.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
+        });
+
+        it('correctly accrues withdraw fee multiplier', async function () {
+            let blockBefore = await pool.blockNumberLast();
+            // make pool larger then target, this should set a non-zero withdraw fee
+            await mintSVR(9000,pool2);
+            await mintSVR(10000,pool);
+            let blockAfter = await pool.blockNumberLast();
+            let blockDelta = blockAfter.sub(blockBefore)
+
+            let target = await poolController.getTargetSize(pool.address)
+            let reserves = await pool.getReserves()
+            let expectedWithdrawFeeMultiplier = (await poolController.getInterestRate(pool.address,reserves,target))[1]
+            .mul(blockDelta)
+
+            expect(await pool.withdrawFeeMultiplier()).to.not.be.eq(BigNumber.from(0))
+            expect(await pool.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
+            
+            blockBefore = await pool.blockNumberLast();
+            // increase pool further, this should increase the Withdraw fee
+            await mintSVR(10000,pool);
+            blockAfter = await pool.blockNumberLast();
+            let blockDelta2 = blockAfter.sub(blockBefore)
+
+            target = await poolController.getTargetSize(pool.address)
+            reserves = await pool.getReserves()
+            expectedWithdrawFeeMultiplier = expectedWithdrawFeeMultiplier.add((await interestStrategy.getInterestForReserve(reserves,target))[1]
+            .mul(blockDelta2))
+
+            expect(await pool.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
+        });
+
+        it('correctly reduces withdraw fee multiplier', async function () {
+            await mintSVR(30000,pool);
+            await mintSVR(20000,pool2);
+
+            let withdrawFeeMultiplierBefore = await pool.withdrawFeeMultiplier()
+            await burnSVR(2000, pool);
+            expect(await pool.withdrawFeeMultiplier()).to.be.lt(withdrawFeeMultiplierBefore)
+
+            withdrawFeeMultiplierBefore = await pool.withdrawFeeMultiplier()
+            await burnSVR(2000, pool);
+            expect(await pool.withdrawFeeMultiplier()).to.be.lt(withdrawFeeMultiplierBefore)
+        });
+
+        it('correctly sets withdraw fee to zero if interest becomes positive', async function () {
+            await mintSVR(30000,pool);
+            await mintSVR(20000,pool2);
+
+            let withdrawFeeMultiplierBefore = await pool.withdrawFeeMultiplier()
+            await burnSVR(6000, pool);
+            expect(await pool.withdrawFeeMultiplier()).to.not.be.eq(0)
+            expect(await pool.withdrawFeeMultiplier()).to.be.lt(withdrawFeeMultiplierBefore)
+
+            withdrawFeeMultiplierBefore = await pool.withdrawFeeMultiplier()
+            await burnSVR(6000, pool);
+            expect(await pool.withdrawFeeMultiplier()).to.be.eq(0)
+        });
+
+       
+
+    });
+
     describe('Minting', async function () {
 
-        it('mints the base amount of SoV for an empty pool', async function () {
-            let amount1 = BigNumber.from(1400000).mul(helpers.tenPow18);
+        it('mints the the correct amount of LP Tokens', async function () {
+            let amount = await mintSVR(100000,pool)
 
-            await underlying1.connect(user).transfer(pool.address,amount1);
-            expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount1)
-
-            await pool.mint(userAddress);
-
-            let expected_amount_lp = amount1.sub(await pool.MINIMUM_LIQUIDITY())
-            let expected_amount_sov = await pool.BASE_AMOUNT(); // Base amount
-
-            expect(await sov.balanceOf(userAddress)).to.be.eq(expected_amount_sov)
+            expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount)
+            let expected_amount_lp = amount.sub(await pool.MINIMUM_LIQUIDITY())
             expect(await pool.balanceOf(userAddress)).to.be.eq(expected_amount_lp)
+        });
+
+        it('mints the base amount of SoV for an empty pool', async function () {
+            let amount = await mintSVR(100000,pool)
+            expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount)
+
+            let expected_amount_svr = await pool.BASE_SVR_AMOUNT(); // Base amount
+            expect(await sov.balanceOf(userAddress)).to.be.eq(expected_amount_svr)
         });
 
         it('mints correct amount of Sov for non-empty pool', async function () {
+            await mintSVR(100000,pool2)
+            await mintSVR(100000,pool)
 
-            let amount1 = BigNumber.from(1400000).mul(helpers.tenPow18);
+            let sovBalanceAfter = await sov.balanceOf(userAddress);
+            let sovSupplyAfter = await sov.totalSupply();
 
-            await underlying1.connect(user).transfer(pool.address,amount1);
-            await pool.mint(userAddress);
+            let amount2 = await mintSVR(110000,pool)
 
-            let amount2 = BigNumber.from(1000000).mul(helpers.tenPow18);
-            
-            await underlying1.connect(user).transfer(pool_address,amount2);
-            await pool.mint(userAddress);
+            let underlyingPrice = await poolController.getTokenPrice(pool.address);
+    
+            let newSov = amount2.mul(underlyingPrice)
+                .mul(sovSupplyAfter)
+                .div(await poolController.getPoolsTVL())
+                .div(helpers.tenPow18)
 
-            let expected_amount_lp = amount1.sub(await pool.MINIMUM_LIQUIDITY()).add(amount2)
-        
-            let new_sov = amount2.mul(await pool.BASE_AMOUNT()).div(await pool_controller.getPoolsTVL())
-            let expected_amount_sov = (await pool.BASE_AMOUNT()).add(new_sov)
+            let expectedAmountSov = (sovBalanceAfter).add(newSov)
 
-            expect(await sov.balanceOf(userAddress)).to.be.eq(expected_amount_sov)
-            expect(await pool.balanceOf(userAddress)).to.be.eq(expected_amount_lp)
+            expect(await sov.balanceOf(userAddress)).to.be.eq(expectedAmountSov)
         });
 
-        it('mints correct amounts for very small balances', async function () {
+        it('mints correct amounts of SoV for very small balances', async function () {
+            await mintSVR(1001,pool)
 
-            let amount1 = BigNumber.from(1001); // min-liquidity +1
-
-            await underlying1.connect(user).transfer(pool.address,amount1);
-            await pool.mint(userAddress);
+            let sovBalanceAfter = await sov.balanceOf(userAddress);
+            let sovSupplyAfter = await sov.totalSupply();
 
             let amount2 = BigNumber.from(1);
-            
-            await underlying1.connect(user).transfer(pool_address,amount2);
+
+            let depositFee = await pool.getDepositFeeReign(amount2);
+            await reign.connect(user).approve(pool.address, depositFee); 
+            await underlying1.connect(user).transfer(pool.address,amount2);
             await pool.mint(userAddress);
+    
 
-            let expected_amount_lp = amount1.sub(await pool.MINIMUM_LIQUIDITY()).add(amount2)
+            let underlyingPrice = await poolController.getTokenPrice(pool.address);
         
-            let new_sov = amount2.mul(await pool.BASE_AMOUNT()).div(await pool_controller.getPoolsTVL())
-            let expected_amount_sov = (await pool.BASE_AMOUNT()).add(new_sov)
+            let newSov = amount2.mul(underlyingPrice)
+                .mul(sovSupplyAfter)
+                .div(await poolController.getPoolsTVL())
+                .div(helpers.tenPow18)
+            let expectedAmountSov = (sovBalanceAfter).add(newSov)
 
-            expect(await sov.balanceOf(userAddress)).to.be.eq(expected_amount_sov)
-            expect(await pool.balanceOf(userAddress)).to.be.eq(expected_amount_lp)
+            expect(await sov.balanceOf(userAddress)).to.be.eq(expectedAmountSov)
         });
 
     });
 
+    describe('Burning', async function () {
+
+        it('transfers out the correct amount of underlying', async function () {
+            await mintSVR(110000,pool)
+
+            let userBalanceUnderlying = await underlying1.balanceOf(userAddress);
+            let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
+
+            let withdrawFee = await pool.getWithdrawFeeReign(amountToBurn);
+            await reign.connect(user).approve(pool.address, withdrawFee);
+            await pool.connect(user).burn(amountToBurn);
+
+            expect( await underlying1.balanceOf(userAddress)).to.eq(userBalanceUnderlying.add(amountToBurn))
+        });
+
+        it('burns the correct amount of LP token', async function () {
+            await mintSVR(110000,pool)
+
+            let userBalanceLP = await pool.balanceOf(userAddress);
+            let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
+
+            let withdrawFee = await pool.getWithdrawFeeReign(amountToBurn);
+            await reign.connect(user).approve(pool.address, withdrawFee);
+
+            await pool.connect(user).burn(amountToBurn);
+
+            expect( await pool.balanceOf(userAddress)).to.eq(userBalanceLP.sub(amountToBurn))
+        });
+
+        it('burns the correct amount of SoV token', async function () {
+            await mintSVR(110000,pool)
+
+            let sovBalanceAfter = await sov.balanceOf(userAddress);
+            let sovSupplyAfter = await sov.totalSupply();
+            
+            let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
+            let underlyingPrice = await poolController.getTokenPrice(pool.address)
+
+            let sovBurned = amountToBurn.mul(underlyingPrice)
+                .mul(sovSupplyAfter)
+                .div(await poolController.getPoolsTVL())
+                .div(helpers.tenPow18)
+            let expectedAmountSov = (sovBalanceAfter).sub(sovBurned)
+
+            let withdrawFee = await pool.getWithdrawFeeReign(amountToBurn);
+
+            await reign.connect(user).approve(pool.address, withdrawFee);
+            await pool.connect(user).burn(amountToBurn);
+
+            expect( await sov.balanceOf(userAddress)).to.eq(expectedAmountSov)
+        });
+
+    });
+
+    async function mintSVR (amount:number, poolUsed:Pool) {
+        let amountBN = BigNumber.from(amount).mul(helpers.tenPow18);
+        let depositFee = await poolUsed.getDepositFeeReign(amountBN);
+
+        await reign.connect(user).approve(poolUsed.address, depositFee); 
+        await underlying1.connect(user).transfer(poolUsed.address,amountBN);
+        await underlying2.connect(user).transfer(poolUsed.address,amountBN);
+        await poolUsed.mint(userAddress);
+
+        return amountBN;
+    }
+
+    async function burnSVR (amount:number, poolUsed:Pool) {
+        let amountToBurn = BigNumber.from(amount).mul(helpers.tenPow18);
+        let withdrawFee = await poolUsed.getWithdrawFeeReign(amountToBurn);
+
+        await reign.connect(user).approve(poolUsed.address, withdrawFee);
+        await poolUsed.connect(user).burn(amountToBurn);
+
+        return amountToBurn
+    }
     
 
     async function setupContracts () {
-        const cvValue = BigNumber.from(2800000).mul(helpers.tenPow18);
+        const cvValue = BigNumber.from(93000093).mul(helpers.tenPow18);
 
         await underlying1.mint(userAddress, cvValue);
+        await underlying2.mint(userAddress, cvValue);
+        await reign.connect(user).mint(userAddress, cvValue);
     }
 
     async function setupSigners () {
         const accounts = await ethers.getSigners();
         user = accounts[0];
-        reignDAO = accounts[1];
+        treasury = accounts[1];
+        reignDAO = accounts[2];
 
         userAddress = await user.getAddress();
+        treasuryAddress = await treasury.getAddress();
         reignDAOAddress = await reignDAO.getAddress();
         newAddress = await accounts[2].getAddress();
     }
