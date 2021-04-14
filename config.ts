@@ -1,5 +1,8 @@
 import {NetworksUserConfig} from 'hardhat/types';
 import {EtherscanConfig} from '@nomiclabs/hardhat-etherscan/dist/src/types';
+import * as dotenv from 'dotenv'
+
+dotenv.config();
 
 const defaultAccount = {
     mnemonic: "test test test test test test test test test test test junk",
