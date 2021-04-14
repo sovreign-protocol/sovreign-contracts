@@ -1,4 +1,4 @@
-import { task, HardhatUserConfig } from 'hardhat/config';
+import {HardhatUserConfig, task} from 'hardhat/config';
 import * as config from './config';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
