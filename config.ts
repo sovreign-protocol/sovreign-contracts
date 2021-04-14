@@ -1,5 +1,13 @@
-import { NetworksUserConfig } from 'hardhat/types';
-import { EtherscanConfig } from '@nomiclabs/hardhat-etherscan/dist/src/types';
+import {NetworksUserConfig} from 'hardhat/types';
+import {EtherscanConfig} from '@nomiclabs/hardhat-etherscan/dist/src/types';
+
+const defaultAccount = {
+    mnemonic: "test test test test test test test test test test test junk",
+    initialIndex: 0,
+    path: "m/44'/60'/0'/0",
+    count: 20,
+    accountsBalance: "10000000000000000000000"
+}
 
 export const networks: NetworksUserConfig = {
     // Needed for `solidity-coverage`
@@ -10,15 +18,20 @@ export const networks: NetworksUserConfig = {
     ganache: {
         url: 'http://localhost:7545',
         chainId: 5777,
-        accounts: {
-            mnemonic: 'adult chest ramp thank biology regular decide script position crop brush moral',
-            path: "m/44'/60'/0'/0/account_index",
-            initialIndex: 0,
-            count: 10,
-        },
+        accounts: defaultAccount,
         gas: 'auto',
         gasPrice: 20000000000, // 1 gwei
         gasMultiplier: 1.5,
+    },
+
+    hardhat: {
+        accounts: defaultAccount,
+        forking: {
+            // I know, I know. Not a good practice to add tokens to git repos.
+            // For development, I don't care. :-)
+            url: "https://eth-mainnet.alchemyapi.io/v2/-g51O7AhTJD5wgzNee3y1ksKDaQqM4Fy",
+            enabled: (process.env.MAINNET_ALCHEMY_ENABLED) ? (process.env.MAINNET_ALCHEMY_ENABLED == "true") : false
+        }
     },
 };
 
