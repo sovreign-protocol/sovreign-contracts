@@ -24,7 +24,7 @@ interface IPoolController {
 
     function setBaseketBalancer(address) external;
 
-    function setSovToken(address) external;
+    function setSvrToken(address) external;
 
     function setReignToken(address) external;
 

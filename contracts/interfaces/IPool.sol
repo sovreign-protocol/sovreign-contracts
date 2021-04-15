@@ -23,7 +23,7 @@ interface IPool {
 
     function premiumFactor() external view returns (uint256);
 
-    function sovToken() external view returns (address);
+    function svrToken() external view returns (address);
 
     function reignToken() external view returns (address);
 

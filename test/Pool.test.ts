@@ -4,14 +4,14 @@ import { expect } from 'chai';
 import * as helpers from './helpers/helpers';
 
 import { 
-    Erc20Mock, BasketBalancerMock, PoolController, Pool, SovToken, ReignToken, OracleMock, InterestStrategy
+    Erc20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy
 } from '../typechain';
 import * as deploy from './helpers/deploy';
 
 
 describe('Pool', function () {
 
-    let  sov: SovToken, reign: ReignToken, underlying1: Erc20Mock, underlying2: Erc20Mock
+    let  svr: SvrToken, reign: ReignToken, underlying1: Erc20Mock, underlying2: Erc20Mock
     let  balancer: BasketBalancerMock, poolController:PoolController;
     let  oracle:OracleMock, interestStrategy: InterestStrategy;
     let  pool:Pool, pool2:Pool;
@@ -48,12 +48,12 @@ describe('Pool', function () {
 
     beforeEach(async function() {
 
-        sov = (await deploy.deployContract('SovToken', [userAddress])) as SovToken;
+        svr = (await deploy.deployContract('SvrToken', [userAddress])) as SvrToken;
         reign = (await deploy.deployContract('ReignToken', [userAddress])) as ReignToken;
 
         poolController = (
             await deploy.deployContract('PoolController', [
-                balancer.address, sov.address, reign.address, reignDAOAddress, treasuryAddress
+                balancer.address, svr.address, reign.address, reignDAOAddress, treasuryAddress
             ])
         ) as PoolController; 
 
@@ -79,7 +79,7 @@ describe('Pool', function () {
 
         await setupContracts()
 
-        sov.connect(user).setController(poolController.address)
+        svr.connect(user).setController(poolController.address)
         reign.connect(user).setController(poolController.address)
         
 
@@ -103,10 +103,10 @@ describe('Pool', function () {
             ).to.eq(poolController.address);
         });
 
-        it('returns correct Sov Token address', async function () {
+        it('returns correct Svr Token address', async function () {
             expect(
-                await pool.sovToken()
-            ).to.eq(sov.address);
+                await pool.svrToken()
+            ).to.eq(svr.address);
         });
 
         it('returns correct Reign Token address', async function () {
@@ -266,35 +266,35 @@ describe('Pool', function () {
             expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount)
 
             let expected_amount_svr = await pool.BASE_SVR_AMOUNT(); // Base amount
-            expect(await sov.balanceOf(userAddress)).to.be.eq(expected_amount_svr)
+            expect(await svr.balanceOf(userAddress)).to.be.eq(expected_amount_svr)
         });
 
-        it('mints correct amount of Sov for non-empty pool', async function () {
+        it('mints correct amount of Svr for non-empty pool', async function () {
             await mintSVR(100000,pool2)
             await mintSVR(100000,pool)
 
-            let sovBalanceAfter = await sov.balanceOf(userAddress);
-            let sovSupplyAfter = await sov.totalSupply();
+            let svrBalanceAfter = await svr.balanceOf(userAddress);
+            let svrSupplyAfter = await svr.totalSupply();
 
             let amount2 = await mintSVR(110000,pool)
 
             let underlyingPrice = await poolController.getTokenPrice(pool.address);
     
-            let newSov = amount2.mul(underlyingPrice)
-                .mul(sovSupplyAfter)
+            let newSvr = amount2.mul(underlyingPrice)
+                .mul(svrSupplyAfter)
                 .div(await poolController.getPoolsTVL())
                 .div(helpers.tenPow18)
 
-            let expectedAmountSov = (sovBalanceAfter).add(newSov)
+            let expectedAmountSvr = (svrBalanceAfter).add(newSvr)
 
-            expect(await sov.balanceOf(userAddress)).to.be.eq(expectedAmountSov)
+            expect(await svr.balanceOf(userAddress)).to.be.eq(expectedAmountSvr)
         });
 
         it('mints correct amounts of SoV for very small balances', async function () {
             await mintSVR(1001,pool)
 
-            let sovBalanceAfter = await sov.balanceOf(userAddress);
-            let sovSupplyAfter = await sov.totalSupply();
+            let svrBalanceAfter = await svr.balanceOf(userAddress);
+            let svrSupplyAfter = await svr.totalSupply();
 
             let amount2 = BigNumber.from(1);
 
@@ -306,13 +306,13 @@ describe('Pool', function () {
 
             let underlyingPrice = await poolController.getTokenPrice(pool.address);
         
-            let newSov = amount2.mul(underlyingPrice)
-                .mul(sovSupplyAfter)
+            let newSvr = amount2.mul(underlyingPrice)
+                .mul(svrSupplyAfter)
                 .div(await poolController.getPoolsTVL())
                 .div(helpers.tenPow18)
-            let expectedAmountSov = (sovBalanceAfter).add(newSov)
+            let expectedAmountSvr = (svrBalanceAfter).add(newSvr)
 
-            expect(await sov.balanceOf(userAddress)).to.be.eq(expectedAmountSov)
+            expect(await svr.balanceOf(userAddress)).to.be.eq(expectedAmountSvr)
         });
 
     });
@@ -349,24 +349,24 @@ describe('Pool', function () {
         it('burns the correct amount of SoV token', async function () {
             await mintSVR(110000,pool)
 
-            let sovBalanceAfter = await sov.balanceOf(userAddress);
-            let sovSupplyAfter = await sov.totalSupply();
+            let svrBalanceAfter = await svr.balanceOf(userAddress);
+            let svrSupplyAfter = await svr.totalSupply();
             
             let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
             let underlyingPrice = await poolController.getTokenPrice(pool.address)
 
-            let sovBurned = amountToBurn.mul(underlyingPrice)
-                .mul(sovSupplyAfter)
+            let svrBurned = amountToBurn.mul(underlyingPrice)
+                .mul(svrSupplyAfter)
                 .div(await poolController.getPoolsTVL())
                 .div(helpers.tenPow18)
-            let expectedAmountSov = (sovBalanceAfter).sub(sovBurned)
+            let expectedAmountSvr = (svrBalanceAfter).sub(svrBurned)
 
             let withdrawFee = await pool.getWithdrawFeeReign(amountToBurn);
 
             await reign.connect(user).approve(pool.address, withdrawFee);
             await pool.connect(user).burn(amountToBurn);
 
-            expect( await sov.balanceOf(userAddress)).to.eq(expectedAmountSov)
+            expect( await svr.balanceOf(userAddress)).to.eq(expectedAmountSvr)
         });
 
     });

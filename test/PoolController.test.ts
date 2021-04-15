@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import * as helpers from './helpers/helpers';
 
 import { 
-    Erc20Mock, BasketBalancerMock, PoolController, Pool, SovToken, ReignToken, OracleMock, InterestStrategyMock
+    Erc20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategyMock
  } from '../typechain';
 import * as deploy from './helpers/deploy';
 import { stringify } from 'querystring';
@@ -12,7 +12,7 @@ import { stringify } from 'querystring';
 
 describe('PoolController', function () {
 
-    let  sov: SovToken, reign: ReignToken, underlying1: Erc20Mock, underlying2: Erc20Mock
+    let  svr: SvrToken, reign: ReignToken, underlying1: Erc20Mock, underlying2: Erc20Mock
     let  balancer: BasketBalancerMock, poolController:PoolController;
     let  oracle:OracleMock, intrestStaretgy: InterestStrategyMock;
     let  pool:Pool;
@@ -27,7 +27,7 @@ describe('PoolController', function () {
 
         await setupSigners();
 
-        sov = (await deploy.deployContract('SovToken', [userAddress])) as SovToken;
+        svr = (await deploy.deployContract('SvrToken', [userAddress])) as SvrToken;
         reign = (await deploy.deployContract('ReignToken', [userAddress])) as ReignToken;
         underlying1 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
         underlying2 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock;
@@ -47,7 +47,7 @@ describe('PoolController', function () {
 
         poolController = (
             await deploy.deployContract('PoolController', [
-                balancer.address, sov.address, reign.address, reignDAOAddress, treasouryAddress
+                balancer.address, svr.address, reign.address, reignDAOAddress, treasouryAddress
             ])
         ) as PoolController; 
 
@@ -79,7 +79,7 @@ describe('PoolController', function () {
 
         it('sets correct addresses at construction', async function () {
            expect(await poolController.basketBalancer()).to.be.eq(balancer.address)
-           expect(await poolController.sovToken()).to.be.eq(sov.address)
+           expect(await poolController.svrToken()).to.be.eq(svr.address)
            expect(await poolController.reignToken()).to.be.eq(reign.address)
            expect(await poolController.reignDAO()).to.be.eq(reignDAOAddress)
            expect(await poolController.treasoury()).to.be.eq(treasouryAddress)
@@ -104,22 +104,22 @@ describe('PoolController', function () {
             });
         });
 
-        describe('updates SovToken address correctly', async function () {
+        describe('updates SvrToken address correctly', async function () {
             it('reverts if not called by DAO', async function () {
                 await expect(
-                    poolController.connect(user).setSovToken(newAddress)
+                    poolController.connect(user).setSvrToken(newAddress)
                 ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
             });
 
             it('reverts if called with Zero Address', async function () {
                 await expect(
-                    poolController.connect(reignDAO).setSovToken(helpers.zeroAddress)
+                    poolController.connect(reignDAO).setSvrToken(helpers.zeroAddress)
                 ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
             });
 
             it('sets correct address otherwise', async function () {
-                await expect(poolController.connect(reignDAO).setSovToken(newAddress)).to.not.be.reverted;
-                expect(await poolController.sovToken()).to.be.eq(newAddress)
+                await expect(poolController.connect(reignDAO).setSvrToken(newAddress)).to.not.be.reverted;
+                expect(await poolController.svrToken()).to.be.eq(newAddress)
             });
         });
 
@@ -167,7 +167,7 @@ describe('PoolController', function () {
                     poolController.connect(reignDAO).setReignToken(newAddress)
                 ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
                 await expect(
-                    poolController.connect(reignDAO).setSovToken(newAddress)
+                    poolController.connect(reignDAO).setSvrToken(newAddress)
                 ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
                 await expect(
                     poolController.connect(reignDAO).setBaseketBalancer(newAddress)

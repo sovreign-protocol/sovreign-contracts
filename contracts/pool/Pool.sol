@@ -23,7 +23,7 @@ contract Pool is IPool, PoolErc20 {
 
     address public override controllerAddress;
     address public override token;
-    address public override sovToken;
+    address public override svrToken;
     address public override reignToken;
     address public override treasoury;
 
@@ -63,13 +63,13 @@ contract Pool is IPool, PoolErc20 {
     function initialize(
         address _token,
         address _tresoury,
-        address _sov,
+        address _svr,
         address _reign
     ) external override {
         require(msg.sender == controllerAddress, "UniswapV2: FORBIDDEN"); // sufficient check
         token = _token;
         treasoury = _tresoury;
-        sovToken = _sov;
+        svrToken = _svr;
         reignToken = _reign;
         controller = IPoolController(msg.sender);
     }
@@ -80,18 +80,6 @@ contract Pool is IPool, PoolErc20 {
         reserve = IERC20(_token).balanceOf(address(this));
         emit Sync(reserve);
     }
-
-    /*
-    function _takeFeeIn(uint256 amount) private pure returns (bool feeOn) {
-        //TODO
-        return true;
-    }
-
-    function _takeFeeOut(uint256 amount) private pure returns (bool feeOn) {
-        //TODO
-        return true;
-    }
-    */
 
     // this low-level function should be called from a contract which performs important safety checks
     function mint(address to)
@@ -136,7 +124,7 @@ contract Pool is IPool, PoolErc20 {
 
         _accrueInterest();
 
-        _mintSov(to, amount);
+        _mintSvr(to, amount);
     }
 
     function burn(uint256 amount) external override lock returns (bool) {
@@ -164,7 +152,7 @@ contract Pool is IPool, PoolErc20 {
         //Withdraw only with interest applied
         IERC20(_token).transfer(to, amount);
 
-        _burnSov(to, amount);
+        _burnSvr(to, amount);
 
         _updateReserves();
 
@@ -220,32 +208,32 @@ contract Pool is IPool, PoolErc20 {
         _updateReserves();
     }
 
-    function _mintSov(address to, uint256 amount) private returns (bool) {
-        uint256 sovSupply = IMintBurnErc20(sovToken).totalSupply();
+    function _mintSvr(address to, uint256 amount) private returns (bool) {
+        uint256 svrSupply = IMintBurnErc20(svrToken).totalSupply();
         uint256 TVL = controller.getPoolsTVL();
         uint256 price = controller.getTokenPrice(address(this));
-        uint256 amountSov;
-        if (sovSupply == 0) {
-            amountSov = BASE_SVR_AMOUNT;
+        uint256 amountSvr;
+        if (svrSupply == 0) {
+            amountSvr = BASE_SVR_AMOUNT;
         } else {
-            amountSov = amount.mul(price).mul(sovSupply).div(TVL).div(10**18);
+            amountSvr = amount.mul(price).mul(svrSupply).div(TVL).div(10**18);
         }
 
-        emit Mint(msg.sender, amount, amountSov);
+        emit Mint(msg.sender, amount, amountSvr);
 
-        return IMintBurnErc20(sovToken).mint(to, amountSov);
+        return IMintBurnErc20(svrToken).mint(to, amountSvr);
     }
 
-    function _burnSov(address from, uint256 amount) private returns (bool) {
-        uint256 sovSupply = IMintBurnErc20(sovToken).totalSupply();
+    function _burnSvr(address from, uint256 amount) private returns (bool) {
+        uint256 svrSupply = IMintBurnErc20(svrToken).totalSupply();
         uint256 TVL = controller.getPoolsTVL();
         uint256 price = controller.getTokenPrice(address(this));
-        uint256 amountSov =
-            amount.mul(price).mul(sovSupply).div(TVL).div(10**18);
+        uint256 amountSvr =
+            amount.mul(price).mul(svrSupply).div(TVL).div(10**18);
 
-        emit Burn(msg.sender, amount, amountSov);
+        emit Burn(msg.sender, amount, amountSvr);
 
-        return IMintBurnErc20(sovToken).burnFrom(from, amountSov);
+        return IMintBurnErc20(svrToken).burnFrom(from, amountSvr);
     }
 
     function _accrueInterest() public returns (bool) {
