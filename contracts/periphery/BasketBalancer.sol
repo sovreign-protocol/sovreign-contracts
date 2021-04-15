@@ -25,18 +25,17 @@ contract BasketBalancer is IBasketBalancer {
 
     IReign reign;
 
-    address DAO;
+    address public controller;
 
-    modifier onlyDAO() {
-        require(msg.sender == DAO, "Only the DAO can edit this");
+    modifier onlyController() {
+        require(msg.sender == controller, "Only the DAO can edit this");
         _;
     }
 
     constructor(
         address[] memory newPools,
         uint256[] memory newAllocation,
-        address reignAddress,
-        address dao
+        address reignAddress
     ) {
         uint256 amountAllocated = 0;
         for (uint256 i = 0; i < newPools.length; i++) {
@@ -51,7 +50,12 @@ contract BasketBalancer is IBasketBalancer {
 
         allPools = newPools;
         reign = IReign(reignAddress);
-        DAO = dao;
+        controller = msg.sender;
+    }
+
+    function setController(address _controller) public {
+        require(msg.sender == controller, "Only Controller can do this");
+        controller = _controller;
     }
 
     function updateAllocationVote(
@@ -152,7 +156,12 @@ contract BasketBalancer is IBasketBalancer {
         return poolAllocation[pool];
     }
 
-    function addPool(address pool) public override onlyDAO returns (uint256) {
+    function addPool(address pool)
+        public
+        override
+        onlyController
+        returns (uint256)
+    {
         allPools.push(pool);
         poolAllocation[pool] = 0;
         return allPools.length;

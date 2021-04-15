@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 import "../interfaces/IPoolErc20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract PoolErc20 is IPoolErc20 {
+abstract contract PoolErc20 is IPoolErc20 {
     using SafeMath for uint256;
 
     string public constant override name = "Uniswap V2";
@@ -19,8 +19,6 @@ contract PoolErc20 is IPoolErc20 {
     bytes32 public constant override PERMIT_TYPEHASH =
         0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     mapping(address => uint256) public override nonces;
-
-    constructor() public {}
 
     function _mint(address to, uint256 value) internal {
         totalSupply = totalSupply.add(value);

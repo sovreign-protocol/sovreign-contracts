@@ -40,7 +40,7 @@ describe('BasketBalancer', function () {
         var allocation = [500000,500000]
         balancer = (await deploy.deployContract(
             'BasketBalancer', 
-            [pools,allocation,reign.address,flyingParrotAddress])
+            [pools,allocation,reign.address])
             ) as BasketBalancer;
 
         await reign.setRewards(rewards.address);
@@ -104,14 +104,25 @@ describe('BasketBalancer', function () {
 
         });
 
-        it('user can not add a new pool', async function () {
+
+        it('allows controller to add a new pool', async function () {
+            await balancer.connect(user).addPool(address3)
+            expect( await balancer.getTargetAllocation(address3)).to.be.equal(0)
+            let pools = await balancer.getPools()
+            expect(pools[2]).to.be.equal(address3)
+        });
+
+
+        it('reverts if pool is added by someone else', async function () {
             await expect( 
-                balancer.connect(user).addPool(address3)
+                balancer.connect(flyingParrot).addPool(address3)
             ).to.be.revertedWith('Only the DAO can edit this')
 
         });
 
-        it('DAO can add a new pool', async function () {
+        it('can change controller', async function () {
+            await balancer.connect(user).setController(flyingParrotAddress)
+            expect( await balancer.controller()).to.be.equal(flyingParrotAddress)
             await balancer.connect(flyingParrot).addPool(address3)
             expect( await balancer.getTargetAllocation(address3)).to.be.equal(0)
             let pools = await balancer.getPools()

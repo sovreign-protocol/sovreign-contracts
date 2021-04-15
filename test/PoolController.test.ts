@@ -238,28 +238,6 @@ describe('PoolController', function () {
                 expect(await poolController.getOracle(pool.address)).to.be.eq(newAddress)
             });
         });
-
-        describe('updates feeTo address correctly', async function () {
-            it('reverts if not called by DAO', async function () {
-                await expect(
-                    poolController.connect(user).setFeeTo(newAddress)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
-            });
-
-            it('reverts if called with Zero Address', async function () {
-                await expect(
-                    poolController.connect(reignDAO).setFeeTo(helpers.zeroAddress)
-                ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
-            });
-
-            it('sets correct address otherwise', async function () {
-                await expect(
-                    poolController.connect(reignDAO).setFeeTo(newAddress)
-                ).to.not.be.reverted;
-                expect(await poolController.feeTo()).to.be.eq(newAddress)
-            });
-        });
-
     })
     
     

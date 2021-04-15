@@ -12,7 +12,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 contract PoolController is IPoolController {
     using SafeMath for uint256;
 
-    address public override feeTo;
     address public basketBalancer;
     address public svrToken;
     address public reignToken;
@@ -75,11 +74,6 @@ contract PoolController is IPoolController {
         emit PoolCreated(token, pool, allPools.length);
 
         return pool;
-    }
-
-    function setFeeTo(address _feeTo) external override onlyDAO {
-        require(_feeTo != address(0), "SoV-Reign: ZERO_ADDRESS");
-        feeTo = _feeTo;
     }
 
     function setTreasoury(address _treasoury) external override onlyDAO {

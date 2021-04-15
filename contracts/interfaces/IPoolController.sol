@@ -10,10 +10,6 @@ interface IPoolController {
         address oracle
     ) external returns (address pool);
 
-    function feeTo() external view returns (address);
-
-    function setFeeTo(address) external;
-
     function setInterestStrategy(address, address) external;
 
     function setOracle(address, address) external;
