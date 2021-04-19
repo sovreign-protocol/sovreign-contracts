@@ -41,8 +41,4 @@ interface IPool {
         address,
         address
     ) external;
-
-    function setFeeIn(uint256 feeIn) external;
-
-    function setFeeOut(uint256 feeOut) external;
 }

@@ -7,6 +7,7 @@ import {
     Erc20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy
 } from '../typechain';
 import * as deploy from './helpers/deploy';
+import { prependOnceListener } from 'process';
 
 
 describe('Pool', function () {
@@ -19,7 +20,7 @@ describe('Pool', function () {
     let user: Signer, userAddress: string;
     let treasury: Signer, treasuryAddress: string;
     let reignDAO: Signer, reignDAOAddress: string;
-    let newAddress:string;
+    let newUser: Signer, newUserAddress:string;
 
 
     before(async function () {
@@ -91,6 +92,14 @@ describe('Pool', function () {
             expect(poolController.address).to.not.eql(0).and.to.not.be.empty;
             expect(pool.address).to.not.eql(0).and.to.not.be.empty;
         });
+
+        it('should allow to skim', async function () {
+            let amount = BigNumber.from(27);
+            await underlying1.connect(user).transfer(pool.address,amount);
+            expect(await underlying1.balanceOf(pool.address)).to.be.equal(amount);
+            await pool.skim(newUserAddress);
+            expect(await underlying1.balanceOf(newUserAddress)).to.be.equal(amount);
+        });
     
     });
 
@@ -123,6 +132,56 @@ describe('Pool', function () {
 
     }); 
 
+    describe('ERC-20', async function () {
+
+        it('transfers amounts correctly', async function () {
+            await mintSVR(100000,pool)
+            let transfers = BigNumber.from(10)
+            await pool.connect(user).transfer(newUserAddress,transfers);
+            expect(await pool.balanceOf(newUserAddress)).to.be.eq(transfers)
+        })
+
+        it('reverts if transfers more then balance', async function () {
+            await mintSVR(100000,pool)
+            let transfers = (await pool.balanceOf(userAddress)).add(1000)
+            await expect(
+                pool.connect(user).transfer(newUserAddress,transfers)
+            ).to.be.revertedWith("SafeMath: subtraction overflow")
+        })
+
+        it('set allowance amounts correctly', async function () {
+            await mintSVR(100000,pool)
+            let allow = BigNumber.from(10)
+            await pool.connect(user).approve(newUserAddress,allow);
+            expect(await pool.allowance(userAddress,newUserAddress)).to.be.eq(allow)
+        })
+
+        it('makes TransferFrom correctly', async function () {
+            await mintSVR(100000,pool)
+            let allow = BigNumber.from(10)
+            await pool.connect(user).approve(newUserAddress,allow);
+            await pool.connect(newUser).transferFrom(userAddress,treasuryAddress, allow);
+            expect(await pool.balanceOf(treasuryAddress)).to.be.eq(allow);
+        })
+
+        it('reverts if transferFrom is above allowance', async function () {
+            await mintSVR(100000,pool)
+            let allow = BigNumber.from(10)
+            await pool.connect(user).approve(newUserAddress,allow);
+            await expect(
+                pool.connect(user).transferFrom(userAddress,treasuryAddress,allow.add(1))
+            ).to.be.revertedWith("SafeMath: subtraction overflow")
+        })
+
+        it('TransferFrom reduces allowance', async function () {
+            await mintSVR(100000,pool)
+            let allow = BigNumber.from(10)
+            await pool.connect(user).approve(newUserAddress,allow);
+            await pool.connect(newUser).transferFrom(userAddress,treasuryAddress, allow.sub(5));
+            expect(await pool.allowance(userAddress,newUserAddress)).to.be.eq(allow.sub(5))
+        })
+    })
+
     describe('Syncing', async function () {
 
         it('totalSupply starts at 0', async function () {
@@ -139,6 +198,13 @@ describe('Pool', function () {
     });
 
     describe('Computing Fees', async function () {
+
+        it('skips accrual if total supply is 0', async function () {
+            let multiplier = await pool.withdrawFeeMultiplier();
+            await pool._accrueInterest();
+            expect(await pool.withdrawFeeMultiplier()).to.be.equal(multiplier)
+        });
+
 
         it('returns correct expected deposit fee', async function () {
             await mintSVR(11000,pool);
@@ -243,7 +309,7 @@ describe('Pool', function () {
             expect(await pool.withdrawFeeMultiplier()).to.be.lt(withdrawFeeMultiplierBefore)
 
             withdrawFeeMultiplierBefore = await pool.withdrawFeeMultiplier()
-            await burnSVR(6000, pool);
+            await burnSVR(20000, pool);
             expect(await pool.withdrawFeeMultiplier()).to.be.eq(0)
         });
 
@@ -259,9 +325,12 @@ describe('Pool', function () {
             expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount)
             let expected_amount_lp = amount.sub(await pool.MINIMUM_LIQUIDITY())
             expect(await pool.balanceOf(userAddress)).to.be.eq(expected_amount_lp)
+
+            await pool.connect(user).transfer(newUserAddress,BigNumber.from(10));
+            expect(await pool.balanceOf(newUserAddress)).to.be.eq(BigNumber.from(10))
         });
 
-        it('mints the base amount of SoV for an empty pool', async function () {
+        it('mints the base amount of Svr for an empty pool', async function () {
             let amount = await mintSVR(100000,pool)
             expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount)
 
@@ -407,11 +476,12 @@ describe('Pool', function () {
         user = accounts[0];
         treasury = accounts[1];
         reignDAO = accounts[2];
+        newUser = accounts[2];
 
         userAddress = await user.getAddress();
         treasuryAddress = await treasury.getAddress();
         reignDAOAddress = await reignDAO.getAddress();
-        newAddress = await accounts[2].getAddress();
+        newUserAddress = await newUser.getAddress();
     }
 
 });

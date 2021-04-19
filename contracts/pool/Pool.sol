@@ -6,10 +6,12 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/IMintBurnErc20.sol";
 import "../interfaces/IPool.sol";
 import "../interfaces/IPoolController.sol";
+import "../libraries/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract Pool is IPool, PoolErc20 {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     uint256 public constant override MINIMUM_LIQUIDITY = 10**3;
     bytes4 private constant SELECTOR =
@@ -47,14 +49,6 @@ contract Pool is IPool, PoolErc20 {
         unlocked = 1;
     }
 
-    function getReserves() public view override returns (uint256 _reserve) {
-        _reserve = reserve;
-    }
-
-    function _safeTransfer(address to, uint256 value) private {
-        IERC20(token).transfer(to, value);
-    }
-
     constructor() {
         controllerAddress = msg.sender;
     }
@@ -74,11 +68,8 @@ contract Pool is IPool, PoolErc20 {
         controller = IPoolController(msg.sender);
     }
 
-    // update reserves and, on the first call per block
-    function _updateReserves() private {
-        address _token = token;
-        reserve = IERC20(_token).balanceOf(address(this));
-        emit Sync(reserve);
+    function getReserves() public view override returns (uint256 _reserve) {
+        _reserve = reserve;
     }
 
     // this low-level function should be called from a contract which performs important safety checks
@@ -130,7 +121,6 @@ contract Pool is IPool, PoolErc20 {
     function burn(uint256 amount) external override lock returns (bool) {
         require(amount > 0, "Can only burn positive amounts");
 
-        address _token = token; // gas savings
         address to = msg.sender;
 
         uint256 withdrawFee = getWithdrawFeeReign(amount);
@@ -149,8 +139,8 @@ contract Pool is IPool, PoolErc20 {
 
         //Burn LP tokens
         _burn(msg.sender, amount);
-        //Withdraw only with interest applied
-        IERC20(_token).transfer(to, amount);
+
+        _safeTransfer(to, amount);
 
         _burnSvr(to, amount);
 
@@ -162,10 +152,7 @@ contract Pool is IPool, PoolErc20 {
     // force balances to match reserves
     function skim(address to) external override lock {
         address _token = token; // gas savings
-        IERC20(token).transfer(
-            to,
-            IERC20(_token).balanceOf(address(this)).sub(reserve)
-        );
+        _safeTransfer(to, IERC20(_token).balanceOf(address(this)).sub(reserve));
     }
 
     function getDepositFeeReign(uint256 amount) public view returns (uint256) {
@@ -208,6 +195,17 @@ contract Pool is IPool, PoolErc20 {
         _updateReserves();
     }
 
+    function _safeTransfer(address to, uint256 value) private {
+        IERC20(token).safeTransfer(to, value);
+    }
+
+    // update reserves and, on the first call per block
+    function _updateReserves() private {
+        address _token = token;
+        reserve = IERC20(_token).balanceOf(address(this));
+        emit Sync(reserve);
+    }
+
     function _mintSvr(address to, uint256 amount) private returns (bool) {
         uint256 svrSupply = IMintBurnErc20(svrToken).totalSupply();
         uint256 TVL = controller.getPoolsTVL();
@@ -240,6 +238,7 @@ contract Pool is IPool, PoolErc20 {
         uint256 _currentBlockNumber = block.number;
         uint256 _accrualBlockNumberPrior = blockNumberLast;
 
+        // Do not accrue two times in a single block
         if (_accrualBlockNumberPrior == _currentBlockNumber) {
             return false;
         }
@@ -281,13 +280,5 @@ contract Pool is IPool, PoolErc20 {
         emit AccrueInterest(depositFeeMultiplier, withdrawFeeMultiplier);
 
         return true;
-    }
-
-    function setFeeIn(uint256 feeInNew) external override {
-        feeIn = feeInNew;
-    }
-
-    function setFeeOut(uint256 feeOutNew) external override {
-        feeOut = feeOutNew;
     }
 }

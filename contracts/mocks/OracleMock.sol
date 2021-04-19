@@ -6,20 +6,11 @@ import "../interfaces/IOracle.sol";
 contract OracleMock is IOracle {
     constructor() {}
 
-    function observationIndexOf(uint256 timestamp)
-        external
-        view
-        override
-        returns (uint8 index)
-    {
-        return 0;
-    }
-
-    function update(address tokenA, address tokenB) external override {}
+    function update() external override {}
 
     function consult(address tokenIn, uint256 amountIn)
         external
-        view
+        pure
         override
         returns (uint256 amountOut)
     {
