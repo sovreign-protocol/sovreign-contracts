@@ -39,7 +39,7 @@ async function main() {
     console.log(`ReignFacet deployed at: ${reignFacet.address}`);
 
     ///////////////////////////
-    // deploy 'diamond' Reign contract:
+    // deploy 'diamond' "Reign" contract:
     ///////////////////////////
     const diamond = await deploy.deployDiamond(
         'Reign',
@@ -49,19 +49,22 @@ async function main() {
     console.log(`Reign deployed at: ${diamond.address}`);
 
     ///////////////////////////
-    // deploy ReignToken contract:
+    // Deploy "ReignToken" contract:
     ///////////////////////////
     const reignToken = await deploy.deployContract('ReignToken', [_owner]);
     console.log(`ReignToken deployed at: ${reignToken.address}`);
 
     ///////////////////////////
-    // deploy SVR Token contract:
+    // Deploy "SVR Token" contract:
     ///////////////////////////
     const sovToken = await deploy.deployContract('SovToken', [_owner]);
     console.log(`SovToken deployed at: ${sovToken.address}`);
 
+    // mint and setController
+
+
     ///////////////////////////
-    // deploy Rewards contract:
+    // Deploy "Rewards" contract:
     ///////////////////////////
 
     const rewards = (await deploy.deployContract('Rewards', [_owner, _bond, diamond.address])) as Rewards;
@@ -81,6 +84,43 @@ async function main() {
 
     console.log('Calling setupPullToken');
     await rewards.setupPullToken(_cv, startTs, endTs, rewardsAmount);
+
+    ///////////////////////////
+    // Deploy "BasketBalancer" contract:
+    ///////////////////////////
+    // TODO: arguments?
+    const basketBalancer1 = await deploy.deployContract(
+        'BasketBalancer',
+        [
+            [],
+            [],
+            diamond.address,
+            diamond.address
+        ]
+    );
+    console.log(`BasketBalancer deployed at: ${basketBalancer1.address}`);
+
+    ///////////////////////////
+    // Deploy "InterestStrategy" contract:
+    ///////////////////////////
+    // TODO: arguments?
+    const interestStrategy1 = await deploy.deployContract(
+        'InterestStrategy',
+        [
+
+        ]
+    );
+    console.log(`InterestStrategy deployed at: ${interestStrategy1.address}`);
+
+
+
+    // - mint Reign tokens
+    // - stake the Reign tokens in the Reing contract
+    // - create proposals and govern
+
+    // - updateAllocationVote
+    // - updateBasketBalance
+
 }
 
 main()
