@@ -43,10 +43,4 @@ interface IPoolController {
     function getReignPrice() external view returns (uint256);
 
     function getTargetSize(address) external view returns (uint256);
-
-    function getInterestRate(
-        address,
-        uint256,
-        uint256
-    ) external view returns (uint256, uint256);
 }

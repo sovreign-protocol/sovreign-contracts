@@ -13,9 +13,14 @@ contract InterestStrategy is InterestStrategyInterface {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
-    uint256 public constant blocksPerYear = 2102400;
+    uint256 public constant blocksPerYear = 2300000;
     int256 public constant scaler = 10**18;
     uint256 public constant magnitudeAdjust = 48;
+
+    uint256 public override withdrawFeeMultiplier;
+    uint256 public override epochRewardValue;
+    uint256 public interestRateLast;
+    uint256 public blockNumberLast;
 
     uint256 multiplier;
     uint256 offsett;
@@ -109,5 +114,57 @@ contract InterestStrategy is InterestStrategyInterface {
     //Gets the current Multiplier
     function getMultiplier() external view override returns (uint256) {
         return multiplier;
+    }
+
+    function accrueInterest(uint256 reserves, uint256 target)
+        external
+        override
+        returns (bool)
+    {
+        uint256 _currentBlockNumber = block.number;
+        uint256 _accrualBlockNumberPrior = blockNumberLast;
+
+        // Do not accrue two times in a single block
+        if (_accrualBlockNumberPrior == _currentBlockNumber) {
+            return false;
+        }
+
+        if (reserves == 0) {
+            blockNumberLast = _currentBlockNumber;
+            return false;
+        }
+
+        uint256 _reserves = reserves;
+        uint256 _target = target;
+
+        (uint256 _positiveInterestRate, uint256 _negativeInterestRate) =
+            getInterestForReserve(_reserves, _target);
+
+        // Calculate the number of blocks elapsed since the last accrual
+        uint256 _blockDelta = _currentBlockNumber.sub(_accrualBlockNumberPrior);
+
+        if (_positiveInterestRate == 0) {
+            uint256 _accumulatedInterest =
+                _negativeInterestRate.mul(_blockDelta);
+            if (_negativeInterestRate > interestRateLast) {
+                withdrawFeeMultiplier = withdrawFeeMultiplier.add(
+                    _accumulatedInterest
+                );
+            } else if (_negativeInterestRate < interestRateLast) {
+                if (withdrawFeeMultiplier > _accumulatedInterest) {
+                    withdrawFeeMultiplier = withdrawFeeMultiplier.sub(
+                        _accumulatedInterest
+                    );
+                } else {
+                    withdrawFeeMultiplier = 0;
+                }
+            } // if interest is the same as last do not change it
+        } else {
+            //TODO: Here accrue positive interest as well
+            withdrawFeeMultiplier = 0;
+        }
+
+        blockNumberLast = _currentBlockNumber;
+        interestRateLast = _negativeInterestRate;
     }
 }

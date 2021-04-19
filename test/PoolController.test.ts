@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import * as helpers from './helpers/helpers';
 
 import { 
-    Erc20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategyMock
+    Erc20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock
  } from '../typechain';
 import * as deploy from './helpers/deploy';
 import { stringify } from 'querystring';
@@ -14,12 +14,13 @@ describe('PoolController', function () {
 
     let  svr: SvrToken, reign: ReignToken, underlying1: Erc20Mock, underlying2: Erc20Mock
     let  balancer: BasketBalancerMock, poolController:PoolController;
-    let  oracle:OracleMock, intrestStaretgy: InterestStrategyMock;
+    let  oracle:OracleMock
     let  pool:Pool;
 
     let user: Signer, userAddress: string;
     let treasoury: Signer, treasouryAddress: string;
     let reignDAO: Signer, reignDAOAddress: string;
+    let interestStrategyAddress: string;
     let newAddress:string;
 
 
@@ -33,7 +34,6 @@ describe('PoolController', function () {
         underlying2 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock;
         
         oracle = (await deploy.deployContract('OracleMock')) as OracleMock;
-        intrestStaretgy = (await deploy.deployContract('InterestStrategyMock')) as InterestStrategyMock;
  
 
         balancer = (
@@ -52,7 +52,7 @@ describe('PoolController', function () {
         ) as PoolController; 
 
         await poolController.connect(reignDAO).createPool(
-            underlying1.address, intrestStaretgy.address, oracle.address
+            underlying1.address, interestStrategyAddress, oracle.address
         )
 
         let poolAddress = await poolController.allPools(0);
@@ -249,7 +249,7 @@ describe('PoolController', function () {
 
         it('sets the interest strategy', async function () {
             let interest = await poolController.getInterestStrategy(pool.address);
-            expect(interest).to.be.eq(intrestStaretgy.address);
+            expect(interest).to.be.eq(interestStrategyAddress);
         });
 
         it('sets the oracle', async function () {
@@ -260,7 +260,7 @@ describe('PoolController', function () {
             let pool_len = await poolController.allPoolsLength();
             expect(pool_len).to.eq(1);
             await expect(poolController.connect(reignDAO).createPool(
-                underlying2.address, intrestStaretgy.address, oracle.address
+                underlying2.address, interestStrategyAddress, oracle.address
             )).to.not.be.reverted;
             let pool_len_after = await poolController.allPoolsLength();
             expect(pool_len_after).to.eq(2);
@@ -268,7 +268,7 @@ describe('PoolController', function () {
 
         it('adds the pools to the balancer list', async function () {
             await expect(poolController.connect(reignDAO).createPool(
-                underlying2.address, intrestStaretgy.address, oracle.address
+                underlying2.address, interestStrategyAddress, oracle.address
             )).to.not.be.reverted;
             let all_pools = await balancer.getPools();
             expect(all_pools[0]).to.eq(await pool.token());
@@ -280,7 +280,7 @@ describe('PoolController', function () {
             expect(new_pool).to.eq(last_pool);
 
             await expect(poolController.connect(reignDAO).createPool(
-                underlying2.address, intrestStaretgy.address, oracle.address
+                underlying2.address, interestStrategyAddress, oracle.address
             )).to.not.be.reverted;
             last_pool = await poolController.allPools(1);
             new_pool = await poolController.getPool(underlying2.address);
@@ -295,17 +295,6 @@ describe('PoolController', function () {
         it('correctly relays Reign Rate', async function () {
             //Mock Oracle returns always 2
             expect(await poolController.getReignPrice()).to.eq(BigNumber.from(2).mul(helpers.tenPow18));
-        });
-
-        it('correctly relays interest rate', async function () {
-            //See values from Mock Interest Strategy
-            let interest_rate = await poolController.getInterestRate(pool.address,100,101)
-            expect(interest_rate[0]).to.eq(475646879756);
-            expect(interest_rate[1]).to.eq(0);
-
-            interest_rate = (await poolController.getInterestRate(pool.address,101,100))
-            expect(interest_rate[0]).to.eq(0);
-            expect(interest_rate[1]).to.eq(475646879756);
         });
 
         it('correctly returns on isPool', async function () {
@@ -337,7 +326,7 @@ describe('PoolController', function () {
         it('reverts if unauthorized addresses creates pool', async function () {
             await expect( 
                 poolController.connect(user).createPool(
-                    helpers.zeroAddress, intrestStaretgy.address, oracle.address
+                    helpers.zeroAddress, interestStrategyAddress, oracle.address
                 )
             ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
         });
@@ -345,18 +334,18 @@ describe('PoolController', function () {
         it('reverts if underlying is zero', async function () {
             await expect( 
                 poolController.connect(reignDAO).createPool(
-                    helpers.zeroAddress, intrestStaretgy.address, oracle.address
+                    helpers.zeroAddress, interestStrategyAddress, oracle.address
                 )
             ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
         });
 
         it('reverts if pool already exists', async function () {
             await expect(poolController.connect(reignDAO).createPool(
-                underlying2.address, intrestStaretgy.address, oracle.address
+                underlying2.address, interestStrategyAddress, oracle.address
             )).to.not.be.reverted;
             await expect( 
                 poolController.connect(reignDAO).createPool(
-                    underlying2.address, intrestStaretgy.address, oracle.address
+                    underlying2.address, interestStrategyAddress, oracle.address
                 )
             ).to.be.revertedWith('SoV-Reign: POOL_EXISTS');
         });
@@ -379,7 +368,7 @@ describe('PoolController', function () {
 
     async function deployPool2 () {
         await poolController.connect(reignDAO).createPool(
-            underlying2.address, intrestStaretgy.address, oracle.address
+            underlying2.address, interestStrategyAddress, oracle.address
         )
         let len = await poolController.allPoolsLength();
         return (await poolController.allPools(len.sub(1)));
@@ -404,6 +393,7 @@ describe('PoolController', function () {
         treasouryAddress = await treasoury.getAddress();
         reignDAOAddress = await reignDAO.getAddress();
         newAddress = await accounts[3].getAddress();
+        interestStrategyAddress = await accounts[4].getAddress();
     }
 
 });

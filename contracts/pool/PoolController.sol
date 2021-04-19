@@ -123,19 +123,6 @@ contract PoolController is IPoolController {
         return allPools.length;
     }
 
-    function getInterestRate(
-        address pool,
-        uint256 reserves,
-        uint256 target
-    ) external view override returns (uint256, uint256) {
-        address strategy = getInterestStrategy[pool];
-        return
-            InterestStrategyInterface(strategy).getInterestForReserve(
-                reserves,
-                target
-            );
-    }
-
     function getTargetSize(address pool)
         external
         view

@@ -7,6 +7,7 @@ import "../interfaces/IMintBurnErc20.sol";
 import "../interfaces/IPool.sol";
 import "../interfaces/IPoolController.sol";
 import "../libraries/SafeERC20.sol";
+import "../interfaces/InterestStrategyInterface.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract Pool is IPool, PoolErc20 {
@@ -32,9 +33,6 @@ contract Pool is IPool, PoolErc20 {
     uint256 private reserve; // uses single storage slot, accessible via getReserves
     uint256 public BASE_MULTIPLIER = 10**18;
     uint256 public depositFeeMultiplier = 100000;
-    uint256 public withdrawFeeMultiplier;
-    uint256 public interestRateLast;
-    uint256 public blockNumberLast;
 
     uint256 private unlocked = 1;
 
@@ -162,12 +160,15 @@ contract Pool is IPool, PoolErc20 {
             return 0;
         }
 
+        address interestStrategy =
+            controller.getInterestStrategy(address(this));
+
         (uint256 _, uint256 interestRate) =
-            controller.getInterestRate(
-                address(this),
-                reserve.add(amount),
+            InterestStrategyInterface(interestStrategy).getInterestForReserve(
+                getReserves(),
                 target
             );
+
         return
             (
                 interestRate
@@ -180,9 +181,12 @@ contract Pool is IPool, PoolErc20 {
     }
 
     function getWithdrawFeeReign(uint256 amount) public view returns (uint256) {
+        address interestStrategy =
+            controller.getInterestStrategy(address(this));
         return
             (
-                withdrawFeeMultiplier
+                InterestStrategyInterface(interestStrategy)
+                    .withdrawFeeMultiplier()
                     .mul(amount)
                     .mul(controller.getTokenPrice(address(this)))
                     .div(controller.getReignPrice())
@@ -235,49 +239,13 @@ contract Pool is IPool, PoolErc20 {
     }
 
     function _accrueInterest() public returns (bool) {
-        uint256 _currentBlockNumber = block.number;
-        uint256 _accrualBlockNumberPrior = blockNumberLast;
-
-        // Do not accrue two times in a single block
-        if (_accrualBlockNumberPrior == _currentBlockNumber) {
-            return false;
-        }
-
-        if (totalSupply == 0) {
-            blockNumberLast = _currentBlockNumber;
-            return false;
-        }
-
-        uint256 _reserves = getReserves();
-        uint256 _target = controller.getTargetSize(address(this));
-
-        (uint256 _, uint256 _interestRate) =
-            controller.getInterestRate(address(this), _reserves, _target);
-
-        // Calculate the number of blocks elapsed since the last accrual
-        uint256 _blockDelta = _currentBlockNumber.sub(_accrualBlockNumberPrior);
-
-        uint256 _accumulatedInterest = _interestRate.mul(_blockDelta);
-        if (_interestRate == 0) {
-            withdrawFeeMultiplier = 0;
-        } else if (_interestRate > interestRateLast) {
-            withdrawFeeMultiplier = withdrawFeeMultiplier.add(
-                _accumulatedInterest
-            );
-        } else if (_interestRate < interestRateLast) {
-            if (withdrawFeeMultiplier > _accumulatedInterest) {
-                withdrawFeeMultiplier = withdrawFeeMultiplier.sub(
-                    _accumulatedInterest
-                );
-            } else {
-                withdrawFeeMultiplier = 0;
-            }
-        } // if interest is the same as last do not change it
-
-        blockNumberLast = _currentBlockNumber;
-        interestRateLast = _interestRate;
-
-        emit AccrueInterest(depositFeeMultiplier, withdrawFeeMultiplier);
+        uint256 target = controller.getTargetSize(address(this));
+        address interestStrategy =
+            controller.getInterestStrategy(address(this));
+        InterestStrategyInterface(interestStrategy).accrueInterest(
+            getReserves(),
+            target
+        );
 
         return true;
     }

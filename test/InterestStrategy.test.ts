@@ -14,7 +14,7 @@ describe('InterestStrategy', function () {
     let offset     = BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)));
 
 
-    before(async function () {
+    beforeEach(async function () {
 
         interest = (await deploy.deployContract(
             'InterestStrategy',[multiplier, offset])
@@ -101,8 +101,76 @@ describe('InterestStrategy', function () {
         let delta = await interest.getDelta(reserves,target);
         let rates = await interest.getInterestForReserve(reserves,target);
 
-        expect(rates[0]).to.equal(914155251141);
+        expect(rates[0]).to.equal(904347826086);
         expect(rates[1]).to.equal(0);
     }); 
+
+    it('skips accrual if reserves is 0', async function () {
+        let multiplier = await interest.withdrawFeeMultiplier();
+        await interest.accrueInterest(0,1);
+        expect(await interest.withdrawFeeMultiplier()).to.be.equal(multiplier)
+    });
+
+    it('returns correct withdraw fee multiplier', async function () {
+        let blockBefore = await interest.blockNumberLast();
+        await interest.accrueInterest(11000,10000);
+        let blockAfter = await interest.blockNumberLast();
+
+        let blockDelta = blockAfter.sub(blockBefore)
+
+        let expectedWithdrawFeeMultiplier = (await interest.getInterestForReserve(11000,10000))[1]
+        .mul(blockDelta)
+
+        expect(await interest.withdrawFeeMultiplier()).to.not.be.eq(BigNumber.from(0))
+        expect(await interest.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
+    });
+
+    it('correctly accrues withdraw fee multiplier', async function () {
+        let blockBefore = await interest.blockNumberLast();
+        // make interest larger then target, this should set a non-zero withdraw fee
+        await interest.accrueInterest(11000,10000);
+        let blockAfter = await interest.blockNumberLast();
+        let blockDelta = blockAfter.sub(blockBefore)
+
+        let expectedWithdrawFeeMultiplier = (await interest.getInterestForReserve(11000,10000))[1]
+        .mul(blockDelta)
+
+        expect(await interest.withdrawFeeMultiplier()).to.not.be.eq(BigNumber.from(0))
+        expect(await interest.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
+        
+        blockBefore = await interest.blockNumberLast();
+        // increase interest further, this should increase the Withdraw fee
+        await interest.accrueInterest(12000,10000);
+        blockAfter = await interest.blockNumberLast();
+        let blockDelta2 = blockAfter.sub(blockBefore)
+        expectedWithdrawFeeMultiplier = expectedWithdrawFeeMultiplier.add(
+            (await interest.getInterestForReserve(12000,10000)
+            )[1]
+        .mul(blockDelta2))
+
+        expect(await interest.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
+    });
+
+    it('correctly reduces withdraw fee multiplier', async function () {
+        await interest.accrueInterest(12000,10000);
+
+        let withdrawFeeMultiplierBefore = await interest.withdrawFeeMultiplier()
+        await interest.accrueInterest(11000,10000);
+        expect(await interest.withdrawFeeMultiplier()).to.be.lt(withdrawFeeMultiplierBefore)
+
+        withdrawFeeMultiplierBefore = await interest.withdrawFeeMultiplier()
+        await interest.accrueInterest(10500, 10000);
+        expect(await interest.withdrawFeeMultiplier()).to.be.lt(withdrawFeeMultiplierBefore)
+    });
+
+    it('correctly sets withdraw fee to zero if interest becomes positive', async function () {
+        await interest.accrueInterest(12000, 10000);
+
+        expect(await interest.withdrawFeeMultiplier()).to.be.gt(0).and.not.be.eq(0)
+
+        await interest.accrueInterest(10000,15000);
+        expect(await interest.withdrawFeeMultiplier()).to.be.eq(0)
+    });
+
 
 });

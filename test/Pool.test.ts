@@ -199,11 +199,7 @@ describe('Pool', function () {
 
     describe('Computing Fees', async function () {
 
-        it('skips accrual if total supply is 0', async function () {
-            let multiplier = await pool.withdrawFeeMultiplier();
-            await pool._accrueInterest();
-            expect(await pool.withdrawFeeMultiplier()).to.be.equal(multiplier)
-        });
+        
 
 
         it('returns correct expected deposit fee', async function () {
@@ -215,7 +211,7 @@ describe('Pool', function () {
             let target = await poolController.getTargetSize(pool.address)
             let reservesAfter = (await pool.getReserves()).add(amount)
 
-            let expectedDepositFee = (await poolController.getInterestRate(pool.address,reservesAfter,target))[1]
+            let expectedDepositFee = (await interestStrategy.getInterestForReserve(reservesAfter,target))[1]
             .mul(await pool.depositFeeMultiplier())
             .mul(amount)
             .mul(await poolController.getTokenPrice(pool.address))
@@ -231,7 +227,7 @@ describe('Pool', function () {
 
             let amount = BigNumber.from(1000)
 
-            let expectedWithdrawFee = (await pool.withdrawFeeMultiplier())
+            let expectedWithdrawFee = (await interestStrategy.withdrawFeeMultiplier())
             .mul(amount)
             .mul(await poolController.getTokenPrice(pool.address))
             .div(await poolController.getReignPrice())
@@ -240,80 +236,6 @@ describe('Pool', function () {
 
             expect(await pool.getWithdrawFeeReign(amount)).to.be.eq(expectedWithdrawFee)
         });
-
-
-        it('returns correct withdraw fee multiplier', async function () {
-            let blockBefore = await pool.blockNumberLast();
-            await mintSVR(10000,pool);
-            let blockAfter = await pool.blockNumberLast();
-
-            let blockDelta = blockAfter.sub(blockBefore)
-
-            let expectedWithdrawFeeMultiplier = (await interestStrategy.getInterestForReserve(2,1))[1]
-            .mul(blockDelta)
-
-            expect(await pool.withdrawFeeMultiplier()).to.not.be.eq(BigNumber.from(0))
-            expect(await pool.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
-        });
-
-        it('correctly accrues withdraw fee multiplier', async function () {
-            let blockBefore = await pool.blockNumberLast();
-            // make pool larger then target, this should set a non-zero withdraw fee
-            await mintSVR(9000,pool2);
-            await mintSVR(10000,pool);
-            let blockAfter = await pool.blockNumberLast();
-            let blockDelta = blockAfter.sub(blockBefore)
-
-            let target = await poolController.getTargetSize(pool.address)
-            let reserves = await pool.getReserves()
-            let expectedWithdrawFeeMultiplier = (await poolController.getInterestRate(pool.address,reserves,target))[1]
-            .mul(blockDelta)
-
-            expect(await pool.withdrawFeeMultiplier()).to.not.be.eq(BigNumber.from(0))
-            expect(await pool.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
-            
-            blockBefore = await pool.blockNumberLast();
-            // increase pool further, this should increase the Withdraw fee
-            await mintSVR(10000,pool);
-            blockAfter = await pool.blockNumberLast();
-            let blockDelta2 = blockAfter.sub(blockBefore)
-
-            target = await poolController.getTargetSize(pool.address)
-            reserves = await pool.getReserves()
-            expectedWithdrawFeeMultiplier = expectedWithdrawFeeMultiplier.add((await interestStrategy.getInterestForReserve(reserves,target))[1]
-            .mul(blockDelta2))
-
-            expect(await pool.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
-        });
-
-        it('correctly reduces withdraw fee multiplier', async function () {
-            await mintSVR(30000,pool);
-            await mintSVR(20000,pool2);
-
-            let withdrawFeeMultiplierBefore = await pool.withdrawFeeMultiplier()
-            await burnSVR(2000, pool);
-            expect(await pool.withdrawFeeMultiplier()).to.be.lt(withdrawFeeMultiplierBefore)
-
-            withdrawFeeMultiplierBefore = await pool.withdrawFeeMultiplier()
-            await burnSVR(2000, pool);
-            expect(await pool.withdrawFeeMultiplier()).to.be.lt(withdrawFeeMultiplierBefore)
-        });
-
-        it('correctly sets withdraw fee to zero if interest becomes positive', async function () {
-            await mintSVR(30000,pool);
-            await mintSVR(20000,pool2);
-
-            let withdrawFeeMultiplierBefore = await pool.withdrawFeeMultiplier()
-            await burnSVR(6000, pool);
-            expect(await pool.withdrawFeeMultiplier()).to.not.be.eq(0)
-            expect(await pool.withdrawFeeMultiplier()).to.be.lt(withdrawFeeMultiplierBefore)
-
-            withdrawFeeMultiplierBefore = await pool.withdrawFeeMultiplier()
-            await burnSVR(20000, pool);
-            expect(await pool.withdrawFeeMultiplier()).to.be.eq(0)
-        });
-
-       
 
     });
 
