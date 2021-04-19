@@ -32,6 +32,11 @@ contract BasketBalancer is IBasketBalancer {
         _;
     }
 
+    // - init newPools with empty array
+    // - init newAllocation with empty array
+    // - both are only required if we would like to update
+    // the BasketBalancer at a later stage and re-use existing pools.
+    // -
     constructor(
         address[] memory newPools,
         uint256[] memory newAllocation,
