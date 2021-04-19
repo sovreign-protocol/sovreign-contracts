@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 contract ReignToken is IMintBurnErc20 {
     using SafeMath for uint256;
 
-    string public constant override name = "SoV-Reign Governance Token";
+    string public constant override name = "SoVReign Governance Token";
     string public constant override symbol = "REIGN";
     uint8 public constant override decimals = 18;
     uint256 public override totalSupply;

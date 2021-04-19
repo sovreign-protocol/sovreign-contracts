@@ -77,7 +77,7 @@ describe('BasketBalancer', function () {
             expect(alloc).to.equal(500000);
         });
 
-        it('inition allocation vote is empty ', async function () {
+        it('initial allocation vote is empty ', async function () {
             let alloc = await balancer.connect(user).getAllocationVote(userAddress);
             expect(alloc[0].length).to.equal(0);
             expect(alloc[1].length).to.equal(0);
