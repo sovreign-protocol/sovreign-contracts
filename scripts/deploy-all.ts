@@ -138,7 +138,8 @@ async function main() {
         [
             // both params were taken from the InterestStrategy.test.ts
             BigNumber.from(3).mul(10**10),
-            BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)))
+            BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
+            diamondReign.address
         ]
     );
     console.log(`InterestStrategy deployed at: ${interestStrategy1.address}`);

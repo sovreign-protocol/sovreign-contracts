@@ -28,9 +28,21 @@ contract InterestStrategy is InterestStrategyInterface {
     int256 max = 20 * 10**18;
     int256 min = -20 * 10**18;
 
-    constructor(uint256 _multiplier, uint256 _offsett) {
+    address public reignDAO;
+
+    modifier onlyDAO() {
+        require(msg.sender == reignDAO, "SoV-Reign: FORBIDDEN");
+        _;
+    }
+
+    constructor(
+        uint256 _multiplier,
+        uint256 _offsett,
+        address _reignDAO
+    ) {
         multiplier = _multiplier;
         offsett = _offsett;
+        reignDAO = _reignDAO;
     }
 
     function getDelta(uint256 reserves, uint256 target)
@@ -91,7 +103,12 @@ contract InterestStrategy is InterestStrategyInterface {
     }
 
     //Sets the offsett to a new value
-    function setOffsett(uint256 newOffsett) public override returns (bool) {
+    function setOffsett(uint256 newOffsett)
+        public
+        override
+        onlyDAO
+        returns (bool)
+    {
         offsett = newOffsett;
         return true;
     }
@@ -105,6 +122,7 @@ contract InterestStrategy is InterestStrategyInterface {
     function setMultiplier(uint256 newMultiplier)
         external
         override
+        onlyDAO
         returns (bool)
     {
         multiplier = newMultiplier;
