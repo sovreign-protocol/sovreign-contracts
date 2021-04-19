@@ -62,6 +62,14 @@ describe('BasketBalancer', function () {
             expect(balancer.address).to.not.eql(0).and.to.not.be.empty;
         });
 
+        it('can be deployed with empty arrays', async function () {
+            let balancerEmpty = (await deploy.deployContract(
+                'BasketBalancer', 
+                [[],[],reign.address])
+                ) as BasketBalancer;
+            expect(balancerEmpty.address).to.not.eql(0).and.to.not.be.empty;
+        });
+
         it('sets correct allocations', async function () {
             let alloc = await balancer.getTargetAllocation(pools[0]);
             expect(alloc).to.equal(500000);

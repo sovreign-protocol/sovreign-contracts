@@ -42,15 +42,18 @@ contract BasketBalancer is IBasketBalancer {
         address reignAddress
     ) {
         uint256 amountAllocated = 0;
-        for (uint256 i = 0; i < newPools.length; i++) {
-            uint256 poolPercentage = newAllocation[i];
-            amountAllocated = amountAllocated.add(poolPercentage);
-            poolAllocation[newPools[i]] = poolPercentage;
+
+        if (newPools.length != 0 && newAllocation.length != 0) {
+            for (uint256 i = 0; i < newPools.length; i++) {
+                uint256 poolPercentage = newAllocation[i];
+                amountAllocated = amountAllocated.add(poolPercentage);
+                poolAllocation[newPools[i]] = poolPercentage;
+            }
+            require(
+                amountAllocated == FULL_ALLOCATION,
+                "allocation is not complete"
+            );
         }
-        require(
-            amountAllocated == FULL_ALLOCATION,
-            "allocation is not complete"
-        );
 
         allPools = newPools;
         reign = IReign(reignAddress);
