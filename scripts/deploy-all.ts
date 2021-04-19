@@ -57,8 +57,8 @@ async function main() {
     ///////////////////////////
     // Deploy "SVR Token" contract:
     ///////////////////////////
-    const sovToken = await deploy.deployContract('SovToken', [_owner]);
-    console.log(`SovToken deployed at: ${sovToken.address}`);
+    const svrToken = await deploy.deployContract('SvrToken', [_owner]);
+    console.log(`SvrToken deployed at: ${svrToken.address}`);
 
     // mint and setController
 
@@ -88,13 +88,13 @@ async function main() {
     ///////////////////////////
     // Deploy "BasketBalancer" contract:
     ///////////////////////////
-    // TODO: arguments?
     const basketBalancer1 = await deploy.deployContract(
         'BasketBalancer',
         [
+            // empty since new pools can be added later (initial state)
             [],
+            // empty since new allocations can be added later (initial state)
             [],
-            diamond.address,
             diamond.address
         ]
     );
@@ -103,16 +103,15 @@ async function main() {
     ///////////////////////////
     // Deploy "InterestStrategy" contract:
     ///////////////////////////
-    // TODO: arguments?
     const interestStrategy1 = await deploy.deployContract(
         'InterestStrategy',
         [
-
+            // both params were taken from the InterestStrategy.test.ts
+            BigNumber.from(3).mul(10**10),
+            BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)))
         ]
     );
     console.log(`InterestStrategy deployed at: ${interestStrategy1.address}`);
-
-
 
     // - mint Reign tokens
     // - stake the Reign tokens in the Reing contract
