@@ -25,6 +25,7 @@ contract BasketBalancer is IBasketBalancer {
 
     IReign reign;
 
+    // 'controller' here means the PoolController contract
     address public controller;
 
     modifier onlyController() {

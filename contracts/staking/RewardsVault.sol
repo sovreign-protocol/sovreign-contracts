@@ -3,7 +3,8 @@ pragma solidity ^0.7.6;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract CommunityVault is Ownable {
+contract RewardsVault is Ownable {
+
     IERC20 private _reignToken;
 
     constructor(address reignToken) {

@@ -15,6 +15,7 @@ contract SvrToken is IMintBurnErc20 {
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
 
+    // 'controller' here means the PoolController contract
     address public controller;
 
     constructor(address _controller) {
