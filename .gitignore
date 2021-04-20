@@ -7,3 +7,4 @@
 abi/
 .idea
 **/coverage
+**/coverage.json
