@@ -29,6 +29,9 @@ export const networks: NetworksUserConfig = {
 
     hardhat: {
         accounts: defaultAccount,
+        mining: {
+            auto: true
+        },
         forking: {
             // I know, I know. Not a good practice to add tokens to git repos.
             // For development, I don't care. :-)

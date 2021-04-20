@@ -37,9 +37,19 @@ yarn install
 yarn test
 ```
 
-### Deploy 
+### Deploy in testnet
 
-TBD
+* Just deploy all contracts:
+
+```shell script
+hardhat run scripts/run-deploy-all.ts
+```
+
+* Run the `scenario1`:
+
+```shell script
+hardhat run scripts/run-scenario1.ts
+```
 
 ### Run Remix-IDE and point to your local folder
 
