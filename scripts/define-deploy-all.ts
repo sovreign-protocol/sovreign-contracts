@@ -71,19 +71,19 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     console.log(`SvrToken deployed at: ${svrToken.address}`);
 
     ///////////////////////////
+    // Deploy "Governance" contract:
+    ///////////////////////////
+    const reignDAO = await deploy.deployContract('Governance') as Governance;
+    c.reignDAO = reignDAO;
+    console.log(`Governance deployed at: ${reignDAO.address}`);
+
+    ///////////////////////////
     // Deploy "Rewards" contract:
     ///////////////////////////
     const rewards = (await deploy.deployContract(
-        'Rewards', [rewardsVault.address, reignToken.address, reignDiamond.address])) as Rewards;
+        'Rewards', [reignDAO.address, reignToken.address, reignDiamond.address])) as Rewards;
     c.rewards = rewards;
     console.log(`Rewards deployed at: ${rewards.address}`);
-
-    ///////////////////////////
-    // Init "Reign":
-    ///////////////////////////
-    console.log(`Calling initReign() at '${rewards.address}' (ReignDiamond contract)`);
-    const reign = (await diamondAsFacet(reignDiamond, 'ReignFacet')) as ReignFacet;
-    await reign.connect(c.ownerAcct).initReign(reignToken.address, rewards.address);
 
     ///////////////////////////
     // Init "Rewards":
@@ -92,11 +92,11 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     await rewards.connect(c.ownerAcct).setupPullToken(rewardsVault.address, c.rewardsStartTs, c.rewardsEndTs, c.rewardsAmount);
 
     ///////////////////////////
-    // Deploy "Governance" contract:
+    // Init "Reign":
     ///////////////////////////
-    const reignDAO = await deploy.deployContract('Governance') as Governance;
-    c.reignDAO = reignDAO;
-    console.log(`Governance deployed at: ${reignDAO.address}`);
+    console.log(`Calling initReign() at '${rewards.address}' (ReignDiamond contract)`);
+    const reign = (await diamondAsFacet(reignDiamond, 'ReignFacet')) as ReignFacet;
+    await reign.connect(c.ownerAcct).initReign(reignToken.address, rewards.address);
 
     ///////////////////////////
     // Init "Governance":
