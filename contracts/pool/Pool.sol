@@ -92,9 +92,7 @@ contract Pool is IPool, PoolErc20 {
                 reign.allowance(msg.sender, address(this)) >= depositFee,
                 "Insufficient allowance"
             );
-            uint256 toTreasoury = depositFee.div(2);
-            reign.transferFrom(msg.sender, treasoury, toTreasoury);
-            reign.burnFrom(msg.sender, depositFee.sub(toTreasoury));
+            reign.transferFrom(msg.sender, treasoury, depositFee);
         }
 
         //bool feeOn = _takeFeeIn(amount);
