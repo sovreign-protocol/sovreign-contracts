@@ -3,6 +3,7 @@
 pragma solidity 0.7.6;
 
 import "../interfaces/InterestStrategyInterface.sol";
+import "../interfaces/IStaking.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
@@ -13,17 +14,27 @@ contract InterestStrategy is InterestStrategyInterface {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
-    uint256 public constant blocksPerYear = 2300000;
-    int256 public constant scaler = 10**18;
-    uint256 public constant magnitudeAdjust = 48;
+    // timestamp for the epoch 1
+    // everything before that is considered epoch 0 which won't have a reward but allows for the initial stake
+    uint256 public epoch1Start;
+
+    // duration of each epoch
+    uint256 public EPOCH_DURATION = 604800;
+
+    uint256 public constant BLOCK_PER_YEAR = 2300000;
+    uint256 public constant MAGNITUDE_ADJUST = 48;
+    int256 public constant SCALER = 10**18;
 
     uint256 public override withdrawFeeMultiplier;
-    uint256 public override epochRewardValue;
-    uint256 public interestRateLast;
+    uint256 public negInterestRateLast;
+    uint256 public posInterestRateLast;
     uint256 public blockNumberLast;
 
-    uint256 multiplier;
-    uint256 offsett;
+    uint256 public multiplier;
+    uint256 public offsett;
+
+    uint128 epochId;
+    mapping(uint128 => uint256) epochRewardValues;
 
     int256 max = 20 * 10**18;
     int256 min = -20 * 10**18;
@@ -38,11 +49,13 @@ contract InterestStrategy is InterestStrategyInterface {
     constructor(
         uint256 _multiplier,
         uint256 _offsett,
-        address _reignDAO
+        address _reignDAO,
+        uint256 _epoch1Start
     ) {
         multiplier = _multiplier;
         offsett = _offsett;
         reignDAO = _reignDAO;
+        epoch1Start = _epoch1Start;
     }
 
     function getDelta(uint256 reserves, uint256 target)
@@ -53,13 +66,13 @@ contract InterestStrategy is InterestStrategyInterface {
         int256 _reserves = int256(reserves);
         int256 _target = int256(target);
         int256 delta =
-            ((scaler.mul(_target.sub(_reserves))).div(_target)).mul(100);
+            ((SCALER.mul(_target.sub(_reserves))).div(_target)).mul(100);
         if (delta > max) return max;
         if (delta < min) return min;
         return delta;
     }
 
-    //Computes what the interest on a single blcok by getting the Yearly rate based on the curve
+    //Computes what the interest on a single block by getting the Yearly rate based on the curve
     function getInterestForReserve(uint256 reserves, uint256 target)
         public
         view
@@ -85,9 +98,9 @@ contract InterestStrategy is InterestStrategyInterface {
 
         if (interestInt >= 0) {
             uint256 interest = uint256(interestInt);
-            positive = (interest.div(blocksPerYear)).add(offsett);
+            positive = (interest.div(BLOCK_PER_YEAR)).add(offsett);
         } else {
-            negative = (uint256(interestInt.mul(-1)).div(blocksPerYear));
+            negative = (uint256(interestInt.mul(-1)).div(BLOCK_PER_YEAR));
             if (negative < offsett) {
                 positive = offsett.sub(negative);
                 negative = 0;
@@ -97,8 +110,8 @@ contract InterestStrategy is InterestStrategyInterface {
         }
 
         return (
-            positive.div(10**magnitudeAdjust),
-            negative.div(10**magnitudeAdjust)
+            positive.div(10**MAGNITUDE_ADJUST),
+            negative.div(10**MAGNITUDE_ADJUST)
         );
     }
 
@@ -113,11 +126,6 @@ contract InterestStrategy is InterestStrategyInterface {
         return true;
     }
 
-    //Gets the current offsett
-    function getOffsett() external view override returns (uint256) {
-        return offsett;
-    }
-
     //Sets the Multiplier to a new value
     function setMultiplier(uint256 newMultiplier)
         external
@@ -129,9 +137,13 @@ contract InterestStrategy is InterestStrategyInterface {
         return true;
     }
 
-    //Gets the current Multiplier
-    function getMultiplier() external view override returns (uint256) {
-        return multiplier;
+    function getEpochRewards(uint128 epochId)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return epochRewardValues[epochId];
     }
 
     function accrueInterest(uint256 reserves, uint256 target)
@@ -164,11 +176,11 @@ contract InterestStrategy is InterestStrategyInterface {
         if (_positiveInterestRate == 0) {
             uint256 _accumulatedInterest =
                 _negativeInterestRate.mul(_blockDelta);
-            if (_negativeInterestRate > interestRateLast) {
+            if (_negativeInterestRate > negInterestRateLast) {
                 withdrawFeeMultiplier = withdrawFeeMultiplier.add(
                     _accumulatedInterest
                 );
-            } else if (_negativeInterestRate < interestRateLast) {
+            } else if (_negativeInterestRate < negInterestRateLast) {
                 if (withdrawFeeMultiplier > _accumulatedInterest) {
                     withdrawFeeMultiplier = withdrawFeeMultiplier.sub(
                         _accumulatedInterest
@@ -178,11 +190,27 @@ contract InterestStrategy is InterestStrategyInterface {
                 }
             } // if interest is the same as last do not change it
         } else {
-            //TODO: Here accrue positive interest as well
             withdrawFeeMultiplier = 0;
+            //TODO: Here accrue positive interest as well
+            uint256 _accumulatedInterest =
+                _positiveInterestRate.mul(_blockDelta);
+            uint128 epoch = getCurrentEpoch();
+            uint256 currentRewards = epochRewardValues[epoch];
+            epochRewardValues[epoch] = currentRewards.add(_accumulatedInterest);
         }
 
         blockNumberLast = _currentBlockNumber;
-        interestRateLast = _negativeInterestRate;
+        negInterestRateLast = _negativeInterestRate;
+    }
+
+    /*
+     * Returns the id of the current epoch derived from block.timestamp
+     */
+    function getCurrentEpoch() public view returns (uint128) {
+        if (block.timestamp < epoch1Start) {
+            return 0;
+        }
+
+        return uint128((block.timestamp - epoch1Start) / EPOCH_DURATION + 1);
     }
 }

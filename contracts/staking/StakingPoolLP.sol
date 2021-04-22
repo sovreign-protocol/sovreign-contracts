@@ -156,7 +156,7 @@ contract StakingLP {
         }
         uint256 epochRewards =
             InterestStrategyInterface(_controller.getInterestStrategy(_pool))
-                .epochRewardValue();
+                .getEpochRewards(epochId);
         return
             epochRewards.mul(_getUserBalancePerEpoch(msg.sender, epochId)).div(
                 epochs[epochId]

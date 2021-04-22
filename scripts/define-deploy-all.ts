@@ -17,6 +17,7 @@ import {BigNumber} from "ethers";
 import * as helpers from "../test/helpers/governance-helpers";
 import {day} from "../test/helpers/time";
 import {moveAtTimestamp} from "../test/helpers/helpers";
+import {stakingEpochStart}  from "../test/helpers/helpers";
 
 export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
 
@@ -154,7 +155,8 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
             // both params were taken from the InterestStrategy.test.ts
             BigNumber.from(3).mul(10 ** 10),
             BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
-            reignDiamond.address
+            reignDiamond.address,
+            stakingEpochStart
         ]
     ) as InterestStrategy;
     c.interestStrategy = interestStrategy1;

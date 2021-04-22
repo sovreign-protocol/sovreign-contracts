@@ -36,7 +36,7 @@ describe('Pool', function () {
         let multiplier = BigNumber.from(3).mul(10**10);
         let offset = BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)));
         interestStrategy = (await deploy.deployContract(
-            'InterestStrategy',[multiplier, offset,reignDAOAddress])
+            'InterestStrategy',[multiplier, offset,reignDAOAddress, helpers.stakingEpochStart])
             ) as InterestStrategy;;
  
 

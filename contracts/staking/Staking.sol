@@ -15,7 +15,7 @@ contract Staking is ReentrancyGuard {
     uint256 public epoch1Start;
 
     // duration of each epoch
-    uint256 public epochDuration;
+    uint256 public EPOCH_DURATION = 604800;
 
     // holds the current balance of the user for each token
     mapping(address => mapping(address => uint256)) private balances;
@@ -52,7 +52,7 @@ contract Staking is ReentrancyGuard {
         address indexed tokenAddress,
         uint256 amount
     );
-    event ManualEpochInit(
+    event InitEpochForTokens(
         address indexed caller,
         uint128 indexed epochId,
         address[] tokens
@@ -63,9 +63,8 @@ contract Staking is ReentrancyGuard {
         uint256 amount
     );
 
-    constructor(uint256 _epoch1Start, uint256 _epochDuration) public {
+    constructor(uint256 _epoch1Start) public {
         epoch1Start = _epoch1Start;
-        epochDuration = _epochDuration;
     }
 
     /*
@@ -90,7 +89,7 @@ contract Staking is ReentrancyGuard {
         if (!epochIsInitialized(tokenAddress, currentEpoch)) {
             address[] memory tokens = new address[](1);
             tokens[0] = tokenAddress;
-            manualEpochInit(tokens, currentEpoch);
+            initEpochForTokens(tokens, currentEpoch);
         }
 
         // update the next epoch pool size
@@ -227,7 +226,7 @@ contract Staking is ReentrancyGuard {
         if (!epochIsInitialized(tokenAddress, currentEpoch)) {
             address[] memory tokens = new address[](1);
             tokens[0] = tokenAddress;
-            manualEpochInit(tokens, currentEpoch);
+            initEpochForTokens(tokens, currentEpoch);
         }
 
         // update the pool size of the next epoch to its current balance
@@ -323,11 +322,13 @@ contract Staking is ReentrancyGuard {
     }
 
     /*
-     * manualEpochInit can be used by anyone to initialize an epoch based on the previous one
+     * initEpochForTokens can be used by anyone to initialize an epoch based on the previous one
      * This is only applicable if there was no action (deposit/withdraw) in the current epoch.
      * Any deposit and withdraw will automatically initialize the current and next epoch.
      */
-    function manualEpochInit(address[] memory tokens, uint128 epochId) public {
+    function initEpochForTokens(address[] memory tokens, uint128 epochId)
+        public
+    {
         require(epochId <= getCurrentEpoch(), "can't init a future epoch");
 
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -348,10 +349,15 @@ contract Staking is ReentrancyGuard {
 
                 p.size = poolSize[tokens[i]][epochId - 1].size;
                 p.set = true;
+
+                // TODO: here we update the epoch in the tokens interest startegy
+                // we get the accumalted interest for the epoch
+                // if we need more tokens, we make a transfer from Treasoury to RewardsVault
+                // if not the other way around
             }
         }
 
-        emit ManualEpochInit(msg.sender, epochId, tokens);
+        emit InitEpochForTokens(msg.sender, epochId, tokens);
     }
 
     function emergencyWithdraw(address tokenAddress) public {
@@ -428,7 +434,7 @@ contract Staking is ReentrancyGuard {
             return 0;
         }
 
-        return uint128((block.timestamp - epoch1Start) / epochDuration + 1);
+        return uint128((block.timestamp - epoch1Start) / EPOCH_DURATION + 1);
     }
 
     /*
@@ -462,10 +468,10 @@ contract Staking is ReentrancyGuard {
      */
     function currentEpochMultiplier() public view returns (uint128) {
         uint128 currentEpoch = getCurrentEpoch();
-        uint256 currentEpochEnd = epoch1Start + currentEpoch * epochDuration;
+        uint256 currentEpochEnd = epoch1Start + currentEpoch * EPOCH_DURATION;
         uint256 timeLeft = currentEpochEnd - block.timestamp;
         uint128 multiplier =
-            uint128((timeLeft * BASE_MULTIPLIER) / epochDuration);
+            uint128((timeLeft * BASE_MULTIPLIER) / EPOCH_DURATION);
 
         return multiplier;
     }

@@ -21,7 +21,7 @@ describe('InterestStrategy', function () {
         await setupSigners();
 
         interest = (await deploy.deployContract(
-            'InterestStrategy',[multiplier, offset, reignDAOAddress])
+            'InterestStrategy',[multiplier, offset, reignDAOAddress, helpers.stakingEpochStart])
             ) as InterestStrategy;
     });
 
@@ -38,9 +38,9 @@ describe('InterestStrategy', function () {
         it("returns offset when reserves == target", async () => {
 
             let rates  = await interest.getInterestForReserve(2000,2000);
-            let offset = await interest.getOffsett();
+            let offset = await interest.offsett();
 
-            let magnitudeAdjustment = await interest.magnitudeAdjust();
+            let magnitudeAdjustment = await interest.MAGNITUDE_ADJUST();
 
             expect(rates[0]).to.equal(offset.div(BigNumber.from(10).pow(magnitudeAdjustment)));
         });
@@ -105,7 +105,7 @@ describe('InterestStrategy', function () {
         it("sets correct offset", async () => {
             let newValue = BigNumber.from(5);
             await interest.connect(reignDAO).setOffsett(newValue);
-            expect(await interest.getOffsett()).to.be.eq(newValue)
+            expect(await interest.offsett()).to.be.eq(newValue)
         });
 
         it("reverts if setOffset is called by other then DAO", async () => {
@@ -116,13 +116,21 @@ describe('InterestStrategy', function () {
         it("sets correct multiplier", async () => {
             let newValue = BigNumber.from(5);
             await interest.connect(reignDAO).setMultiplier(newValue);
-            expect(await interest.getMultiplier()).to.be.eq(newValue)
+            expect(await interest.multiplier()).to.be.eq(newValue)
         });
         it("reverts if setMultiplier is called by other then DAO", async () => {
             let newValue = BigNumber.from(5);
             await expect(interest.connect(user).setMultiplier(newValue)).to.be.revertedWith("SoV-Reign: FORBIDDEN")
         });
+
     })
+
+    describe('epochs', function () {
+        it("returns correct Epoch", async () => {
+            expect(await interest.getCurrentEpoch()).to.be.eq(BigNumber.from(await helpers.getCurrentEpoch()))
+        });
+    })
+
 
     describe('mock inputs', function () {
         it("returns correct values for mock inputs 1", async () => {
@@ -138,7 +146,7 @@ describe('InterestStrategy', function () {
         }); 
     })
 
-    describe('accrueInterest', function () {
+    describe('accrueInterest Negative', function () {
 
         it('skips accrual if reserves is 0', async function () {
             let multiplier = await interest.withdrawFeeMultiplier();
@@ -205,6 +213,16 @@ describe('InterestStrategy', function () {
 
             await interest.accrueInterest(10000,15000);
             expect(await interest.withdrawFeeMultiplier()).to.be.eq(0)
+        });
+
+    }) 
+
+    describe('accrueInterest Positive', function () {
+
+        it('skips accrual if reserves is 0', async function () {
+            let multiplier = await interest.withdrawFeeMultiplier();
+            await interest.accrueInterest(0,1);
+            expect(await interest.withdrawFeeMultiplier()).to.be.equal(multiplier)
         });
 
     }) 
