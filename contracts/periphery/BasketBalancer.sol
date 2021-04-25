@@ -9,6 +9,12 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 contract BasketBalancer is IBasketBalancer {
     using SafeMath for uint256;
 
+    uint256 public epoch1Start;
+
+    uint256 public EPOCH_DURATION = 604800;
+
+    uint256 lastEpochUpdate;
+
     address[] allPools;
     mapping(address => uint256) poolAllocation;
 
@@ -21,7 +27,9 @@ contract BasketBalancer is IBasketBalancer {
     }
     mapping(address => AllocationVote) allocationVotes;
 
-    uint256 FULL_ALLOCATION = 1000000;
+    uint256 public FULL_ALLOCATION = 1000000;
+
+    uint256 public maxDelta;
 
     IReign reign;
 
@@ -38,32 +46,39 @@ contract BasketBalancer is IBasketBalancer {
     // - both are only required if we would like to update
     // the BasketBalancer at a later stage and re-use existing pools.
     constructor(
-        address[] memory newPools,
-        uint256[] memory newAllocation,
-        address reignAddress
+        address[] memory _newPools,
+        uint256[] memory _newAllocation,
+        address _reignAddress,
+        uint256 _maxDelta,
+        uint256 _epoch1Start
     ) {
         uint256 amountAllocated = 0;
 
-        if (newPools.length != 0 && newAllocation.length != 0) {
-            for (uint256 i = 0; i < newPools.length; i++) {
-                uint256 poolPercentage = newAllocation[i];
+        if (_newPools.length != 0 && _newAllocation.length != 0) {
+            for (uint256 i = 0; i < _newPools.length; i++) {
+                uint256 poolPercentage = _newAllocation[i];
                 amountAllocated = amountAllocated.add(poolPercentage);
-                poolAllocation[newPools[i]] = poolPercentage;
+                poolAllocation[_newPools[i]] = poolPercentage;
             }
             require(
                 amountAllocated == FULL_ALLOCATION,
                 "allocation is not complete"
             );
         }
-
-        allPools = newPools;
-        reign = IReign(reignAddress);
+        epoch1Start = _epoch1Start;
+        lastEpochUpdate = 0;
+        maxDelta = _maxDelta;
+        allPools = _newPools;
+        reign = IReign(_reignAddress);
         controller = msg.sender;
     }
 
-    function setController(address _controller) public {
-        require(msg.sender == controller, "Only Controller can do this");
+    function setController(address _controller) public onlyController {
         controller = _controller;
+    }
+
+    function setMaxDelta(uint256 _maxDelta) public onlyController {
+        maxDelta = _maxDelta;
     }
 
     function updateAllocationVote(
@@ -81,9 +96,22 @@ contract BasketBalancer is IBasketBalancer {
         }
 
         uint256 amountAllocated = 0;
-        for (uint256 i = 0; i < pools.length; i++) {
+        for (uint256 i = 0; i < allPools.length; i++) {
             require(allPools[i] == pools[i], "pools have incorrect order");
-            amountAllocated = amountAllocated.add(allocations[i]);
+            uint256 _newAllocation = allocations[i];
+            uint256 _oldAllocation = poolAllocation[allPools[i]];
+            if (_newAllocation > _oldAllocation) {
+                require(
+                    _newAllocation - _oldAllocation <= maxDelta,
+                    "Above Max Delta"
+                );
+            } else {
+                require(
+                    _oldAllocation - _newAllocation <= maxDelta,
+                    "Above Max Delta"
+                );
+            }
+            amountAllocated = amountAllocated.add(_newAllocation);
         }
         require(
             amountAllocated == FULL_ALLOCATION,
@@ -100,11 +128,14 @@ contract BasketBalancer is IBasketBalancer {
     }
 
     function updateBasketBalance() external override returns (bool) {
+        require(lastEpochUpdate < getCurrentEpoch(), "Epoch is not over");
         uint256[] memory allocations = computeAllocation();
 
         for (uint256 i = 0; i < allPools.length; i++) {
             poolAllocation[allPools[i]] = allocations[i];
         }
+
+        lastEpochUpdate = getCurrentEpoch();
 
         return true;
     }
@@ -116,6 +147,8 @@ contract BasketBalancer is IBasketBalancer {
         returns (uint256[] memory)
     {
         uint256[] memory _allocations = new uint256[](allPools.length);
+
+        uint256 totalAllocation = 0;
 
         for (uint256 i = 0; i < voters.length; i++) {
             address voter = voters[i];
@@ -134,7 +167,12 @@ contract BasketBalancer is IBasketBalancer {
                     .mul(remainingPower)
                     .add(poolPercentage.mul(votingPower))
                     .div(totalPower);
+                totalAllocation.add(_allocations[ii]);
             }
+        }
+        //division may create a reminder of 1
+        if (totalAllocation != FULL_ALLOCATION) {
+            _allocations[0] = _allocations[0].add(1);
         }
 
         return (_allocations);
@@ -177,5 +215,16 @@ contract BasketBalancer is IBasketBalancer {
 
     function getPools() public view override returns (address[] memory) {
         return allPools;
+    }
+
+    /*
+     * Returns the id of the current epoch derived from block.timestamp
+     */
+    function getCurrentEpoch() public view returns (uint128) {
+        if (block.timestamp < epoch1Start) {
+            return 0;
+        }
+
+        return uint128((block.timestamp - epoch1Start) / EPOCH_DURATION + 1);
     }
 }

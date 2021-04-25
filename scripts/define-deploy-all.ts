@@ -140,7 +140,9 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
             [],
             // empty since new allocations can be added later (initial state)
             [],
-            reignDiamond.address
+            reignDiamond.address,
+            100000,
+            stakingEpochStart
         ]
     ) as BasketBalancer;
     c.basketBalancer = basketBalancer1;

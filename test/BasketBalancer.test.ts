@@ -12,7 +12,7 @@ const address3 = '0x0000000000000000000000000000000000000003';
 
 describe('BasketBalancer', function () {
 
-    let reign: ReignMock, bond: Erc20Mock, rewards: Rewards, balancer: BasketBalancer;
+    let reign: ReignMock,reignToken:Erc20Mock, rewards: Rewards, balancer: BasketBalancer;
 
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
@@ -25,7 +25,7 @@ describe('BasketBalancer', function () {
     let snapshotTs: number;
 
     before(async function () {
-        bond = (await deploy.deployContract('ERC20Mock')) as Erc20Mock;
+        reignToken = (await deploy.deployContract('ERC20Mock')) as Erc20Mock;
 
         await setupSigners();
         await setupContracts();
@@ -34,19 +34,21 @@ describe('BasketBalancer', function () {
 
         rewards = (await deploy.deployContract(
             'Rewards',
-            [await treasury.getAddress(), bond.address, reign.address])
+            [await treasury.getAddress(), reign.address, reign.address])
         ) as Rewards;
 
-        var allocation = [500000,500000]
-        balancer = (await deploy.deployContract(
-            'BasketBalancer', 
-            [pools,allocation,reign.address])
-            ) as BasketBalancer;
-
+       
         await reign.setRewards(rewards.address);
     });
 
     beforeEach(async function () {
+        var allocation = [500000,500000]
+        balancer = (await deploy.deployContract(
+            'BasketBalancer', 
+            [pools,allocation,reign.address, 100000, helpers.stakingEpochStart])
+            ) as BasketBalancer;
+
+
         snapshotId = await ethers.provider.send('evm_snapshot', []);
         snapshotTs = await helpers.getLatestBlockTimestamp();
     });
@@ -62,10 +64,14 @@ describe('BasketBalancer', function () {
             expect(balancer.address).to.not.eql(0).and.to.not.be.empty;
         });
 
+        it('keeps correct epoch', async function () {
+            expect(await balancer.getCurrentEpoch()).to.eq(await helpers.getCurrentEpoch());
+        });
+
         it('can be deployed with empty arrays', async function () {
             let balancerEmpty = (await deploy.deployContract(
                 'BasketBalancer', 
-                [[],[],reign.address])
+                [[],[],reign.address,100000, helpers.stakingEpochStart])
                 ) as BasketBalancer;
             expect(balancerEmpty.address).to.not.eql(0).and.to.not.be.empty;
         });
@@ -88,28 +94,94 @@ describe('BasketBalancer', function () {
             await reign.deposit(userAddress, 100);
             await reign.deposit(flyingParrotAddress, 200);
 
-            await balancer.connect(user).updateAllocationVote(pools, [200000,800000]);
+            await balancer.connect(user).updateAllocationVote(pools, [450000,550000]);
 
             let resp = await balancer.connect(user).getAllocationVote(userAddress);
             expect(resp[0][0]).to.equal(pools[0]);
-            expect(resp[1][0]).to.equal(200000);
+            expect(resp[1][0]).to.equal(450000);
+            expect(resp[1][1]).to.equal(550000);
             expect(resp[2]).to.gt(0);
+        });
 
-            // (500000 * 200 + 200000 * 100) / 300 = 400000
-            // (500000 * 200 + 800000 * 100) / 300 = 600000
+        it('computes correct allocation', async function () {
+            await reign.deposit(userAddress, 100);
+            await reign.deposit(flyingParrotAddress, 200);
+
+            await balancer.connect(user).updateAllocationVote(pools, [450000,550000]);
+
+            let resp = await balancer.connect(user).getAllocationVote(userAddress);
+
+            // (500000 * 200 + 450000 * 100) / 300 = 483334
+            // (500000 * 200 + 550000 * 100) / 300 = 526666
             let alloc = await balancer.computeAllocation();
-            expect(alloc[0]).to.equal(BigNumber.from(400000));
+            expect(alloc[0]).to.equal(BigNumber.from(483334));
+            expect(alloc[1]).to.equal(BigNumber.from(516666));
 
         });
 
-        it('can not vote wth insufficient allocation', async function () {
+        it('sets correct basket balance', async function () {
+            await reign.deposit(userAddress, 100);
+            await reign.deposit(flyingParrotAddress, 200);
+
+            await balancer.connect(user).updateAllocationVote(pools, [450000,550000]);
+
+            // (500000 * 200 + 450000 * 100) / 300 = 483334
+            // (500000 * 200 + 550000 * 100) / 300 = 526666
+            await balancer.updateBasketBalance();
+            expect(await balancer.getTargetAllocation(pools[0])).to.equal(BigNumber.from(483334));
+            expect(await balancer.getTargetAllocation(pools[1])).to.equal(BigNumber.from(516666));
+
+        });
+
+        it('can not update twice in same epoch', async function () {
+            await reign.deposit(userAddress, 100);
+            await reign.deposit(flyingParrotAddress, 200);
+
+            await balancer.connect(user).updateAllocationVote(pools, [450000,550000]);
+            await balancer.updateBasketBalance();
+
+            await expect(balancer.updateBasketBalance()).to.be.revertedWith("Epoch is not over")
+
+        });
+
+
+
+        it('can not vote with insufficient allocation', async function () {
             await reign.deposit(userAddress, 100);
             await reign.deposit(flyingParrotAddress, 200);
 
             await expect( 
-                balancer.connect(user).updateAllocationVote(pools, [BigNumber.from(100000),BigNumber.from(700000)])
+                balancer.connect(user).updateAllocationVote(pools, [450000,500000])
             ).to.be.revertedWith('Allocation is not complete')
 
+        });
+
+        it('can not vote with too big delta', async function () {
+            await reign.deposit(userAddress, 100);
+            await reign.deposit(flyingParrotAddress, 200);
+
+            await expect( 
+                balancer.connect(user).updateAllocationVote(pools, [350000,650000])
+            ).to.be.revertedWith('Above Max Delta')
+
+            await expect( 
+                balancer.connect(user).updateAllocationVote(pools, [650000,350000])
+            ).to.be.revertedWith('Above Max Delta')
+
+        });
+
+        it('allows controller to change max delta', async function () {
+            await balancer.connect(user).setMaxDelta(400000)
+            expect( await balancer.maxDelta()).to.be.equal(400000)
+
+
+            await reign.deposit(userAddress, 100);
+            await reign.deposit(flyingParrotAddress, 200);
+
+
+            await expect( 
+                balancer.connect(user).updateAllocationVote(pools, [650000,350000])
+            ).to.not.be.reverted;
         });
 
 
@@ -139,14 +211,9 @@ describe('BasketBalancer', function () {
 
     });
 
-    
-
     async function setupContracts () {
-        const cvValue = BigNumber.from(2800000).mul(helpers.tenPow18);
-        const treasuryValue = BigNumber.from(4500000).mul(helpers.tenPow18);
-
-        await bond.mint(await communityVault.getAddress(), cvValue);
-        await bond.mint(await treasury.getAddress(), treasuryValue);
+        reignToken.mint(userAddress, BigNumber.from(9300093));
+        reignToken.mint(flyingParrotAddress, BigNumber.from(9300093));
     }
 
     async function setupSigners () {

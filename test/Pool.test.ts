@@ -281,7 +281,7 @@ describe('Pool', function () {
             expect(await svr.balanceOf(userAddress)).to.be.eq(expectedAmountSvr)
         });
 
-        it('mints correct amounts of SoV for very small balances', async function () {
+        it('mints correct amounts of Svr for very small balances', async function () {
             await mintSVR(1001,pool)
 
             let svrBalanceAfter = await svr.balanceOf(userAddress);
@@ -337,7 +337,7 @@ describe('Pool', function () {
             expect( await pool.balanceOf(userAddress)).to.eq(userBalanceLP.sub(amountToBurn))
         });
 
-        it('burns the correct amount of SoV token', async function () {
+        it('burns the correct amount of Svr token', async function () {
             await mintSVR(110000,pool)
 
             let svrBalanceAfter = await svr.balanceOf(userAddress);
