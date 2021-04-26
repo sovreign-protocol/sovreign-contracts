@@ -16,7 +16,7 @@ library LibRewardsDistribution {
     uint256 constant EPOCH_1_START = 1603065600;
 
     function rewardsPerEpochPerPool(uint256 poolAllocation)
-        public
+        internal
         view
         returns (uint256)
     {
@@ -24,22 +24,22 @@ library LibRewardsDistribution {
     }
 
     function rewardsPerBlockPerPool(uint256 poolAllocation)
-        public
+        internal
         view
         returns (uint256)
     {
         return rewardsPerBlockTotal().mul(poolAllocation).div(TOTAL_ALLOCATION);
     }
 
-    function rewardsPerEpochTotal() public view returns (uint256) {
+    function rewardsPerEpochTotal() internal view returns (uint256) {
         return rewardsPerPeriodTotal() / EPOCHS_IN_PERIOD;
     }
 
-    function rewardsPerBlockTotal() public view returns (uint256) {
+    function rewardsPerBlockTotal() internal view returns (uint256) {
         return rewardsPerPeriodTotal() / BLOCKS_IN_PERIOD;
     }
 
-    function rewardsPerPeriodTotal() public view returns (uint256) {
+    function rewardsPerPeriodTotal() internal view returns (uint256) {
         uint256 _timeElapsed = (block.timestamp.sub(EPOCH_1_START));
         uint256 _periodNr = (_timeElapsed / HALVING_PERIOD).add(1); // this creates the 2 year step function
         return TOKENS_FIRST_PERIOD.div(2 * _periodNr);

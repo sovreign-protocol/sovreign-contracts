@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/InterestStrategyInterface.sol";
 import "../interfaces/IPoolController.sol";
-import "../libraries/LibRewardsDistribution.sol";
 
 contract Staking is ReentrancyGuard {
     using SafeMath for uint256;
@@ -72,18 +71,8 @@ contract Staking is ReentrancyGuard {
         uint256 amount
     );
 
-    constructor(
-        uint256 _epoch1Start,
-        address _controller,
-        address _reignToken,
-        address _liquidityBuffer,
-        address _rewardsVault
-    ) {
+    constructor(uint256 _epoch1Start) {
         epoch1Start = _epoch1Start;
-        controller = IPoolController(_controller);
-        reignToken = IERC20(_reignToken);
-        liquidityBuffer = _liquidityBuffer;
-        rewardsVault = _rewardsVault;
     }
 
     /*
@@ -350,9 +339,6 @@ contract Staking is ReentrancyGuard {
     {
         require(epochId <= getCurrentEpoch(), "can't init a future epoch");
 
-        uint256 transferToBuffer = 0;
-        uint256 transferToRewards = 0;
-
         for (uint256 i = 0; i < tokensLP.length; i++) {
             Pool storage p = poolSize[tokensLP[i]][epochId];
 
@@ -371,32 +357,7 @@ contract Staking is ReentrancyGuard {
 
                 p.size = poolSize[tokensLP[i]][epochId - 1].size;
                 p.set = true;
-
-                // we get the accumalted interest for the epoch
-                (uint256 epochRewards, uint256 baseRewards) =
-                    getRewardsForEpoch(epochId, tokensLP[i]);
-
-                // if this pools needs more rewards then base issuance, we need to transfer it
-                if (epochRewards > baseRewards) {
-                    transferToRewards = transferToRewards.add(
-                        epochRewards - baseRewards
-                    );
-                } else if (epochRewards < baseRewards) {
-                    // if this pools needs less rewards then base issuance, we remove it from the amount later
-                    transferToBuffer = transferToBuffer.add(
-                        baseRewards - epochRewards
-                    );
-                }
             }
-        }
-
-        // We transfer the total difference across all pools to the buffer
-        if (transferToRewards > transferToBuffer) {
-            reignToken.transferFrom(
-                liquidityBuffer,
-                rewardsVault,
-                transferToRewards.sub(transferToBuffer)
-            );
         }
 
         emit InitEpochForTokens(msg.sender, epochId, tokensLP);
@@ -535,32 +496,6 @@ contract Staking is ReentrancyGuard {
             );
 
         return newMultiplier;
-    }
-
-    function getRewardsForEpoch(uint128 epochId, address _pool)
-        public
-        view
-        returns (uint256, uint256)
-    {
-        uint256 epochRewards =
-            (
-                InterestStrategyInterface(controller.getInterestStrategy(_pool))
-                    .getEpochRewards(epochId - 1)
-            )
-                .mul(
-                LibRewardsDistribution.rewardsPerBlockPerPool(
-                    controller.getTargetAllocation(_pool)
-                )
-            );
-        uint256 epochRewardsAdjusted =
-            epochRewards.mul(controller.getAdjustment(_pool)).div(10**18); //account for 18 decimals of Adjustment
-
-        uint256 baseRewards =
-            LibRewardsDistribution.rewardsPerEpochPerPool(
-                controller.getTargetAllocation(_pool)
-            );
-
-        return (epochRewardsAdjusted, baseRewards);
     }
 
     /*

@@ -9,6 +9,16 @@ export const stakingEpochDuration = 604800;
 export const tenPow18 = BigNumber.from(10).pow(18);
 export const baseAdjustment = BigNumber.from(1).mul(tenPow18)
 
+
+export function getCurrentUnix() {
+    return Math.floor(Date.now() / 1000);
+}
+
+export async function moveAtEpoch(start: number, duration: number, epoch: number) {
+    await setNextBlockTimestamp(start + duration * (epoch-1));
+    await ethers.provider.send("evm_mine", []);
+}
+
 export async function getLatestBlock(): Promise<any> {
     return await ethers.provider.send('eth_getBlockByNumber', ['latest', false]);
 }
