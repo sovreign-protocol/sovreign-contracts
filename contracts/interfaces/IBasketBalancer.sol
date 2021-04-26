@@ -3,7 +3,6 @@ pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 interface IBasketBalancer {
-
     function addPool(address pool) external returns (uint256);
 
     function getTargetAllocation(address pool) external view returns (uint256);
@@ -18,6 +17,8 @@ interface IBasketBalancer {
     function updateBasketBalance() external returns (bool);
 
     function computeAllocation() external view returns (uint256[] memory);
+
+    function FULL_ALLOCATION() external view returns (uint256);
 
     function getAllocationVote(address voter)
         external

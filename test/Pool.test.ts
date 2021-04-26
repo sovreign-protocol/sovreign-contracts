@@ -199,9 +199,6 @@ describe('Pool', function () {
 
     describe('Computing Fees', async function () {
 
-        
-
-
         it('returns correct expected deposit fee', async function () {
             await mintSVR(11000,pool);
             await mintSVR(10000,pool2);
@@ -218,7 +215,7 @@ describe('Pool', function () {
             .div(await poolController.getReignPrice())
             .div(helpers.tenPow18)
             
-            expect(await pool.getDepositFeeReign(amount)).to.be.not.eq(BigNumber.from(0))
+            expect(await pool.getDepositFeeReign(amount)).to.be.eq(60)
             expect(await pool.getDepositFeeReign(amount)).to.be.eq(expectedDepositFee)
         });
 
@@ -232,7 +229,7 @@ describe('Pool', function () {
             .mul(await poolController.getTokenPrice(pool.address))
             .div(await poolController.getReignPrice())
             .div(helpers.tenPow18)
-            
+
 
             expect(await pool.getWithdrawFeeReign(amount)).to.be.eq(expectedWithdrawFee)
         });

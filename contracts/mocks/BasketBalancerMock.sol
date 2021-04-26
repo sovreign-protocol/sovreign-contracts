@@ -4,6 +4,8 @@ pragma solidity 0.7.6;
 import "../interfaces/IBasketBalancer.sol";
 
 contract BasketBalancerMock is IBasketBalancer {
+    uint256 public override FULL_ALLOCATION = 1000000000; // 9 decimals precision
+
     address[] allPools;
     mapping(address => uint256) poolAllocation;
 
@@ -59,7 +61,7 @@ contract BasketBalancerMock is IBasketBalancer {
     }
 
     function addPool(address pool) public override returns (uint256) {
-        poolAllocation[pool] = 500000;
+        poolAllocation[pool] = 500000000;
         return allPools.length;
     }
 

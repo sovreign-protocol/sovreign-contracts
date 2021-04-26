@@ -13,10 +13,12 @@ contract BasketBalancer is IBasketBalancer {
 
     uint256 public EPOCH_DURATION = 604800;
 
-    uint256 lastEpochUpdate;
+    uint256 public lastEpochUpdate;
+    uint256 public lastEpochEnd;
 
     address[] allPools;
     mapping(address => uint256) poolAllocation;
+    mapping(address => uint256) poolAllocationBefore;
 
     address[] public voters;
 
@@ -27,7 +29,8 @@ contract BasketBalancer is IBasketBalancer {
     }
     mapping(address => AllocationVote) allocationVotes;
 
-    uint256 public FULL_ALLOCATION = 1000000;
+    uint256 public override FULL_ALLOCATION = 1000000000; // 9 decimals precision
+    uint256 public UPDATE_PERIOD = 172800; // ca. two days in seconds
 
     uint256 public maxDelta;
 
@@ -132,10 +135,12 @@ contract BasketBalancer is IBasketBalancer {
         uint256[] memory allocations = computeAllocation();
 
         for (uint256 i = 0; i < allPools.length; i++) {
+            poolAllocationBefore[allPools[i]] = poolAllocation[allPools[i]];
             poolAllocation[allPools[i]] = allocations[i];
         }
 
         lastEpochUpdate = getCurrentEpoch();
+        lastEpochEnd = block.timestamp;
 
         return true;
     }
@@ -199,7 +204,29 @@ contract BasketBalancer is IBasketBalancer {
         override
         returns (uint256)
     {
-        return poolAllocation[pool];
+        uint256 timeElapsed = block.timestamp - lastEpochEnd;
+        if (
+            timeElapsed < UPDATE_PERIOD ||
+            poolAllocationBefore[pool] == poolAllocation[pool]
+        ) {
+            if (poolAllocationBefore[pool] > poolAllocation[pool]) {
+                return
+                    poolAllocationBefore[pool].sub(
+                        timeElapsed.mul(
+                            poolAllocationBefore[pool].sub(poolAllocation[pool])
+                        ) / UPDATE_PERIOD
+                    );
+            } else {
+                return
+                    poolAllocationBefore[pool].add(
+                        timeElapsed.mul(
+                            poolAllocation[pool].sub(poolAllocationBefore[pool])
+                        ) / UPDATE_PERIOD
+                    );
+            }
+        } else {
+            return poolAllocation[pool];
+        }
     }
 
     function addPool(address pool)
