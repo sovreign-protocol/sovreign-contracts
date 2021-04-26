@@ -59,7 +59,7 @@ describe('Pool', function () {
         ) as PoolController; 
 
         await poolController.connect(reignDAO).createPool(
-            underlying1.address, interestStrategy.address, oracle.address
+            underlying1.address, interestStrategy.address, oracle.address,helpers.baseAdjustment
         )
 
         let poolAddress = await poolController.allPools(0);
@@ -69,7 +69,7 @@ describe('Pool', function () {
         pool = pool.attach(poolAddress);
 
         await poolController.connect(reignDAO).createPool(
-            underlying2.address, interestStrategy.address, oracle.address
+            underlying2.address, interestStrategy.address, oracle.address,helpers.baseAdjustment
         )
 
         let pool2Address = await poolController.allPools(1);

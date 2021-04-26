@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 contract PoolController is IPoolController {
     using SafeMath for uint256;
 
-    address public basketBalancer;
+    IBasketBalancer public basketBalancer;
     address public svrToken;
     address public reignToken;
     address public treasoury;
@@ -22,6 +22,7 @@ contract PoolController is IPoolController {
     mapping(address => address) public override getPool;
     mapping(address => address) public override getInterestStrategy;
     mapping(address => address) public override getOracle;
+    mapping(address => uint256) public override getAdjustment;
     address[] public override allPools;
 
     event PairCreated(address indexed token, address pair, uint256);
@@ -38,7 +39,7 @@ contract PoolController is IPoolController {
         address _reignDAO,
         address _treasoury
     ) {
-        basketBalancer = _basketBalancer;
+        basketBalancer = IBasketBalancer(_basketBalancer);
         svrToken = _svrToken;
         reignToken = _reignToken;
         reignDAO = _reignDAO;
@@ -48,7 +49,8 @@ contract PoolController is IPoolController {
     function createPool(
         address token,
         address interestStrategy,
-        address oracle
+        address oracle,
+        uint256 adjustment
     ) external override onlyDAO returns (address pool) {
         require(token != address(0), "SoV-Reign: ZERO_ADDRESS");
         require(interestStrategy != address(0), "SoV-Reign: ZERO_ADDRESS");
@@ -68,8 +70,9 @@ contract PoolController is IPoolController {
         getPool[token] = pool;
         getInterestStrategy[pool] = interestStrategy;
         getOracle[pool] = oracle;
+        getAdjustment[pool] = adjustment;
         allPools.push(address(pool));
-        IBasketBalancer(basketBalancer).addPool(address(pool));
+        basketBalancer.addPool(address(pool));
 
         emit PoolCreated(token, pool, allPools.length);
 
@@ -92,7 +95,7 @@ contract PoolController is IPoolController {
         onlyDAO
     {
         require(_basketBalancer != address(0), "SoV-Reign: ZERO_ADDRESS");
-        basketBalancer = _basketBalancer;
+        basketBalancer = IBasketBalancer(_basketBalancer);
     }
 
     function setSvrToken(address _svrToken) external override onlyDAO {
@@ -119,6 +122,14 @@ contract PoolController is IPoolController {
         getOracle[pool] = oracle;
     }
 
+    function setAdjustment(uint256 value, address pool)
+        external
+        override
+        onlyDAO
+    {
+        getAdjustment[pool] = value;
+    }
+
     function allPoolsLength() external view override returns (uint256) {
         return allPools.length;
     }
@@ -129,12 +140,22 @@ contract PoolController is IPoolController {
         override
         returns (uint256)
     {
-        uint256 allocation =
-            IBasketBalancer(basketBalancer).getTargetAllocation(pool);
+        uint256 allocation = basketBalancer.getTargetAllocation(pool);
+        uint256 fullAllocation = basketBalancer.FULL_ALLOCATION();
         uint256 tvl = getPoolsTVL();
-        uint256 targetValue = tvl.mul(allocation).div(1000000).mul(10**18);
+        uint256 targetValue =
+            tvl.mul(allocation).div(fullAllocation).mul(10**18);
         uint256 targetSize = targetValue.div(getTokenPrice(pool));
         return targetSize;
+    }
+
+    function getTargetAllocation(address pool)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return basketBalancer.getTargetAllocation(pool);
     }
 
     function getTokenPrice(address pool)

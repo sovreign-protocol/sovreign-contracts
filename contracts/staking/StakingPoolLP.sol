@@ -15,8 +15,9 @@ contract StakingLP {
     // state variables
 
     // addreses
-    address private _pool;
-    address private _communityVault;
+    address private _poolLP;
+    address private _rewardsVault;
+    address private _liquidityBuffer;
     // contracts
     IERC20 private _reignToken;
     IStaking private _staking;
@@ -43,16 +44,18 @@ contract StakingLP {
     // constructor
     constructor(
         address reignTokenAddress,
-        address pool,
+        address poolLP,
         address controller,
         address stakeContract,
-        address communityVault
+        address rewardsVault,
+        address liquidityBuffer
     ) {
         _reignToken = IERC20(reignTokenAddress);
-        _pool = pool;
+        _poolLP = poolLP;
         _controller = IPoolController(controller);
         _staking = IStaking(stakeContract);
-        _communityVault = communityVault;
+        _rewardsVault = rewardsVault;
+        _liquidityBuffer = liquidityBuffer;
         epochDuration = _staking.epochDuration();
         epochStart = _staking.epoch1Start() + epochDuration;
     }
@@ -61,6 +64,7 @@ contract StakingLP {
     // public method to harvest all the unharvested epochs until current epoch - 1
     function massHarvest() external returns (uint256) {
         uint256 totalDistributedValue;
+        uint256 totalToBuffer;
         uint256 epochId = _getEpochId().sub(1); // fails in epoch 0
 
         for (
@@ -70,7 +74,9 @@ contract StakingLP {
         ) {
             // i = epochId
             // compute distributed Value and do one single transfer at the end
-            totalDistributedValue += _harvest(i);
+            (uint256 userRewards, uint256 toBuffer) = _harvest(i);
+            totalDistributedValue += userRewards;
+            totalToBuffer += toBuffer;
         }
 
         emit MassHarvest(
@@ -81,9 +87,17 @@ contract StakingLP {
 
         if (totalDistributedValue > 0) {
             _reignToken.transferFrom(
-                _communityVault,
+                _rewardsVault,
                 msg.sender,
                 totalDistributedValue
+            );
+        }
+
+        if (totalToBuffer > 0) {
+            _reignToken.transferFrom(
+                _rewardsVault,
+                _liquidityBuffer,
+                totalToBuffer
             );
         }
 
@@ -97,16 +111,19 @@ contract StakingLP {
             lastEpochIdHarvested[msg.sender].add(1) == epochId,
             "Harvest in order"
         );
-        uint256 userReward = _harvest(epochId);
+        (uint256 userReward, uint256 toBuffer) = _harvest(epochId);
         if (userReward > 0) {
-            _reignToken.transferFrom(_communityVault, msg.sender, userReward);
+            _reignToken.transferFrom(_rewardsVault, msg.sender, userReward);
+        }
+        if (toBuffer > 0) {
+            _reignToken.transferFrom(_rewardsVault, _liquidityBuffer, toBuffer);
         }
         emit Harvest(msg.sender, epochId, userReward);
         return userReward;
     }
 
     // views
-    // calls to the staking smart contract to retrieve the epoch total pool size
+    // calls to the staking smart contract to retrieve the epoch total poolLP size
     function getPoolSize(uint128 epochId) external view returns (uint256) {
         return _getPoolSize(epochId);
     }
@@ -140,7 +157,7 @@ contract StakingLP {
         epochs[epochId] = _getPoolSize(epochId);
     }
 
-    function _harvest(uint128 epochId) internal returns (uint256) {
+    function _harvest(uint128 epochId) internal returns (uint256, uint256) {
         // try to initialize an epoch. if it can't it fails
         // if it fails either user either a BarnBridge account will init not init epochs
         if (lastInitializedEpoch < epochId) {
@@ -152,20 +169,27 @@ contract StakingLP {
 
         // exit if there is no stake on the epoch
         if (epochs[epochId] == 0) {
-            return 0;
+            return (0, 0);
         }
-        uint256 epochRewards =
-            InterestStrategyInterface(_controller.getInterestStrategy(_pool))
-                .getEpochRewards(epochId);
-        return
+        (uint256 epochRewards, uint256 baseRewards) =
+            _staking.getRewardsForEpoch(epochId, _poolLP);
+
+        uint256 userEpochRewards =
             epochRewards.mul(_getUserBalancePerEpoch(msg.sender, epochId)).div(
                 epochs[epochId]
             );
+
+        uint256 userBaseRewards =
+            baseRewards.mul(_getUserBalancePerEpoch(msg.sender, epochId)).div(
+                epochs[epochId]
+            );
+
+        return (userEpochRewards, userBaseRewards);
     }
 
     function _getPoolSize(uint128 epochId) internal view returns (uint256) {
         // retrieve unilp token balance
-        return _staking.getEpochPoolSize(_pool, _stakingEpochId(epochId));
+        return _staking.getEpochPoolSize(_poolLP, _stakingEpochId(epochId));
     }
 
     function _getUserBalancePerEpoch(address userAddress, uint128 epochId)
@@ -177,7 +201,7 @@ contract StakingLP {
         return
             _staking.getEpochUserBalance(
                 userAddress,
-                _pool,
+                _poolLP,
                 _stakingEpochId(epochId)
             );
     }

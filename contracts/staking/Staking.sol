@@ -4,6 +4,9 @@ pragma solidity ^0.7.6;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../interfaces/InterestStrategyInterface.sol";
+import "../interfaces/IPoolController.sol";
+import "../libraries/LibRewardsDistribution.sol";
 
 contract Staking is ReentrancyGuard {
     using SafeMath for uint256;
@@ -16,6 +19,12 @@ contract Staking is ReentrancyGuard {
 
     // duration of each epoch
     uint256 public EPOCH_DURATION = 604800;
+
+    IPoolController private controller;
+    IERC20 private reignToken;
+
+    address liquidityBuffer;
+    address rewardsVault;
 
     // holds the current balance of the user for each token
     mapping(address => mapping(address => uint256)) private balances;
@@ -63,8 +72,18 @@ contract Staking is ReentrancyGuard {
         uint256 amount
     );
 
-    constructor(uint256 _epoch1Start) public {
+    constructor(
+        uint256 _epoch1Start,
+        address _controller,
+        address _reignToken,
+        address _liquidityBuffer,
+        address _rewardsVault
+    ) {
         epoch1Start = _epoch1Start;
+        controller = IPoolController(_controller);
+        reignToken = IERC20(_reignToken);
+        liquidityBuffer = _liquidityBuffer;
+        rewardsVault = _rewardsVault;
     }
 
     /*
@@ -326,38 +345,61 @@ contract Staking is ReentrancyGuard {
      * This is only applicable if there was no action (deposit/withdraw) in the current epoch.
      * Any deposit and withdraw will automatically initialize the current and next epoch.
      */
-    function initEpochForTokens(address[] memory tokens, uint128 epochId)
+    function initEpochForTokens(address[] memory tokensLP, uint128 epochId)
         public
     {
         require(epochId <= getCurrentEpoch(), "can't init a future epoch");
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            Pool storage p = poolSize[tokens[i]][epochId];
+        uint256 transferToBuffer = 0;
+        uint256 transferToRewards = 0;
+
+        for (uint256 i = 0; i < tokensLP.length; i++) {
+            Pool storage p = poolSize[tokensLP[i]][epochId];
 
             if (epochId == 0) {
                 p.size = uint256(0);
                 p.set = true;
             } else {
                 require(
-                    !epochIsInitialized(tokens[i], epochId),
+                    !epochIsInitialized(tokensLP[i], epochId),
                     "Staking: epoch already initialized"
                 );
                 require(
-                    epochIsInitialized(tokens[i], epochId - 1),
+                    epochIsInitialized(tokensLP[i], epochId - 1),
                     "Staking: previous epoch not initialized"
                 );
 
-                p.size = poolSize[tokens[i]][epochId - 1].size;
+                p.size = poolSize[tokensLP[i]][epochId - 1].size;
                 p.set = true;
 
-                // TODO: here we update the epoch in the tokens interest startegy
                 // we get the accumalted interest for the epoch
-                // if we need more tokens, we make a transfer from Treasoury to RewardsVault
-                // if not the other way around
+                (uint256 epochRewards, uint256 baseRewards) =
+                    getRewardsForEpoch(epochId, tokensLP[i]);
+
+                // if this pools needs more rewards then base issuance, we need to transfer it
+                if (epochRewards > baseRewards) {
+                    transferToRewards = transferToRewards.add(
+                        epochRewards - baseRewards
+                    );
+                } else if (epochRewards < baseRewards) {
+                    // if this pools needs less rewards then base issuance, we remove it from the amount later
+                    transferToBuffer = transferToBuffer.add(
+                        baseRewards - epochRewards
+                    );
+                }
             }
         }
 
-        emit InitEpochForTokens(msg.sender, epochId, tokens);
+        // We transfer the total difference across all pools to the buffer
+        if (transferToRewards > transferToBuffer) {
+            reignToken.transferFrom(
+                liquidityBuffer,
+                rewardsVault,
+                transferToRewards.sub(transferToBuffer)
+            );
+        }
+
+        emit InitEpochForTokens(msg.sender, epochId, tokensLP);
     }
 
     function emergencyWithdraw(address tokenAddress) public {
@@ -493,6 +535,32 @@ contract Staking is ReentrancyGuard {
             );
 
         return newMultiplier;
+    }
+
+    function getRewardsForEpoch(uint128 epochId, address _pool)
+        public
+        view
+        returns (uint256, uint256)
+    {
+        uint256 epochRewards =
+            (
+                InterestStrategyInterface(controller.getInterestStrategy(_pool))
+                    .getEpochRewards(epochId - 1)
+            )
+                .mul(
+                LibRewardsDistribution.rewardsPerBlockPerPool(
+                    controller.getTargetAllocation(_pool)
+                )
+            );
+        uint256 epochRewardsAdjusted =
+            epochRewards.mul(controller.getAdjustment(_pool)).div(10**18); //account for 18 decimals of Adjustment
+
+        uint256 baseRewards =
+            LibRewardsDistribution.rewardsPerEpochPerPool(
+                controller.getTargetAllocation(_pool)
+            );
+
+        return (epochRewardsAdjusted, baseRewards);
     }
 
     /*

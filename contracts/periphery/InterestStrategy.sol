@@ -3,7 +3,7 @@
 pragma solidity 0.7.6;
 
 import "../interfaces/InterestStrategyInterface.sol";
-import "../interfaces/IStaking.sol";
+import "../libraries/LibRewardsDistribution.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
@@ -137,13 +137,13 @@ contract InterestStrategy is InterestStrategyInterface {
         return true;
     }
 
-    function getEpochRewards(uint128 epochId)
+    function getEpochRewards(uint128 _epochId)
         external
         view
         override
         returns (uint256)
     {
-        return epochRewardValues[epochId];
+        return epochRewardValues[_epochId];
     }
 
     function accrueInterest(uint256 reserves, uint256 target)
