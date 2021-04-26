@@ -72,7 +72,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
         ),
     ];
 
-    console.log(`User1 propose to create two pools.`)
+    console.log(`User1 proposes to create two pools.`)
     await reignDAO
         .connect(c.user1Acct)
         .propose(
