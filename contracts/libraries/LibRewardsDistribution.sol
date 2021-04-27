@@ -10,10 +10,10 @@ library LibRewardsDistribution {
 
     uint256 constant HALVING_PERIOD = 62899200; // 104 Weeks in Seconds
     uint256 constant EPOCH_LENGTH = 604800; // One Week in Seconds
-    uint256 constant EPOCHS_IN_PERIOD = 104; // One Week in Seconds
-    uint256 constant BLOCKS_IN_PERIOD = 2300000 * 2; // One Week in Seconds
+    uint256 constant EPOCHS_IN_PERIOD = 104;
+    uint256 constant BLOCKS_IN_PERIOD = 2300000 * 2;
     uint256 constant TOTAL_ALLOCATION = 1000000000;
-    uint256 constant EPOCH_1_START = 1603065600;
+    uint256 constant EPOCH_1_START = 1619533277;
 
     function rewardsPerEpochPerPool(uint256 poolAllocation)
         internal

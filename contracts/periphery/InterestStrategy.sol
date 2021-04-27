@@ -22,7 +22,7 @@ contract InterestStrategy is InterestStrategyInterface {
 
     uint256 public constant BLOCK_PER_YEAR = 2300000;
     uint256 public constant MAGNITUDE_ADJUST = 48;
-    int256 public constant SCALER = 10**18;
+    int256 public constant SCALER = 10**20;
 
     uint256 public override withdrawFeeMultiplier;
     uint256 public negInterestRateLast;
@@ -30,7 +30,8 @@ contract InterestStrategy is InterestStrategyInterface {
     uint256 public blockNumberLast;
 
     uint256 public multiplier;
-    uint256 public offsett;
+    uint256 public offset;
+    int256 public baseDelta;
 
     uint128 epochId;
     mapping(uint128 => uint256) epochRewardValues;
@@ -47,12 +48,14 @@ contract InterestStrategy is InterestStrategyInterface {
 
     constructor(
         uint256 _multiplier,
-        uint256 _offsett,
+        uint256 _offset,
+        int256 _baseDelta,
         address _reignDAO,
         uint256 _epoch1Start
     ) {
         multiplier = _multiplier;
-        offsett = _offsett;
+        offset = _offset;
+        baseDelta = _baseDelta;
         reignDAO = _reignDAO;
         epoch1Start = _epoch1Start;
     }
@@ -64,8 +67,7 @@ contract InterestStrategy is InterestStrategyInterface {
     {
         int256 _reserves = int256(reserves);
         int256 _target = int256(target);
-        int256 delta =
-            ((SCALER.mul(_target.sub(_reserves))).div(_target)).mul(100);
+        int256 delta = ((SCALER.mul(_target.sub(_reserves))).div(_target));
         if (delta > max) return max;
         if (delta < min) return min;
         return delta;
@@ -97,14 +99,14 @@ contract InterestStrategy is InterestStrategyInterface {
 
         if (interestInt >= 0) {
             uint256 interest = uint256(interestInt);
-            positive = (interest.div(BLOCK_PER_YEAR)).add(offsett);
+            positive = (interest.div(BLOCK_PER_YEAR)).add(offset);
         } else {
             negative = (uint256(interestInt.mul(-1)).div(BLOCK_PER_YEAR));
-            if (negative < offsett) {
-                positive = offsett.sub(negative);
+            if (negative < offset) {
+                positive = offset.sub(negative);
                 negative = 0;
             } else {
-                negative = negative.sub(offsett);
+                negative = negative.sub(offset);
             }
         }
 
@@ -114,14 +116,14 @@ contract InterestStrategy is InterestStrategyInterface {
         );
     }
 
-    //Sets the offsett to a new value
-    function setOffsett(uint256 newOffsett)
+    //Sets the offset to a new value
+    function setOffset(uint256 newOffsett)
         public
         override
         onlyDAO
         returns (bool)
     {
-        offsett = newOffsett;
+        offset = newOffsett;
         return true;
     }
 
@@ -133,6 +135,17 @@ contract InterestStrategy is InterestStrategyInterface {
         returns (bool)
     {
         multiplier = newMultiplier;
+        return true;
+    }
+
+    //Sets the Multiplier to a new value
+    function setBaseDelta(int256 newBaseDelta)
+        external
+        override
+        onlyDAO
+        returns (bool)
+    {
+        baseDelta = newBaseDelta;
         return true;
     }
 
@@ -169,12 +182,14 @@ contract InterestStrategy is InterestStrategyInterface {
         (uint256 _positiveInterestRate, uint256 _negativeInterestRate) =
             getInterestForReserve(_reserves, _target);
 
+        (uint256 _positiveCumulator, uint256 _negativeCumulator) =
+            getBaseCumulators(_positiveInterestRate, _negativeInterestRate);
+
         // Calculate the number of blocks elapsed since the last accrual
         uint256 _blockDelta = _currentBlockNumber.sub(_accrualBlockNumberPrior);
 
         if (_positiveInterestRate == 0) {
-            uint256 _accumulatedInterest =
-                _negativeInterestRate.mul(_blockDelta);
+            uint256 _accumulatedInterest = _negativeCumulator.mul(_blockDelta);
             if (_negativeInterestRate > negInterestRateLast) {
                 withdrawFeeMultiplier = withdrawFeeMultiplier.add(
                     _accumulatedInterest
@@ -191,8 +206,7 @@ contract InterestStrategy is InterestStrategyInterface {
         } else {
             withdrawFeeMultiplier = 0;
             //TODO: Here accrue positive interest as well
-            uint256 _accumulatedInterest =
-                _positiveInterestRate.mul(_blockDelta);
+            uint256 _accumulatedInterest = _positiveCumulator.mul(_blockDelta);
             uint128 epoch = getCurrentEpoch();
             uint256 currentRewards = epochRewardValues[epoch];
             epochRewardValues[epoch] = currentRewards.add(_accumulatedInterest);
@@ -200,6 +214,36 @@ contract InterestStrategy is InterestStrategyInterface {
 
         blockNumberLast = _currentBlockNumber;
         negInterestRateLast = _negativeInterestRate;
+        return true;
+    }
+
+    function getBaseCumulators(uint256 _positive, uint256 _negative)
+        public
+        view
+        returns (uint256, uint256)
+    {
+        (uint256 _positiveBase, uint256 _negativeBase) = getBaseInterest();
+
+        if (_negativeBase == 0) {
+            return (
+                _positive.mul(10**18).div(_positiveBase),
+                _negative.mul(10**18).div(_positiveBase)
+            );
+        } else {
+            return (
+                _positive.mul(10**18).div(_negativeBase),
+                _negative.mul(10**18).div(_negativeBase)
+            );
+        }
+    }
+
+    function getBaseInterest() public view returns (uint256, uint256) {
+        int256 target = 1 * 10**26;
+        int256 reserves = target.sub(target.mul(baseDelta).div(SCALER));
+        require(target > 0);
+        require(reserves > 0);
+
+        return getInterestForReserve(uint256(reserves), uint256(target));
     }
 
     /*

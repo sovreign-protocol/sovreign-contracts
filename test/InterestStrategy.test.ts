@@ -14,14 +14,14 @@ describe('InterestStrategy', function () {
 
     let multiplier = BigNumber.from(3).mul(10**10);
     let offset     = BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)));
-
+    let baseDelta = 0;
 
     beforeEach(async function () {
 
         await setupSigners();
 
         interest = (await deploy.deployContract(
-            'InterestStrategy',[multiplier, offset, reignDAOAddress, helpers.stakingEpochStart])
+            'InterestStrategy',[multiplier, offset,baseDelta, reignDAOAddress, helpers.stakingEpochStart])
             ) as InterestStrategy;
     });
 
@@ -29,7 +29,7 @@ describe('InterestStrategy', function () {
 
         it("returns positive rate when reserves < target", async () => {
 
-            let rates = await interest.getInterestForReserve(1000,2000);
+            let rates = await interest.getInterestForReserve(100,110);
             
             expect(rates[0]).to.gt(0);
             expect(rates[1]).to.equal(0);
@@ -37,16 +37,16 @@ describe('InterestStrategy', function () {
 
         it("returns offset when reserves == target", async () => {
 
-            let rates  = await interest.getInterestForReserve(2000,2000);
-            let offset = await interest.offsett();
-
             let magnitudeAdjustment = await interest.MAGNITUDE_ADJUST();
 
-            expect(rates[0]).to.equal(offset.div(BigNumber.from(10).pow(magnitudeAdjustment)));
+            let rates  = await interest.getInterestForReserve(100,100);
+            let offset = (await interest.offset()).div(BigNumber.from(10).pow(magnitudeAdjustment));
+
+            expect(rates[0]).to.equal(offset);
         });
 
         it("returns negative rates when reserves > target", async () => {
-            let rates = await interest.getInterestForReserve(2000,1000);
+            let rates = await interest.getInterestForReserve(110,100);
             expect(rates[0]).to.equal(0);
             expect(rates[1]).to.gt(0);
         }); 
@@ -69,7 +69,7 @@ describe('InterestStrategy', function () {
             let target   = BigNumber.from(1000000).mul(helpers.tenPow18);
 
             let delta    = await interest.getDelta(reserves,target);
-            let expected = ((target.sub(reserves).mul(helpers.tenPow18)).div(target)).mul(100)
+            let expected = ((target.sub(reserves).mul(helpers.tenPow18).mul(100)).div(target))
 
             expect(delta).to.eq(expected)
 
@@ -77,7 +77,7 @@ describe('InterestStrategy', function () {
             target   = BigNumber.from(1100000).mul(helpers.tenPow18);
 
             delta    = await interest.getDelta(reserves,target);
-            expected = ((target.sub(reserves).mul(helpers.tenPow18)).div(target)).mul(100)
+            expected = ((target.sub(reserves).mul(helpers.tenPow18).mul(100)).div(target))
 
             expect(delta).to.eq(expected)
         }); 
@@ -104,13 +104,24 @@ describe('InterestStrategy', function () {
     describe('setters-getter', function () {
         it("sets correct offset", async () => {
             let newValue = BigNumber.from(5);
-            await interest.connect(reignDAO).setOffsett(newValue);
-            expect(await interest.offsett()).to.be.eq(newValue)
+            await interest.connect(reignDAO).setOffset(newValue);
+            expect(await interest.offset()).to.be.eq(newValue)
         });
 
         it("reverts if setOffset is called by other then DAO", async () => {
             let newValue = BigNumber.from(5);
-            await expect(interest.connect(user).setOffsett(newValue)).to.be.revertedWith("SoV-Reign: FORBIDDEN")
+            await expect(interest.connect(user).setOffset(newValue)).to.be.revertedWith("SoV-Reign: FORBIDDEN")
+        });
+
+        it("sets correct baseDelta", async () => {
+            let newValue = BigNumber.from(5);
+            await interest.connect(reignDAO).setBaseDelta(newValue);
+            expect(await interest.baseDelta()).to.be.eq(newValue)
+        });
+
+        it("reverts if setOffset is called by other then DAO", async () => {
+            let newValue = BigNumber.from(5);
+            await expect(interest.connect(user).setBaseDelta(newValue)).to.be.revertedWith("SoV-Reign: FORBIDDEN")
         });
         
         it("sets correct multiplier", async () => {
@@ -130,6 +141,37 @@ describe('InterestStrategy', function () {
             expect(await interest.getCurrentEpoch()).to.be.eq(BigNumber.from(await helpers.getCurrentEpoch()))
         });
     })
+
+    describe('base Interest', function () {
+        it("returns correct base Interest for Delta = 0", async () => {
+            let magnitudeAdjustment = await interest.MAGNITUDE_ADJUST();
+
+            let rates  = await interest.getBaseInterest();
+            let offset = (await interest.offset()).div(BigNumber.from(10).pow(magnitudeAdjustment));
+
+            expect(rates[0]).to.equal(offset);
+        });
+
+        it("returns correct base Interest for Delta > 0", async () => {
+            let newBaseDelta = BigNumber.from(-15).mul(helpers.tenPow18);
+            await interest.connect(reignDAO).setBaseDelta(newBaseDelta)
+
+
+            let rates  = await interest.getBaseInterest();
+            let expected = (await interest.getInterestForReserve(115, 100));
+            expect(rates[1]).to.equal(expected[1]);
+        });
+
+        it("returns correct base Interest for Delta < 0", async () => {
+            let newBaseDelta = BigNumber.from(15).mul(helpers.tenPow18);
+            await interest.connect(reignDAO).setBaseDelta(newBaseDelta)
+
+
+            let rates  = await interest.getBaseInterest();
+            let expected = (await interest.getInterestForReserve(85,100));
+            expect(rates[0]).to.equal(expected[0]);
+        });
+    });
 
 
     describe('mock inputs', function () {
@@ -161,7 +203,8 @@ describe('InterestStrategy', function () {
 
             let blockDelta = blockAfter.sub(blockBefore)
 
-            let expectedWithdrawFeeMultiplier = (await interest.getInterestForReserve(11000,10000))[1]
+            let interests = (await interest.getInterestForReserve(11000,10000))
+            let expectedWithdrawFeeMultiplier = (await interest.getBaseCumulators(interests[0],interests[1]))[1]
             .mul(blockDelta)
 
             expect(await interest.withdrawFeeMultiplier()).to.not.be.eq(BigNumber.from(0))
@@ -175,7 +218,8 @@ describe('InterestStrategy', function () {
             let blockAfter = await interest.blockNumberLast();
             let blockDelta = blockAfter.sub(blockBefore)
 
-            let expectedWithdrawFeeMultiplier = (await interest.getInterestForReserve(11000,10000))[1]
+            let interestsBase = (await interest.getInterestForReserve(11000,10000))
+            let expectedWithdrawFeeMultiplier = (await interest.getBaseCumulators(interestsBase[0],interestsBase[1]))[1]
             .mul(blockDelta)
 
             expect(await interest.withdrawFeeMultiplier()).to.not.be.eq(BigNumber.from(0))
@@ -186,9 +230,11 @@ describe('InterestStrategy', function () {
             await interest.accrueInterest(12000,10000);
             blockAfter = await interest.blockNumberLast();
             let blockDelta2 = blockAfter.sub(blockBefore)
+
+            interestsBase = (await interest.getInterestForReserve(12000,10000))
+
             expectedWithdrawFeeMultiplier = expectedWithdrawFeeMultiplier.add(
-                (await interest.getInterestForReserve(12000,10000)
-                )[1]
+                (await interest.getBaseCumulators(interestsBase[0],interestsBase[1]))[1]
             .mul(blockDelta2))
 
             expect(await interest.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)

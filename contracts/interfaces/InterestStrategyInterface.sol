@@ -22,8 +22,11 @@ interface InterestStrategyInterface {
         returns (bool);
 
     //Sets the offsett to a new valuesß
-    function setOffsett(uint256 newOffsett) external returns (bool);
+    function setOffset(uint256 newOffset) external returns (bool);
 
     //Sets the Multiplier to a new value
     function setMultiplier(uint256 newMultiplier) external returns (bool);
+
+    //Sets the Multiplier to a new value
+    function setBaseDelta(int256 newBaseDelta) external returns (bool);
 }
