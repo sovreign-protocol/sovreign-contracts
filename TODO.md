@@ -15,7 +15,9 @@
 - [ ] change the hardhat network config to have a "ganache" network (to deploy to the same remix network)
       -- check if the hardhat run reuse the same connection as the hardhat node (if previously running)
 - [ ] change/adapt the `allPools[0]` in `getReignPrice()` (PoolController)
-- [ ] check whether the rewards' distribution mechanism is tested. I mean, test the "amount of tokens distributed over time" 
+- [ ] check whether the rewards' distribution mechanism is tested. I mean, test the "amount of tokens distributed over time"
+- [ ] update to solidity 0.8.x
+- [ ] structure a bit the GitHub repos (README, description, issue templates, etc)
 
 
 ## Questions
