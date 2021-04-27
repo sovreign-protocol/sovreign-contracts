@@ -24,7 +24,7 @@ contract PoolRewards {
     IStaking private _staking;
     IPoolController private _controller;
 
-    uint256[] private epochs;
+    mapping(uint128 => uint256) private _sizeAtEpoch;
     uint128 public lastInitializedEpoch;
     mapping(address => uint128) private lastEpochIdHarvested;
     uint256 public epochDuration; // init from staking contract
@@ -57,7 +57,7 @@ contract PoolRewards {
         _staking = IStaking(stakeContract);
         _rewardsVault = rewardsVault;
         _liquidityBuffer = liquidityBuffer;
-        epochDuration = _staking.epochDuration();
+        epochDuration = _staking.EPOCH_DURATION();
         epochStart = _staking.epoch1Start() + epochDuration;
     }
 
@@ -153,9 +153,9 @@ contract PoolRewards {
             lastInitializedEpoch.add(1) == epochId,
             "Epoch can be init only in order"
         );
+        _sizeAtEpoch[epochId] = _getPoolSize(epochId);
         lastInitializedEpoch = epochId;
         // call the staking smart contract to init the epoch
-        epochs[epochId] = _getPoolSize(epochId);
 
         //Rebalance pools
         uint256 transferToBuffer = 0;
@@ -167,12 +167,10 @@ contract PoolRewards {
 
         // if this pools needs more rewards then base issuance, we need to transfer it
         if (epochRewards > baseRewards) {
-            transferToRewards = transferToRewards.add(
-                epochRewards - baseRewards
-            );
+            transferToRewards = epochRewards - baseRewards;
         } else if (epochRewards < baseRewards) {
             // if this pools needs less rewards then base issuance, we remove it from the amount later
-            transferToBuffer = transferToBuffer.add(baseRewards - epochRewards);
+            transferToBuffer = baseRewards - epochRewards;
         }
 
         // We transfer the total difference across all pools to the buffer
@@ -196,20 +194,20 @@ contract PoolRewards {
         // compute and return user total reward. For optimization reasons the transfer have been moved to an upper layer (i.e. massHarvest needs to do a single transfer)
 
         // exit if there is no stake on the epoch
-        if (epochs[epochId] == 0) {
+        if (_sizeAtEpoch[epochId] == 0) {
             return (0, 0);
         }
         (uint256 epochRewards, uint256 baseRewards) =
-            _staking.getRewardsForEpoch(epochId, _poolLP);
+            getRewardsForEpoch(epochId, _poolLP);
 
         uint256 userEpochRewards =
             epochRewards.mul(_getUserBalancePerEpoch(msg.sender, epochId)).div(
-                epochs[epochId]
+                _sizeAtEpoch[epochId]
             );
 
         uint256 userBaseRewards =
             baseRewards.mul(_getUserBalancePerEpoch(msg.sender, epochId)).div(
-                epochs[epochId]
+                _sizeAtEpoch[epochId]
             );
 
         return (userEpochRewards, userBaseRewards);
@@ -234,7 +232,7 @@ contract PoolRewards {
             );
     }
 
-    // compute epoch id from blocktimestamp and epochstart date
+    // compute epoch id from blocktimestamp and _sizeAtEpochtart date
     function _getEpochId() internal view returns (uint128 epochId) {
         if (block.timestamp < epochStart) {
             return 0;
@@ -259,15 +257,16 @@ contract PoolRewards {
                 InterestStrategyInterface(
                     _controller.getInterestStrategy(_pool)
                 )
-                    .getEpochRewards(epochId - 1)
+                    .getEpochRewards(epochId)
             )
                 .mul(
-                LibRewardsDistribution.rewardsPerBlockPerPool(
+                LibRewardsDistribution.rewardsPerEpochPerPool(
                     _controller.getTargetAllocation(_pool)
                 )
             );
         uint256 epochRewardsAdjusted =
-            epochRewards.mul(_controller.getAdjustment(_pool)).div(10**18); //account for 18 decimals of Adjustment
+            epochRewards.mul(_controller.getAdjustment(_pool)).div(10**18);
+        //account for 18 decimals of Adjustment & 18 decimals of RewardsPerBlock
 
         uint256 baseRewards =
             LibRewardsDistribution.rewardsPerEpochPerPool(
