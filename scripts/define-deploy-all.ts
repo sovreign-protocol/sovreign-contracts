@@ -141,6 +141,8 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
             // empty since new allocations can be added later (initial state)
             [],
             reignDiamond.address,
+            reignDAO.address,
+            c.sovReignOwnerAcct.address,
             100000000,
             stakingEpochStart
         ]
@@ -157,6 +159,7 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
             // both params were taken from the InterestStrategy.test.ts
             BigNumber.from(3).mul(10 ** 10),
             BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
+            BigNumber.from(0),
             reignDiamond.address,
             stakingEpochStart
         ]
