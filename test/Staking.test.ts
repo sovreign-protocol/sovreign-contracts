@@ -29,6 +29,8 @@ describe("Staking", function () {
         staking = (await deployContract("Staking", [epoch1Start])) as Staking;
 
         erc20Mock = (await deployContract("ERC20Mock")) as Erc20Mock;
+
+        await setNextBlockTimestamp(await getCurrentUnix());
     });
 
     beforeEach(async function () {

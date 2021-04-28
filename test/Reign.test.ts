@@ -39,6 +39,9 @@ describe('Barn', function () {
         changeRewards = (await diamondAsFacet(diamond, 'ChangeRewardsFacet')) as ChangeRewardsFacet;
         reign = (await diamondAsFacet(diamond, 'ReignFacet')) as ReignFacet;
         await reign.initReign(bond.address, rewardsMock.address);
+
+
+        await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
     });
 
     beforeEach(async function () {
