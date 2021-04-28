@@ -12,6 +12,7 @@ library LibRewardsDistribution {
     uint256 constant EPOCH_LENGTH = 604800; // One Week in Seconds
     uint256 constant EPOCHS_IN_PERIOD = 104;
     uint256 constant BLOCKS_IN_PERIOD = 2300000 * 2;
+    uint256 constant BLOCKS_IN_EPOCH = 44230;
     uint256 constant TOTAL_ALLOCATION = 1000000000;
     uint256 constant EPOCH_1_START = 1619533277;
 

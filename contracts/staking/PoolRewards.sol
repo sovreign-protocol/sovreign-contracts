@@ -252,6 +252,11 @@ contract PoolRewards {
         view
         returns (uint256, uint256)
     {
+        uint256 baseRewards =
+            LibRewardsDistribution.rewardsPerEpochPerPool(
+                _controller.getTargetAllocation(_pool)
+            );
+
         uint256 epochRewards =
             (
                 InterestStrategyInterface(
@@ -260,19 +265,12 @@ contract PoolRewards {
                     .getEpochRewards(epochId)
             )
                 .mul(
-                LibRewardsDistribution.rewardsPerEpochPerPool(
+                LibRewardsDistribution.rewardsPerBlockPerPool(
                     _controller.getTargetAllocation(_pool)
                 )
-            );
-        uint256 epochRewardsAdjusted =
-            epochRewards.mul(_controller.getAdjustment(_pool)).div(10**18);
-        //account for 18 decimals of Adjustment & 18 decimals of RewardsPerBlock
+            )
+                .div(10**18); //account for 18 decimals of baseRewards
 
-        uint256 baseRewards =
-            LibRewardsDistribution.rewardsPerEpochPerPool(
-                _controller.getTargetAllocation(_pool)
-            );
-
-        return (epochRewardsAdjusted, baseRewards);
+        return (epochRewards, baseRewards);
     }
 }

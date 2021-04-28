@@ -7,15 +7,12 @@ interface IPoolController {
     function createPool(
         address,
         address,
-        address,
-        uint256
+        address
     ) external returns (address pool);
 
     function setInterestStrategy(address, address) external;
 
     function setOracle(address, address) external;
-
-    function setAdjustment(uint256, address) external;
 
     function setTreasoury(address) external;
 
@@ -26,8 +23,6 @@ interface IPoolController {
     function setSvrToken(address) external;
 
     function setReignToken(address) external;
-
-    function getAdjustment(address) external view returns (uint256);
 
     function getPool(address) external view returns (address);
 

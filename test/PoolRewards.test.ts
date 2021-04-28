@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import { BigNumber, Signer } from "ethers";
-import { moveAtEpoch, tenPow18 } from "./helpers/helpers";
+import { moveAtEpoch, tenPow18,mineBlocks,setNextBlockTimestamp,getCurrentUnix, moveAtTimestamp } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
 import { RewardsVault, Erc20Mock, Staking, PoolRewards, PoolControllerMock,LiquidityBufferVault, InterestStrategy } from "../typechain";
@@ -64,6 +64,9 @@ describe("YieldFarm Bond Pool", function () {
 
         await reignToken.mint(liquidityBuffer.address, distributedAmount);
         await rewardsVault.connect(creator).setAllowance(liquidityBuffer.address, distributedAmount);
+
+
+        await setNextBlockTimestamp(await getCurrentUnix());
     });
 
     
@@ -84,11 +87,12 @@ describe("YieldFarm Bond Pool", function () {
 
         it('Get epoch PoolSize and distribute tokens', async function () {
             await depositPoolLP(amount)
-            interest.accrueInterest(10000,10000)
+
+            await interest.accrueInterest(10000,10000);
+
+
             await moveAtEpoch(epochStart, epochDuration, 1)
-            interest.accrueInterest(10000,10000)
-            await moveAtEpoch(epochStart, epochDuration, 2)
-            interest.accrueInterest(10000,10000)
+            await accrueAndMoveToEpoch(2)
             await moveAtEpoch(epochStart, epochDuration, 3)
             const totalAmount = amount
 
@@ -97,14 +101,12 @@ describe("YieldFarm Bond Pool", function () {
             expect(await reignToken.allowance(rewardsVault.address, yieldFarm.address)).to.equal(distributedAmount)
             expect(await yieldFarm.getCurrentEpoch()).to.equal(2) // epoch on yield is staking - 1
 
-            interest.accrueInterest(10000,20000)
             
-            console.log((await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0].div(tenPow18).toString());
-            console.log((await yieldFarm.getRewardsForEpoch(1, poolLP.address))[1].div(tenPow18).toString());
-            console.log((await staking.getEpochUserBalance(userAddr,poolLP.address,1)).toString());
+            // get epoch 1 rewards
+            let epoch1Rewards = (await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0];
 
             await yieldFarm.connect(user).harvest(1)
-            expect(await reignToken.balanceOf(userAddr)).to.gt(0)
+            expect(await reignToken.balanceOf(userAddr)).to.eq(epoch1Rewards)
         })
     })
 
@@ -113,25 +115,34 @@ describe("YieldFarm Bond Pool", function () {
             await depositPoolLP(amount)
             const totalAmount = amount
             // initialize epochs meanwhile
-            await moveAtEpoch(epochStart, epochDuration, 9)
+            await accrueAndMoveToEpoch(1)
+            await accrueAndMoveToEpoch(2)
+            await accrueAndMoveToEpoch(3)
+            await accrueAndMoveToEpoch(4)
+            await accrueAndMoveToEpoch(5)
+            await accrueAndMoveToEpoch(6)
+            await accrueAndMoveToEpoch(7)
+            await accrueAndMoveToEpoch(8)
+            await accrueAndMoveToEpoch(9)
             expect(await yieldFarm.getPoolSize(1)).to.equal(amount)
 
             expect(await yieldFarm.lastInitializedEpoch()).to.equal(0) // no epoch initialized
             await expect(yieldFarm.harvest(10)).to.be.revertedWith('This epoch is in the future')
             await expect(yieldFarm.harvest(3)).to.be.revertedWith('Harvest in order')
-            await (await yieldFarm.connect(user).harvest(1)).wait()
-
+            await yieldFarm.connect(user).harvest(1)
+            let epoch1Rewards = 
+                (await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0]
             expect(await reignToken.balanceOf(userAddr)).to.equal(
-                amount.mul(distributedAmount.div(numberOfEpochs)).div(totalAmount),
+                epoch1Rewards
             )
             expect(await yieldFarm.connect(user).userLastEpochIdHarvested()).to.equal(1)
             expect(await yieldFarm.lastInitializedEpoch()).to.equal(1) // epoch 1 have been initialized
 
             await (await yieldFarm.connect(user).massHarvest()).wait()
-            const totalDistributedAmount = amount.mul(distributedAmount.div(numberOfEpochs)).div(totalAmount).mul(7)
+            const totalDistributedAmount = await totalAccruedUntilEpoch(8)
             expect(await reignToken.balanceOf(userAddr)).to.equal(totalDistributedAmount)
             expect(await yieldFarm.connect(user).userLastEpochIdHarvested()).to.equal(7)
-            expect(await yieldFarm.lastInitializedEpoch()).to.equal(7) // epoch 7 have been initialized
+            expect(await yieldFarm.lastInitializedEpoch()).to.equal(7) // epoch 7 has been initialized
         })
         it('Have nothing to harvest', async function () {
             await depositPoolLP(amount)
@@ -142,21 +153,13 @@ describe("YieldFarm Bond Pool", function () {
             await yieldFarm.connect(creator).massHarvest()
             expect(await reignToken.balanceOf(await creator.getAddress())).to.equal(0)
         })
-        it('harvest maximum 100 epochs', async function () {
-            await depositPoolLP(amount)
-            const totalAmount = amount
-            await moveAtEpoch(epochStart, epochDuration, 300)
-
-            expect(await yieldFarm.getPoolSize(1)).to.equal(totalAmount)
-            await (await yieldFarm.connect(user).massHarvest()).wait()
-            expect(await yieldFarm.lastInitializedEpoch()).to.equal(numberOfEpochs)
-        })
-
         it('gives epochid = 0 for previous epochs', async function () {
+            await moveAtTimestamp(epochStart)
             await moveAtEpoch(epochStart, epochDuration, -2)
             expect(await yieldFarm.getCurrentEpoch()).to.equal(0)
         })
         it('it should return 0 if no deposit in an epoch', async function () {
+            await moveAtTimestamp(epochStart)
             await moveAtEpoch(epochStart, epochDuration, 3)
             await yieldFarm.connect(user).harvest(1)
             expect(await reignToken.balanceOf(await user.getAddress())).to.equal(0)
@@ -180,6 +183,21 @@ describe("YieldFarm Bond Pool", function () {
                 .to.emit(yieldFarm, 'MassHarvest')
         })
     })
+
+    async function accrueAndMoveToEpoch(n:number) {
+        await mineBlocks(1000); 
+        await interest.accrueInterest(10000,10000);
+        await moveAtEpoch(epochStart, epochDuration, n)
+        
+    }
+
+    async function totalAccruedUntilEpoch(n:number) {
+        let total = BigNumber.from(0);
+        for(let i = 0; i < n; i++){
+            total = total.add((await yieldFarm.getRewardsForEpoch(i, poolLP.address))[0]);
+        }
+        return total
+    }
 
     async function depositPoolLP(x: BigNumber, u = user) {
         const ua = await u.getAddress();

@@ -7,6 +7,7 @@ import "../interfaces/IMintBurnErc20.sol";
 import "../interfaces/IPool.sol";
 import "../interfaces/IPoolController.sol";
 import "../libraries/SafeERC20.sol";
+import "../libraries/LibRewardsDistribution.sol";
 import "../interfaces/InterestStrategyInterface.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -128,9 +129,7 @@ contract Pool is IPool, PoolErc20 {
                 reign.allowance(msg.sender, address(this)) >= withdrawFee,
                 "Insufficient allowance"
             );
-            uint256 toTreasoury = withdrawFee.div(2);
-            reign.transferFrom(msg.sender, treasoury, toTreasoury);
-            reign.burnFrom(msg.sender, withdrawFee.sub(toTreasoury));
+            reign.transferFrom(msg.sender, treasoury, withdrawFee);
         }
 
         //Burn LP tokens
@@ -178,18 +177,24 @@ contract Pool is IPool, PoolErc20 {
                 .div(10**18);
     }
 
-    function getWithdrawFeeReign(uint256 amount) public view returns (uint256) {
+    function getWithdrawFeeReign(uint256 amount)
+        public
+        view
+        returns (uint256 userFee)
+    {
         address interestStrategy =
             controller.getInterestStrategy(address(this));
-        return
-            (
-                InterestStrategyInterface(interestStrategy)
-                    .withdrawFeeMultiplier()
-                    .mul(amount)
-                    .mul(controller.getTokenPrice(address(this)))
-                    .div(controller.getReignPrice())
-            )
-                .div(10**18);
+
+        uint256 totalFeeAccrued =
+            InterestStrategyInterface(interestStrategy)
+                .withdrawFeeAccrued()
+                .mul(
+                LibRewardsDistribution.rewardsPerBlockPerPool(
+                    controller.getTargetAllocation(address(this))
+                )
+            );
+
+        userFee = totalFeeAccrued.mul(amount).div(getReserves()).div(10**18);
     }
 
     // force reserves to match balances

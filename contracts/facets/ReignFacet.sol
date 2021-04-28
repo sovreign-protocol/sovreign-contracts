@@ -235,7 +235,8 @@ contract ReignFacet {
         returns (LibReignStorage.Stake memory)
     {
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
-        LibReignStorage.Stake[] storage stakeHistory = ds.userStakeHistory[user];
+        LibReignStorage.Stake[] storage stakeHistory =
+            ds.userStakeHistory[user];
 
         if (stakeHistory.length == 0 || timestamp < stakeHistory[0].timestamp) {
             return

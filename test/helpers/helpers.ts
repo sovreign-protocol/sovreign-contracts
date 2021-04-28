@@ -39,6 +39,12 @@ export async function moveAtTimestamp(timestamp: number): Promise<void> {
     await ethers.provider.send('evm_mine', []);
 }
 
+export async function mineBlocks(blocks: number): Promise<void> {
+    for (let i=0; i<blocks;i++){
+        await ethers.provider.send('evm_mine', [await getLatestBlockTimestamp()  + 10 ]);
+    }
+}
+
 export async function getCurrentEpoch(): Promise<number> {
     const currentBlockTs = parseInt((await getLatestBlock()).timestamp);
 

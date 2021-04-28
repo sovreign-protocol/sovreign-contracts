@@ -164,15 +164,13 @@ describe('InterestStrategy', function () {
 
         it("returns correct base Interest for Delta < 0", async () => {
             let newBaseDelta = BigNumber.from(15).mul(helpers.tenPow18);
-            await interest.connect(reignDAO).setBaseDelta(newBaseDelta)
-
+            await interest.connect(reignDAO).setBaseDelta(newBaseDelta);
 
             let rates  = await interest.getBaseInterest();
             let expected = (await interest.getInterestForReserve(85,100));
             expect(rates[0]).to.equal(expected[0]);
         });
     });
-
 
     describe('mock inputs', function () {
         it("returns correct values for mock inputs 1", async () => {
@@ -186,14 +184,32 @@ describe('InterestStrategy', function () {
             expect(rates[0]).to.equal(904347826086);
             expect(rates[1]).to.equal(0);
         }); 
+
+        it("returns correct values for mock inputs 2", async () => {
+
+            let reserves = BigNumber.from(1000000).mul(helpers.tenPow18);
+            let target   = BigNumber.from(1000000).mul(helpers.tenPow18);
+
+            let blockBefore = await interest.blockNumberLast();
+            await interest.accrueInterest(reserves,target);
+            let blockAfter = await interest.blockNumberLast();
+
+            // as base Delta is 0 for a Delta=0 input the normalizes value is 1
+            // and accumulated value should equal the number of blocks
+            let blockDelta = (blockAfter.sub(blockBefore))
+            expect(
+                (await interest.getEpochRewards(await helpers.getCurrentEpoch())).div(helpers.tenPow18)
+                ).to.be.eq(blockDelta)
+        }); 
+           
     })
 
     describe('accrueInterest Negative', function () {
 
         it('skips accrual if reserves is 0', async function () {
-            let multiplier = await interest.withdrawFeeMultiplier();
+            let multiplier = await interest.withdrawFeeAccrued();
             await interest.accrueInterest(0,1);
-            expect(await interest.withdrawFeeMultiplier()).to.be.equal(multiplier)
+            expect(await interest.withdrawFeeAccrued()).to.be.equal(multiplier)
         });
 
         it('returns correct withdraw fee multiplier', async function () {
@@ -204,11 +220,11 @@ describe('InterestStrategy', function () {
             let blockDelta = blockAfter.sub(blockBefore)
 
             let interests = (await interest.getInterestForReserve(11000,10000))
-            let expectedWithdrawFeeMultiplier = (await interest.getBaseCumulators(interests[0],interests[1]))[1]
+            let expectedWithdrawFeeMultiplier = (await interest.getNormalizedToBase(interests[0],interests[1]))[1]
             .mul(blockDelta)
 
-            expect(await interest.withdrawFeeMultiplier()).to.not.be.eq(BigNumber.from(0))
-            expect(await interest.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
+            expect(await interest.withdrawFeeAccrued()).to.not.be.eq(BigNumber.from(0))
+            expect(await interest.withdrawFeeAccrued()).to.be.eq(expectedWithdrawFeeMultiplier)
         });
 
         it('correctly accrues withdraw fee multiplier', async function () {
@@ -219,11 +235,11 @@ describe('InterestStrategy', function () {
             let blockDelta = blockAfter.sub(blockBefore)
 
             let interestsBase = (await interest.getInterestForReserve(11000,10000))
-            let expectedWithdrawFeeMultiplier = (await interest.getBaseCumulators(interestsBase[0],interestsBase[1]))[1]
+            let expectedWithdrawFeeMultiplier = (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[1]
             .mul(blockDelta)
 
-            expect(await interest.withdrawFeeMultiplier()).to.not.be.eq(BigNumber.from(0))
-            expect(await interest.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
+            expect(await interest.withdrawFeeAccrued()).to.not.be.eq(BigNumber.from(0))
+            expect(await interest.withdrawFeeAccrued()).to.be.eq(expectedWithdrawFeeMultiplier)
             
             blockBefore = await interest.blockNumberLast();
             // increase interest further, this should increase the Withdraw fee
@@ -234,31 +250,40 @@ describe('InterestStrategy', function () {
             interestsBase = (await interest.getInterestForReserve(12000,10000))
 
             expectedWithdrawFeeMultiplier = expectedWithdrawFeeMultiplier.add(
-                (await interest.getBaseCumulators(interestsBase[0],interestsBase[1]))[1]
+                (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[1]
             .mul(blockDelta2))
 
-            expect(await interest.withdrawFeeMultiplier()).to.be.eq(expectedWithdrawFeeMultiplier)
+            expect(await interest.withdrawFeeAccrued()).to.be.eq(expectedWithdrawFeeMultiplier)
         });
 
         it('correctly reduces withdraw fee multiplier', async function () {
             await interest.accrueInterest(12000,10000);
 
-            let withdrawFeeMultiplierBefore = await interest.withdrawFeeMultiplier()
+            let withdrawFeeAccruedBefore = await interest.withdrawFeeAccrued()
             await interest.accrueInterest(11000,10000);
-            expect(await interest.withdrawFeeMultiplier()).to.be.lt(withdrawFeeMultiplierBefore)
+            expect(await interest.withdrawFeeAccrued()).to.be.lt(withdrawFeeAccruedBefore)
 
-            withdrawFeeMultiplierBefore = await interest.withdrawFeeMultiplier()
+            withdrawFeeAccruedBefore = await interest.withdrawFeeAccrued()
             await interest.accrueInterest(10500, 10000);
-            expect(await interest.withdrawFeeMultiplier()).to.be.lt(withdrawFeeMultiplierBefore)
+            expect(await interest.withdrawFeeAccrued()).to.be.lt(withdrawFeeAccruedBefore)
+
+            withdrawFeeAccruedBefore = await interest.withdrawFeeAccrued()
+            await interest.accrueInterest(10400, 10000);
+            expect(await interest.withdrawFeeAccrued()).to.be.lt(withdrawFeeAccruedBefore)
         });
 
         it('correctly sets withdraw fee to zero if interest becomes positive', async function () {
             await interest.accrueInterest(12000, 10000);
 
-            expect(await interest.withdrawFeeMultiplier()).to.be.gt(0).and.not.be.eq(0)
+            expect(await interest.withdrawFeeAccrued()).to.be.gt(0).and.not.be.eq(0)
 
+            // first time it's not reset
             await interest.accrueInterest(10000,15000);
-            expect(await interest.withdrawFeeMultiplier()).to.be.eq(0)
+            expect(await interest.withdrawFeeAccrued()).to.be.gt(0).and.not.be.eq(0)
+
+            // second interaction makes reset
+            await interest.accrueInterest(10000,15000);
+            expect(await interest.withdrawFeeAccrued()).to.be.eq(0)
         });
 
     }) 
@@ -266,10 +291,70 @@ describe('InterestStrategy', function () {
     describe('accrueInterest Positive', function () {
 
         it('skips accrual if reserves is 0', async function () {
-            let multiplier = await interest.withdrawFeeMultiplier();
+            let multiplier = await interest.withdrawFeeAccrued();
             await interest.accrueInterest(0,1);
-            expect(await interest.withdrawFeeMultiplier()).to.be.equal(multiplier)
+            expect(await interest.withdrawFeeAccrued()).to.be.equal(multiplier)
         });
+
+        it('correctly accrues rewards for an epoch', async function () {
+            let blockBefore = await interest.blockNumberLast();
+            // make interest larger then target, this should set a non-zero withdraw fee
+            await interest.accrueInterest(10000,11000);
+            let blockAfter = await interest.blockNumberLast();
+            let blockDelta = blockAfter.sub(blockBefore)
+
+            let interestsBase = (await interest.getInterestForReserve(10000,11000))
+            let expectedEpochRewards = (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[0]
+            .mul(blockDelta)
+
+            expect(await interest.getEpochRewards(await helpers.getCurrentEpoch())).to.be.eq(expectedEpochRewards)
+            
+            blockBefore = await interest.blockNumberLast()
+            await interest.accrueInterest(10000,11000);
+            blockAfter = await interest.blockNumberLast();
+            let blockDelta2 = blockAfter.sub(blockBefore)
+
+            interestsBase = (await interest.getInterestForReserve(10000,11000))
+
+            expectedEpochRewards = expectedEpochRewards.add(
+                (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[0]
+            .mul(blockDelta2))
+
+            expect(await interest.getEpochRewards(await helpers.getCurrentEpoch())).to.be.eq(expectedEpochRewards)
+        });
+
+        it('correctly accrues over multiple epoch', async function () {
+
+            await helpers.moveAtEpoch(helpers.stakingEpochStart, helpers.stakingEpochDuration,2);
+            let blockBefore = await interest.blockNumberLast();
+            await interest.accrueInterest(10000,11000);
+            let blockAfter = await interest.blockNumberLast();
+            let blockDelta = blockAfter.sub(blockBefore)
+
+            let interestsBase = (await interest.getInterestForReserve(10000,11000))
+            let expectedEpochRewards = (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[0]
+            .mul(blockDelta)
+
+            expect(await interest.getEpochRewards(await helpers.getCurrentEpoch())).to.be.eq(expectedEpochRewards)
+    
+            //Move to next epoch
+            await helpers.moveAtEpoch(helpers.stakingEpochStart, helpers.stakingEpochDuration,3);
+            expect(await interest.getEpochRewards(await helpers.getCurrentEpoch())).to.be.eq(0)
+
+
+            blockBefore = await interest.blockNumberLast()
+            await interest.accrueInterest(10000,11000);
+            blockAfter = await interest.blockNumberLast();
+            let blockDelta2 = blockAfter.sub(blockBefore)
+
+            interestsBase = (await interest.getInterestForReserve(10000,11000))
+            expectedEpochRewards = (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[0]
+            .mul(blockDelta2)
+
+            expect(await interest.getEpochRewards(await helpers.getCurrentEpoch())).to.be.eq(expectedEpochRewards)
+    
+
+            });
 
     }) 
     
