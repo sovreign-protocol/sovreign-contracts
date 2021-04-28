@@ -17,12 +17,15 @@ describe('BasketBalancer', function () {
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
     let flyingParrot: Signer, flyingParrotAddress: string;
-    let communityVault: Signer, treasury: Signer;
+    let reignDAO: Signer, treasury: Signer;
+    let controller: Signer;
 
     let pools = [address1,address2];
 
     let snapshotId: any;
     let snapshotTs: number;
+
+    var maxAllocation = 1000000000;
 
     before(async function () {
         reignToken = (await deploy.deployContract('ERC20Mock')) as Erc20Mock;
@@ -42,10 +45,18 @@ describe('BasketBalancer', function () {
     });
 
     beforeEach(async function () {
-        var allocation = [500000000,500000000]
+        var allocation = [maxAllocation/2,maxAllocation/2]
         balancer = (await deploy.deployContract(
             'BasketBalancer', 
-            [pools,allocation,reign.address, 100000000, helpers.stakingEpochStart])
+            [
+                pools,
+                allocation,
+                reign.address,
+                reignDAO.getAddress(), 
+                controller.getAddress(), 
+                maxAllocation/10, 
+                helpers.stakingEpochStart
+            ])
             ) as BasketBalancer;
 
 
@@ -71,7 +82,15 @@ describe('BasketBalancer', function () {
         it('can be deployed with empty arrays', async function () {
             let balancerEmpty = (await deploy.deployContract(
                 'BasketBalancer', 
-                [[],[],reign.address,100000000, await helpers.getLatestBlockTimestamp()+10000])
+                [
+                    [],
+                    [],
+                    reign.address,
+                    reignDAO.getAddress(), 
+                    controller.getAddress(), 
+                    maxAllocation/10, 
+                    await helpers.getLatestBlockTimestamp()+10000
+            ])
                 ) as BasketBalancer;
             expect(balancerEmpty.address).to.not.eql(0).and.to.not.be.empty;
             expect(await balancerEmpty.getCurrentEpoch()).to.be.eq(0);
@@ -105,7 +124,27 @@ describe('BasketBalancer', function () {
             expect(resp[2]).to.gt(0);
         });
 
-        it('computes correct allocation', async function () {
+        it('can not vote with too small allocation', async function () {
+            await reign.deposit(userAddress, 100);
+            await reign.deposit(flyingParrotAddress, 200);
+
+            await expect( 
+                balancer.connect(user).updateAllocationVote(pools, [450000000,500000000])
+            ).to.be.revertedWith('Allocation is not complete')
+
+        });
+
+        it('can not vote with too big allocation', async function () {
+            await reign.deposit(userAddress, 100);
+            await reign.deposit(flyingParrotAddress, 200);
+
+            await expect( 
+                balancer.connect(user).updateAllocationVote(pools, [600000000,500000000])
+            ).to.be.revertedWith('Allocation is not complete')
+
+        });
+
+        it('computes allocation correctly', async function () {
             await reign.deposit(userAddress, 100);
             await reign.deposit(flyingParrotAddress, 200);
 
@@ -121,7 +160,7 @@ describe('BasketBalancer', function () {
 
         });
 
-        it('sets correct basket balance during period', async function () {
+        it('sets correct basket balance during update period', async function () {
             await reign.deposit(userAddress, 100);
             await reign.deposit(flyingParrotAddress, 200);
 
@@ -167,18 +206,6 @@ describe('BasketBalancer', function () {
 
         });
 
-
-
-        it('can not vote with insufficient allocation', async function () {
-            await reign.deposit(userAddress, 100);
-            await reign.deposit(flyingParrotAddress, 200);
-
-            await expect( 
-                balancer.connect(user).updateAllocationVote(pools, [450000000,500000000])
-            ).to.be.revertedWith('Allocation is not complete')
-
-        });
-
         it('can not vote with too big delta', async function () {
             await reign.deposit(userAddress, 100);
             await reign.deposit(flyingParrotAddress, 200);
@@ -193,23 +220,27 @@ describe('BasketBalancer', function () {
 
         });
 
-        it('allows controller to change max delta', async function () {
-            await balancer.connect(user).setMaxDelta(400000000)
+        it('allows DAO to change max delta', async function () {
+            await balancer.connect(reignDAO).setMaxDelta(400000000)
             expect( await balancer.maxDelta()).to.be.equal(400000000)
 
-
+            // now the previous vote passes
             await reign.deposit(userAddress, 100);
             await reign.deposit(flyingParrotAddress, 200);
-
-
             await expect( 
                 balancer.connect(user).updateAllocationVote(pools, [650000000,350000000])
             ).to.not.be.reverted;
         });
 
+        it('reverts if max delta is changed by someone else', async function () {
+            await expect( 
+                balancer.connect(flyingParrot).setMaxDelta(address3)
+            ).to.be.revertedWith('Only the Controller can execute this')
+        });
+
 
         it('allows controller to add a new pool', async function () {
-            await balancer.connect(user).addPool(address3)
+            await balancer.connect(controller).addPool(address3)
             await awaitUpdatePeriod();
             expect( await balancer.getTargetAllocation(address3)).to.be.equal(0)
             let pools = await balancer.getPools()
@@ -220,18 +251,37 @@ describe('BasketBalancer', function () {
         it('reverts if pool is added by someone else', async function () {
             await expect( 
                 balancer.connect(flyingParrot).addPool(address3)
-            ).to.be.revertedWith('Only the DAO can edit this')
+            ).to.be.revertedWith('Only the Controller can execute this')
 
         });
 
-        it('can change controller', async function () {
-            await balancer.connect(user).setController(flyingParrotAddress)
+        it('controller can change controller', async function () {
+            await balancer.connect(controller).setController(flyingParrotAddress)
             expect( await balancer.controller()).to.be.equal(flyingParrotAddress)
+
+            //flaying parrot can now add pools
             await balancer.connect(flyingParrot).addPool(address3)
             await awaitUpdatePeriod();
             expect( await balancer.getTargetAllocation(address3)).to.be.equal(0)
             let pools = await balancer.getPools()
             expect(pools[2]).to.be.equal(address3)
+        });
+
+        it('controller can not be changed by someone else', async function () {
+            await expect( 
+                balancer.connect(user).setController(flyingParrotAddress)
+            ).to.be.revertedWith('Only the Controller can execute this')
+        });
+
+        it('DAO can change DAO', async function () {
+            await balancer.connect(reignDAO).setReignDAO(flyingParrotAddress)
+            expect( await balancer.reignDAO()).to.be.equal(flyingParrotAddress)
+        });
+
+        it('reignDAO can not be changed by someone else', async function () {
+            await expect( 
+                balancer.connect(user).setReignDAO(flyingParrotAddress)
+            ).to.be.revertedWith('Only the Controller can execute this')
         });
 
     });
@@ -251,10 +301,11 @@ describe('BasketBalancer', function () {
     async function setupSigners () {
         const accounts = await ethers.getSigners();
         user = accounts[0];
-        communityVault = accounts[1];
+        reignDAO = accounts[1];
         treasury = accounts[2];
         happyPirate = accounts[3];
         flyingParrot = accounts[4];
+        controller = accounts[5];
 
         userAddress = await user.getAddress();
         happyPirateAddress = await happyPirate.getAddress();

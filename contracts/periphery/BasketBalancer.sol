@@ -40,7 +40,18 @@ contract BasketBalancer is IBasketBalancer {
     address public controller;
 
     modifier onlyController() {
-        require(msg.sender == controller, "Only the DAO can edit this");
+        require(
+            msg.sender == controller,
+            "Only the Controller can execute this"
+        );
+        _;
+    }
+
+    // 'controller' here means the PoolController contract
+    address public reignDAO;
+
+    modifier onlyDAO() {
+        require(msg.sender == reignDAO, "Only the Controller can execute this");
         _;
     }
 
@@ -52,6 +63,8 @@ contract BasketBalancer is IBasketBalancer {
         address[] memory _newPools,
         uint256[] memory _newAllocation,
         address _reignAddress,
+        address _reignDAO,
+        address _controller,
         uint256 _maxDelta,
         uint256 _epoch1Start
     ) {
@@ -73,15 +86,23 @@ contract BasketBalancer is IBasketBalancer {
         maxDelta = _maxDelta;
         allPools = _newPools;
         reign = IReign(_reignAddress);
-        controller = msg.sender;
-    }
-
-    function setController(address _controller) public onlyController {
         controller = _controller;
+        reignDAO = _reignDAO;
     }
 
-    function setMaxDelta(uint256 _maxDelta) public onlyController {
-        maxDelta = _maxDelta;
+    function updateBasketBalance() external override returns (bool) {
+        require(lastEpochUpdate < getCurrentEpoch(), "Epoch is not over");
+        uint256[] memory allocations = computeAllocation();
+
+        for (uint256 i = 0; i < allPools.length; i++) {
+            poolAllocationBefore[allPools[i]] = poolAllocation[allPools[i]];
+            poolAllocation[allPools[i]] = allocations[i];
+        }
+
+        lastEpochUpdate = getCurrentEpoch();
+        lastEpochEnd = block.timestamp;
+
+        return true;
     }
 
     function updateAllocationVote(
@@ -130,19 +151,31 @@ contract BasketBalancer is IBasketBalancer {
         //emit event
     }
 
-    function updateBasketBalance() external override returns (bool) {
-        require(lastEpochUpdate < getCurrentEpoch(), "Epoch is not over");
-        uint256[] memory allocations = computeAllocation();
+    function addPool(address pool)
+        public
+        override
+        onlyController
+        returns (uint256)
+    {
+        allPools.push(pool);
+        poolAllocation[pool] = 0;
+        return allPools.length;
+    }
 
-        for (uint256 i = 0; i < allPools.length; i++) {
-            poolAllocationBefore[allPools[i]] = poolAllocation[allPools[i]];
-            poolAllocation[allPools[i]] = allocations[i];
-        }
+    /*
+     *   SETTERS
+     */
 
-        lastEpochUpdate = getCurrentEpoch();
-        lastEpochEnd = block.timestamp;
+    function setController(address _controller) public onlyController {
+        controller = _controller;
+    }
 
-        return true;
+    function setReignDAO(address _reignDAO) public onlyDAO {
+        reignDAO = _reignDAO;
+    }
+
+    function setMaxDelta(uint256 _maxDelta) public onlyDAO {
+        maxDelta = _maxDelta;
     }
 
     function computeAllocation()
@@ -154,12 +187,12 @@ contract BasketBalancer is IBasketBalancer {
         uint256[] memory _allocations = new uint256[](allPools.length);
 
         uint256 totalAllocation = 0;
+        uint256 totalPower = reign.bondStaked();
 
         for (uint256 i = 0; i < voters.length; i++) {
             address voter = voters[i];
 
             uint256 votingPower = reign.balanceOf(voter);
-            uint256 totalPower = reign.bondStaked();
             uint256 remainingPower = totalPower.sub(votingPower);
 
             AllocationVote storage votersVote = allocationVotes[voter];
@@ -183,6 +216,9 @@ contract BasketBalancer is IBasketBalancer {
         return (_allocations);
     }
 
+    /*
+     *   VIEWS
+     */
     function getAllocationVote(address voter)
         public
         view
@@ -227,17 +263,6 @@ contract BasketBalancer is IBasketBalancer {
         } else {
             return poolAllocation[pool];
         }
-    }
-
-    function addPool(address pool)
-        public
-        override
-        onlyController
-        returns (uint256)
-    {
-        allPools.push(pool);
-        poolAllocation[pool] = 0;
-        return allPools.length;
     }
 
     function getPools() public view override returns (address[] memory) {
