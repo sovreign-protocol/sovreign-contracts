@@ -42,7 +42,7 @@ contract InterestStrategy is InterestStrategyInterface {
     address public reignDAO;
 
     modifier onlyDAO() {
-        require(msg.sender == reignDAO, "SoV-Reign: FORBIDDEN");
+        require(msg.sender == reignDAO, "SoVReign: FORBIDDEN");
         _;
     }
 
@@ -82,12 +82,12 @@ contract InterestStrategy is InterestStrategyInterface {
     {
         require(
             reserves > 0,
-            "SoV-Reign InterestStrategy: reserves can not be 0"
+            "SoVReign InterestStrategy: reserves can not be 0"
         );
 
         require(
             target > 0,
-            "SoV-Reign InterestStrategy: reserves can not be 0"
+            "SoVReign InterestStrategy: reserves can not be 0"
         );
 
         int256 delta = getDelta(reserves, target);

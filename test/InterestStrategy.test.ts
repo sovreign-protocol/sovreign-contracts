@@ -21,7 +21,7 @@ describe('InterestStrategy', function () {
         await setupSigners();
 
         interest = (await deploy.deployContract(
-            'InterestStrategy',[multiplier, offset,baseDelta, reignDAOAddress, helpers.stakingEpochStart])
+            'InterestStrategy',[multiplier, offset, baseDelta, reignDAOAddress, helpers.stakingEpochStart])
             ) as InterestStrategy;
     });
 
@@ -29,7 +29,7 @@ describe('InterestStrategy', function () {
 
         it("returns positive rate when reserves < target", async () => {
 
-            let rates = await interest.getInterestForReserve(100,110);
+            let rates = await interest.getInterestForReserve(100, 110);
             
             expect(rates[0]).to.gt(0);
             expect(rates[1]).to.equal(0);
@@ -46,7 +46,7 @@ describe('InterestStrategy', function () {
         });
 
         it("returns negative rates when reserves > target", async () => {
-            let rates = await interest.getInterestForReserve(110,100);
+            let rates = await interest.getInterestForReserve(110, 100);
             expect(rates[0]).to.equal(0);
             expect(rates[1]).to.gt(0);
         }); 
@@ -69,7 +69,7 @@ describe('InterestStrategy', function () {
             let target   = BigNumber.from(1000000).mul(helpers.tenPow18);
 
             let delta    = await interest.getDelta(reserves,target);
-            let expected = ((target.sub(reserves).mul(helpers.tenPow18).mul(100)).div(target))
+            let expected = ((target.sub(reserves).mul(helpers.tenPow18)).div(target)).mul(100)
 
             expect(delta).to.eq(expected)
 
@@ -110,7 +110,7 @@ describe('InterestStrategy', function () {
 
         it("reverts if setOffset is called by other then DAO", async () => {
             let newValue = BigNumber.from(5);
-            await expect(interest.connect(user).setOffset(newValue)).to.be.revertedWith("SoV-Reign: FORBIDDEN")
+            await expect(interest.connect(user).setOffset(newValue)).to.be.revertedWith("SoVReign: FORBIDDEN")
         });
 
         it("sets correct baseDelta", async () => {
@@ -121,7 +121,7 @@ describe('InterestStrategy', function () {
 
         it("reverts if setOffset is called by other then DAO", async () => {
             let newValue = BigNumber.from(5);
-            await expect(interest.connect(user).setBaseDelta(newValue)).to.be.revertedWith("SoV-Reign: FORBIDDEN")
+            await expect(interest.connect(user).setBaseDelta(newValue)).to.be.revertedWith("SoVReign: FORBIDDEN")
         });
         
         it("sets correct multiplier", async () => {
@@ -131,7 +131,7 @@ describe('InterestStrategy', function () {
         });
         it("reverts if setMultiplier is called by other then DAO", async () => {
             let newValue = BigNumber.from(5);
-            await expect(interest.connect(user).setMultiplier(newValue)).to.be.revertedWith("SoV-Reign: FORBIDDEN")
+            await expect(interest.connect(user).setMultiplier(newValue)).to.be.revertedWith("SoVReign: FORBIDDEN")
         });
 
     })

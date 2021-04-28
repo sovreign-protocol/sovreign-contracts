@@ -161,11 +161,11 @@ contract PoolRewards {
         uint256 transferToBuffer = 0;
         uint256 transferToRewards = 0;
 
-        // we get the accumalted interest for the epoch
+        // we get the accumulated interest for the epoch
         (uint256 epochRewards, uint256 baseRewards) =
             getRewardsForEpoch(epochId, _poolLP);
 
-        // if this pools needs more rewards then base issuance, we need to transfer it
+        // if these pools need more rewards than base issuance, then we need to transfer it
         if (epochRewards > baseRewards) {
             transferToRewards = epochRewards - baseRewards;
         } else if (epochRewards < baseRewards) {
