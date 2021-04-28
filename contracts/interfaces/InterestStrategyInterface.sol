@@ -29,4 +29,7 @@ interface InterestStrategyInterface {
 
     //Sets the Multiplier to a new value
     function setBaseDelta(int256 newBaseDelta) external returns (bool);
+
+    //Sets the Multiplier to a new value
+    function reignDAO() external returns (address);
 }

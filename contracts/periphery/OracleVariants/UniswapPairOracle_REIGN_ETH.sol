@@ -17,13 +17,5 @@ contract UniswapPairOracle_REIGN_WETH is UniswapPairOracle {
         address tokenB,
         address owner,
         address timelock
-    )
-        UniswapPairOracle(
-            factory,
-            tokenA,
-            tokenB,
-            owner,
-            timelock
-        )
-    {}
+    ) UniswapPairOracle(factory, tokenA, tokenB, owner, timelock) {}
 }

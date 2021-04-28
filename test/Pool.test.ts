@@ -30,7 +30,7 @@ describe('Pool', function () {
         underlying1 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
         underlying2 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
         
-        oracle = (await deploy.deployContract('OracleMock')) as OracleMock;
+        oracle = (await deploy.deployContract('OracleMock', [reignDAOAddress])) as OracleMock;
 
 
         let multiplier = BigNumber.from(3).mul(10**10);
@@ -38,7 +38,7 @@ describe('Pool', function () {
         let baseDelta = 0;
         interestStrategy = (await deploy.deployContract(
             'InterestStrategy',[multiplier, offset,baseDelta,reignDAOAddress, helpers.stakingEpochStart])
-            ) as InterestStrategy;;
+            ) as InterestStrategy;
  
 
         balancer = (

@@ -235,7 +235,7 @@ describe('BasketBalancer', function () {
         it('reverts if max delta is changed by someone else', async function () {
             await expect( 
                 balancer.connect(flyingParrot).setMaxDelta(address3)
-            ).to.be.revertedWith('Only the Controller can execute this')
+            ).to.be.revertedWith('Only the DAO can execute this')
         });
 
 
@@ -281,7 +281,7 @@ describe('BasketBalancer', function () {
         it('reignDAO can not be changed by someone else', async function () {
             await expect( 
                 balancer.connect(user).setReignDAO(flyingParrotAddress)
-            ).to.be.revertedWith('Only the Controller can execute this')
+            ).to.be.revertedWith('Only the DAO can execute this')
         });
 
     });

@@ -39,7 +39,7 @@ contract InterestStrategy is InterestStrategyInterface {
     int256 max = 20 * 10**18;
     int256 min = -20 * 10**18;
 
-    address public reignDAO;
+    address public override reignDAO;
 
     modifier onlyDAO() {
         require(msg.sender == reignDAO, "SoVReign: FORBIDDEN");
@@ -85,10 +85,7 @@ contract InterestStrategy is InterestStrategyInterface {
             "SoVReign InterestStrategy: reserves can not be 0"
         );
 
-        require(
-            target > 0,
-            "SoVReign InterestStrategy: reserves can not be 0"
-        );
+        require(target > 0, "SoVReign InterestStrategy: reserves can not be 0");
 
         int256 delta = getDelta(reserves, target);
         int256 interestInt =

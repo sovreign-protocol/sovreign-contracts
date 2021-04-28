@@ -9,6 +9,8 @@ pragma experimental ABIEncoderV2;
 interface IOracle {
     function update() external;
 
+    function owner_address() external view returns (address);
+
     function consult(address tokenIn, uint256 amountIn)
         external
         view

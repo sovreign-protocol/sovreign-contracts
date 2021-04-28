@@ -4,7 +4,11 @@ pragma solidity 0.7.6;
 import "../interfaces/IOracle.sol";
 
 contract OracleMock is IOracle {
-    constructor() {}
+    address public override owner_address;
+
+    constructor(address _owner_address) {
+        owner_address = _owner_address;
+    }
 
     function update() external override {}
 

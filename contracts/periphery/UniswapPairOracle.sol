@@ -15,7 +15,7 @@ import "../interfaces/IOracle.sol";
 contract UniswapPairOracle is IOracle {
     using FixedPoint for *;
 
-    address owner_address;
+    address public override owner_address;
     address timelock_address;
 
     uint256 public PERIOD = 3600; // 1 hour TWAP (time-weighted average price)

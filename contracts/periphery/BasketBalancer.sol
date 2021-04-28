@@ -51,7 +51,7 @@ contract BasketBalancer is IBasketBalancer {
     address public reignDAO;
 
     modifier onlyDAO() {
-        require(msg.sender == reignDAO, "Only the Controller can execute this");
+        require(msg.sender == reignDAO, "Only the DAO can execute this");
         _;
     }
 

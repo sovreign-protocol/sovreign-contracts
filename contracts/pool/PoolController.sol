@@ -54,6 +54,16 @@ contract PoolController is IPoolController {
         require(interestStrategy != address(0), "SoVReign: ZERO_ADDRESS");
         require(oracle != address(0), "SoVReign: ZERO_ADDRESS");
 
+        require(
+            InterestStrategyInterface(interestStrategy).reignDAO() == reignDAO,
+            "Interest Strategy needs to be governed by DAO"
+        );
+
+        require(
+            IOracle(oracle).owner_address() == reignDAO,
+            "Oracle needs to be governed by DAO"
+        );
+
         require(getPool[token] == address(0), "SoVReign: POOL_EXISTS"); // single check is sufficient
 
         bytes memory bytecode = type(Pool).creationCode;
