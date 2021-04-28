@@ -46,11 +46,11 @@ contract PoolController is IPoolController {
     }
 
     function createPool(
-        address token,
+        address underlyingToken,
         address interestStrategy,
         address oracle
     ) external override onlyDAO returns (address pool) {
-        require(token != address(0), "SoVReign: ZERO_ADDRESS");
+        require(underlyingToken != address(0), "SoVReign: ZERO_ADDRESS");
         require(interestStrategy != address(0), "SoVReign: ZERO_ADDRESS");
         require(oracle != address(0), "SoVReign: ZERO_ADDRESS");
 
@@ -64,24 +64,32 @@ contract PoolController is IPoolController {
             "Oracle needs to be governed by DAO"
         );
 
-        require(getPool[token] == address(0), "SoVReign: POOL_EXISTS"); // single check is sufficient
+        require(
+            getPool[underlyingToken] == address(0),
+            "SoVReign: POOL_EXISTS"
+        ); // single check is sufficient
 
         bytes memory bytecode = type(Pool).creationCode;
-        bytes32 salt = keccak256(abi.encodePacked(token));
+        bytes32 salt = keccak256(abi.encodePacked(underlyingToken));
 
         assembly {
             pool := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
 
-        IPool(pool).initialize(token, treasoury, svrToken, reignToken);
+        IPool(pool).initialize(
+            underlyingToken,
+            treasoury,
+            svrToken,
+            reignToken
+        );
 
-        getPool[token] = pool;
+        getPool[underlyingToken] = pool;
         getInterestStrategy[pool] = interestStrategy;
         getOracle[pool] = oracle;
         allPools.push(address(pool));
         basketBalancer.addPool(address(pool));
 
-        emit PoolCreated(token, pool, allPools.length);
+        emit PoolCreated(underlyingToken, pool, allPools.length);
 
         return pool;
     }
@@ -163,7 +171,7 @@ contract PoolController is IPoolController {
         override
         returns (uint256)
     {
-        //returns the amount in USDC recived for paying in 1 token, i.e the USD price of 1 token
+        //returns the amount in USDC recived for paying in 1 underlyingToken, i.e the USD price of 1 underlyingToken
         address pool_token = IPool(pool).token();
         return IOracle(getOracle[pool]).consult(pool_token, 10**18);
     }
