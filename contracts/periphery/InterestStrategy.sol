@@ -24,7 +24,7 @@ contract InterestStrategy is InterestStrategyInterface {
     uint256 public constant MAGNITUDE_ADJUST = 48;
     int256 public constant SCALER = 10**20;
 
-    uint256 public override withdrawFeeMultiplier;
+    uint256 public override withdrawFeeAccrued;
     uint256 public negInterestRateLast;
     uint256 public posInterestRateLast;
     uint256 public blockNumberLast;
@@ -183,7 +183,7 @@ contract InterestStrategy is InterestStrategyInterface {
             getInterestForReserve(_reserves, _target);
 
         (uint256 _positiveCumulator, uint256 _negativeCumulator) =
-            getBaseCumulators(_positiveInterestRate, _negativeInterestRate);
+            getNormalizedToBase(_positiveInterestRate, _negativeInterestRate);
 
         // Calculate the number of blocks elapsed since the last accrual
         uint256 _blockDelta = _currentBlockNumber.sub(_accrualBlockNumberPrior);
@@ -191,21 +191,24 @@ contract InterestStrategy is InterestStrategyInterface {
         if (_positiveInterestRate == 0) {
             uint256 _accumulatedInterest = _negativeCumulator.mul(_blockDelta);
             if (_negativeInterestRate > negInterestRateLast) {
-                withdrawFeeMultiplier = withdrawFeeMultiplier.add(
+                withdrawFeeAccrued = withdrawFeeAccrued.add(
                     _accumulatedInterest
                 );
             } else if (_negativeInterestRate < negInterestRateLast) {
-                if (withdrawFeeMultiplier > _accumulatedInterest) {
-                    withdrawFeeMultiplier = withdrawFeeMultiplier.sub(
+                if (withdrawFeeAccrued > _accumulatedInterest) {
+                    withdrawFeeAccrued = withdrawFeeAccrued.sub(
                         _accumulatedInterest
                     );
                 } else {
-                    withdrawFeeMultiplier = 0;
+                    withdrawFeeAccrued = 0;
                 }
-            } // if interest is the same as last do not change it
+            }
         } else {
-            withdrawFeeMultiplier = 0;
-            //TODO: Here accrue positive interest as well
+            // To be resiliant to Flashloans beeing used to drop withdraw fee to 0 in a single block
+            // we only make it 0 if negative interest is sustained for more then 1 block
+            if (negInterestRateLast == 0) {
+                withdrawFeeAccrued = 0;
+            }
             uint256 _accumulatedInterest = _positiveCumulator.mul(_blockDelta);
             uint128 epoch = getCurrentEpoch();
             uint256 currentRewards = epochRewardValues[epoch];
@@ -217,7 +220,7 @@ contract InterestStrategy is InterestStrategyInterface {
         return true;
     }
 
-    function getBaseCumulators(uint256 _positive, uint256 _negative)
+    function getNormalizedToBase(uint256 _positive, uint256 _negative)
         public
         view
         returns (uint256, uint256)
@@ -248,9 +251,10 @@ contract InterestStrategy is InterestStrategyInterface {
 
     /*
      * Returns the id of the current epoch derived from block.timestamp
+     * Pool Epochs are 1 behind staking epoch
      */
     function getCurrentEpoch() public view returns (uint128) {
-        if (block.timestamp < epoch1Start) {
+        if (block.timestamp < (epoch1Start)) {
             return 0;
         }
 

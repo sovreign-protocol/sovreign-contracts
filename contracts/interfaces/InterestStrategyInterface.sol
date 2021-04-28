@@ -5,7 +5,7 @@ pragma solidity 0.7.6;
 //Describes a cubic parabola
 interface InterestStrategyInterface {
     //Gets the current Multiplier
-    function withdrawFeeMultiplier() external view returns (uint256);
+    function withdrawFeeAccrued() external view returns (uint256);
 
     //Gets the current epoch rewards
     function getEpochRewards(uint128) external view returns (uint256);
