@@ -91,13 +91,13 @@ describe('PoolController', function () {
             it('reverts if not called by DAO', async function () {
                 await expect(
                     poolController.connect(user).setBaseketBalancer(newAddress)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
             });
 
             it('reverts if called with Zero Address', async function () {
                 await expect(
                     poolController.connect(reignDAO).setBaseketBalancer(helpers.zeroAddress)
-                ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
+                ).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
             });
 
             it('sets correct address otherwise', async function () {
@@ -110,13 +110,13 @@ describe('PoolController', function () {
             it('reverts if not called by DAO', async function () {
                 await expect(
                     poolController.connect(user).setSvrToken(newAddress)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
             });
 
             it('reverts if called with Zero Address', async function () {
                 await expect(
                     poolController.connect(reignDAO).setSvrToken(helpers.zeroAddress)
-                ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
+                ).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
             });
 
             it('sets correct address otherwise', async function () {
@@ -129,13 +129,13 @@ describe('PoolController', function () {
             it('reverts if not called by DAO', async function () {
                 await expect(
                     poolController.connect(user).setReignToken(newAddress)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
             });
 
             it('reverts if called with Zero Address', async function () {
                 await expect(
                     poolController.connect(reignDAO).setReignToken(helpers.zeroAddress)
-                ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
+                ).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
             });
 
             it('sets correct address otherwise', async function () {
@@ -148,13 +148,13 @@ describe('PoolController', function () {
             it('reverts if not called by DAO', async function () {
                 await expect(
                     poolController.connect(user).setReignDAO(newAddress)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
             });
 
             it('reverts if called with Zero Address', async function () {
                 await expect(
                     poolController.connect(reignDAO).setReignDAO(helpers.zeroAddress)
-                ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
+                ).to.be.revertedWith('SoV-eign: ZERO_ADDRESS');
             });
 
             it('sets correct address otherwise', async function () {
@@ -167,16 +167,16 @@ describe('PoolController', function () {
 
                 await expect(
                     poolController.connect(reignDAO).setReignToken(newAddress)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
                 await expect(
                     poolController.connect(reignDAO).setSvrToken(newAddress)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
                 await expect(
                     poolController.connect(reignDAO).setBaseketBalancer(newAddress)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
                 await expect(
                     poolController.connect(reignDAO).setReignDAO(newAddress)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
             });
         });
 
@@ -184,13 +184,13 @@ describe('PoolController', function () {
             it('reverts if not called by DAO', async function () {
                 await expect(
                     poolController.connect(user).setTreasoury(newAddress)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
             });
 
             it('reverts if called with Zero Address', async function () {
                 await expect(
                     poolController.connect(reignDAO).setTreasoury(helpers.zeroAddress)
-                ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
+                ).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
             });
 
             it('sets correct address otherwise', async function () {
@@ -203,13 +203,13 @@ describe('PoolController', function () {
             it('reverts if not called by DAO', async function () {
                 await expect(
                     poolController.connect(user).setInterestStrategy(newAddress, pool.address)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
             });
 
             it('reverts if called with Zero Address', async function () {
                 await expect(
                     poolController.connect(reignDAO).setInterestStrategy(helpers.zeroAddress, pool.address)
-                ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
+                ).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
             });
 
             it('sets correct address otherwise', async function () {
@@ -224,13 +224,13 @@ describe('PoolController', function () {
             it('reverts if not called by DAO', async function () {
                 await expect(
                     poolController.connect(user).setOracle(newAddress, pool.address)
-                ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
             });
 
             it('reverts if called with Zero Address', async function () {
                 await expect(
                     poolController.connect(reignDAO).setOracle(helpers.zeroAddress, pool.address)
-                ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
+                ).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
             });
 
             it('sets correct address otherwise', async function () {
@@ -330,7 +330,7 @@ describe('PoolController', function () {
                 poolController.connect(user).createPool(
                     helpers.zeroAddress, interestStrategyAddress, oracle.address,helpers.baseAdjustment
                 )
-            ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
+            ).to.be.revertedWith('SoVReign: FORBIDDEN');
         });
 
         it('reverts if underlying is zero', async function () {
@@ -338,7 +338,7 @@ describe('PoolController', function () {
                 poolController.connect(reignDAO).createPool(
                     helpers.zeroAddress, interestStrategyAddress, oracle.address,helpers.baseAdjustment
                 )
-            ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
+            ).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
         });
 
         it('reverts if pool already exists', async function () {
@@ -349,7 +349,7 @@ describe('PoolController', function () {
                 poolController.connect(reignDAO).createPool(
                     underlying2.address, interestStrategyAddress, oracle.address,helpers.baseAdjustment
                 )
-            ).to.be.revertedWith('SoV-Reign: POOL_EXISTS');
+            ).to.be.revertedWith('SoVReign: POOL_EXISTS');
         });
     }); 
 

@@ -1,6 +1,6 @@
-# SoV-Reign Contracts
+# SoVReign Contracts
 
-This repo has all smart contracts used by SoV-Reign.
+This repo has all smart contracts used by SoVReign.
 
 The `./contracts` folder has the following structure:
 

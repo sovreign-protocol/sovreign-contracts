@@ -28,7 +28,7 @@ contract PoolController is IPoolController {
     event PairCreated(address indexed token, address pair, uint256);
 
     modifier onlyDAO() {
-        require(msg.sender == reignDAO, "SoV-Reign: FORBIDDEN");
+        require(msg.sender == reignDAO, "SoVReign: FORBIDDEN");
         _;
     }
 
@@ -52,11 +52,11 @@ contract PoolController is IPoolController {
         address oracle,
         uint256 adjustment
     ) external override onlyDAO returns (address pool) {
-        require(token != address(0), "SoV-Reign: ZERO_ADDRESS");
-        require(interestStrategy != address(0), "SoV-Reign: ZERO_ADDRESS");
-        require(oracle != address(0), "SoV-Reign: ZERO_ADDRESS");
+        require(token != address(0), "SoVReign: ZERO_ADDRESS");
+        require(interestStrategy != address(0), "SoVReign: ZERO_ADDRESS");
+        require(oracle != address(0), "SoVReign: ZERO_ADDRESS");
 
-        require(getPool[token] == address(0), "SoV-Reign: POOL_EXISTS"); // single check is sufficient
+        require(getPool[token] == address(0), "SoVReign: POOL_EXISTS"); // single check is sufficient
 
         bytes memory bytecode = type(Pool).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(token));
@@ -80,12 +80,12 @@ contract PoolController is IPoolController {
     }
 
     function setTreasoury(address _treasoury) external override onlyDAO {
-        require(_treasoury != address(0), "SoV-Reign: ZERO_ADDRESS");
+        require(_treasoury != address(0), "SoVReign: ZERO_ADDRESS");
         treasoury = _treasoury;
     }
 
     function setReignDAO(address _reignDAO) external override onlyDAO {
-        require(_reignDAO != address(0), "SoV-Reign: ZERO_ADDRESS");
+        require(_reignDAO != address(0), "SoVReign: ZERO_ADDRESS");
         reignDAO = _reignDAO;
     }
 
@@ -94,17 +94,17 @@ contract PoolController is IPoolController {
         override
         onlyDAO
     {
-        require(_basketBalancer != address(0), "SoV-Reign: ZERO_ADDRESS");
+        require(_basketBalancer != address(0), "SoVReign: ZERO_ADDRESS");
         basketBalancer = IBasketBalancer(_basketBalancer);
     }
 
     function setSvrToken(address _svrToken) external override onlyDAO {
-        require(_svrToken != address(0), "SoV-Reign: ZERO_ADDRESS");
+        require(_svrToken != address(0), "SoVReign: ZERO_ADDRESS");
         svrToken = _svrToken;
     }
 
     function setReignToken(address _reignToken) external override onlyDAO {
-        require(_reignToken != address(0), "SoV-Reign: ZERO_ADDRESS");
+        require(_reignToken != address(0), "SoVReign: ZERO_ADDRESS");
         reignToken = _reignToken;
     }
 
@@ -113,12 +113,12 @@ contract PoolController is IPoolController {
         override
         onlyDAO
     {
-        require(strategy != address(0), "SoV-Reign: ZERO_ADDRESS");
+        require(strategy != address(0), "SoVReign: ZERO_ADDRESS");
         getInterestStrategy[pool] = strategy;
     }
 
     function setOracle(address oracle, address pool) external override onlyDAO {
-        require(oracle != address(0), "SoV-Reign: ZERO_ADDRESS");
+        require(oracle != address(0), "SoVReign: ZERO_ADDRESS");
         getOracle[pool] = oracle;
     }
 
