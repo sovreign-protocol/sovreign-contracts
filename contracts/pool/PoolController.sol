@@ -22,7 +22,6 @@ contract PoolController is IPoolController {
     mapping(address => address) public override getPool;
     mapping(address => address) public override getInterestStrategy;
     mapping(address => address) public override getOracle;
-    mapping(address => uint256) public override getAdjustment;
     address[] public override allPools;
 
     event PairCreated(address indexed token, address pair, uint256);
@@ -49,8 +48,7 @@ contract PoolController is IPoolController {
     function createPool(
         address token,
         address interestStrategy,
-        address oracle,
-        uint256 adjustment
+        address oracle
     ) external override onlyDAO returns (address pool) {
         require(token != address(0), "SoV-Reign: ZERO_ADDRESS");
         require(interestStrategy != address(0), "SoV-Reign: ZERO_ADDRESS");
@@ -70,7 +68,6 @@ contract PoolController is IPoolController {
         getPool[token] = pool;
         getInterestStrategy[pool] = interestStrategy;
         getOracle[pool] = oracle;
-        getAdjustment[pool] = adjustment;
         allPools.push(address(pool));
         basketBalancer.addPool(address(pool));
 
@@ -120,14 +117,6 @@ contract PoolController is IPoolController {
     function setOracle(address oracle, address pool) external override onlyDAO {
         require(oracle != address(0), "SoV-Reign: ZERO_ADDRESS");
         getOracle[pool] = oracle;
-    }
-
-    function setAdjustment(uint256 value, address pool)
-        external
-        override
-        onlyDAO
-    {
-        getAdjustment[pool] = value;
     }
 
     function allPoolsLength() external view override returns (uint256) {

@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import * as helpers from './helpers/helpers';
 
 import { 
-    Erc20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy
+    Erc20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy,
 } from '../typechain';
 import * as deploy from './helpers/deploy';
 import { prependOnceListener } from 'process';
@@ -44,6 +44,9 @@ describe('Pool', function () {
         balancer = (
             await deploy.deployContract('BasketBalancerMock',[[], []])
         ) as BasketBalancerMock;
+
+
+        await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
     
    
     });
@@ -60,7 +63,7 @@ describe('Pool', function () {
         ) as PoolController; 
 
         await poolController.connect(reignDAO).createPool(
-            underlying1.address, interestStrategy.address, oracle.address,helpers.baseAdjustment
+            underlying1.address, interestStrategy.address, oracle.address
         )
 
         let poolAddress = await poolController.allPools(0);
@@ -70,7 +73,7 @@ describe('Pool', function () {
         pool = pool.attach(poolAddress);
 
         await poolController.connect(reignDAO).createPool(
-            underlying2.address, interestStrategy.address, oracle.address,helpers.baseAdjustment
+            underlying2.address, interestStrategy.address, oracle.address
         )
 
         let pool2Address = await poolController.allPools(1);
@@ -221,17 +224,24 @@ describe('Pool', function () {
         });
 
         it('returns correct expected withdraw Fee', async function () {
-            await mintSVR(10000,pool);
+
+            await mintSVR(1,pool);
+            let blockBefore = await interestStrategy.blockNumberLast();
+            await helpers.mineBlocks(100)
+            await mintSVR(1000,pool);
+
+            let blockDelta = (await interestStrategy.blockNumberLast()).sub(blockBefore);
 
             let amount = BigNumber.from(1000)
 
-            let expectedWithdrawFee = (await interestStrategy.withdrawFeeMultiplier())
+            let expectedWithdrawFee = (await interestStrategy.withdrawFeeAccrued())
+            .mul(await rewardsPerPool(pool))
             .mul(amount)
-            .mul(await poolController.getTokenPrice(pool.address))
-            .div(await poolController.getReignPrice())
+            .div(await pool.getReserves())
             .div(helpers.tenPow18)
 
 
+            expect(await pool.getWithdrawFeeReign(amount)).to.not.eq(0)
             expect(await pool.getWithdrawFeeReign(amount)).to.be.eq(expectedWithdrawFee)
         });
 
@@ -380,6 +390,11 @@ describe('Pool', function () {
         await poolUsed.connect(user).burn(amountToBurn);
 
         return amountToBurn
+    }
+
+    async function rewardsPerPool(pool:Pool){
+        let rewardsTotal=BigNumber.from(25000000).mul(helpers.tenPow18).div(4600000);
+        return rewardsTotal.mul(await poolController.getTargetAllocation(pool.address)).div(1000000000)
     }
     
 

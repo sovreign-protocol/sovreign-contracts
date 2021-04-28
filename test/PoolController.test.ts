@@ -54,7 +54,7 @@ describe('PoolController', function () {
         ) as PoolController; 
 
         await poolController.connect(reignDAO).createPool(
-            underlying1.address, interestStrategyAddress, oracle.address, helpers.baseAdjustment
+            underlying1.address, interestStrategyAddress, oracle.address
         )
 
         let poolAddress = await poolController.allPools(0);
@@ -262,7 +262,7 @@ describe('PoolController', function () {
             let pool_len = await poolController.allPoolsLength();
             expect(pool_len).to.eq(1);
             await expect(poolController.connect(reignDAO).createPool(
-                underlying2.address, interestStrategyAddress, oracle.address,helpers.baseAdjustment
+                underlying2.address, interestStrategyAddress, oracle.address
             )).to.not.be.reverted;
             let pool_len_after = await poolController.allPoolsLength();
             expect(pool_len_after).to.eq(2);
@@ -270,7 +270,7 @@ describe('PoolController', function () {
 
         it('adds the pools to the balancer list', async function () {
             await expect(poolController.connect(reignDAO).createPool(
-                underlying2.address, interestStrategyAddress, oracle.address,helpers.baseAdjustment
+                underlying2.address, interestStrategyAddress, oracle.address
             )).to.not.be.reverted;
             let all_pools = await balancer.getPools();
             expect(all_pools[0]).to.eq(await pool.token());
@@ -282,7 +282,7 @@ describe('PoolController', function () {
             expect(new_pool).to.eq(last_pool);
 
             await expect(poolController.connect(reignDAO).createPool(
-                underlying2.address, interestStrategyAddress, oracle.address,helpers.baseAdjustment
+                underlying2.address, interestStrategyAddress, oracle.address
             )).to.not.be.reverted;
             last_pool = await poolController.allPools(1);
             new_pool = await poolController.getPool(underlying2.address);
@@ -328,7 +328,7 @@ describe('PoolController', function () {
         it('reverts if unauthorized addresses creates pool', async function () {
             await expect( 
                 poolController.connect(user).createPool(
-                    helpers.zeroAddress, interestStrategyAddress, oracle.address,helpers.baseAdjustment
+                    helpers.zeroAddress, interestStrategyAddress, oracle.address
                 )
             ).to.be.revertedWith('SoV-Reign: FORBIDDEN');
         });
@@ -336,18 +336,18 @@ describe('PoolController', function () {
         it('reverts if underlying is zero', async function () {
             await expect( 
                 poolController.connect(reignDAO).createPool(
-                    helpers.zeroAddress, interestStrategyAddress, oracle.address,helpers.baseAdjustment
+                    helpers.zeroAddress, interestStrategyAddress, oracle.address
                 )
             ).to.be.revertedWith('SoV-Reign: ZERO_ADDRESS');
         });
 
         it('reverts if pool already exists', async function () {
             await expect(poolController.connect(reignDAO).createPool(
-                underlying2.address, interestStrategyAddress, oracle.address,helpers.baseAdjustment
+                underlying2.address, interestStrategyAddress, oracle.address
             )).to.not.be.reverted;
             await expect( 
                 poolController.connect(reignDAO).createPool(
-                    underlying2.address, interestStrategyAddress, oracle.address,helpers.baseAdjustment
+                    underlying2.address, interestStrategyAddress, oracle.address
                 )
             ).to.be.revertedWith('SoV-Reign: POOL_EXISTS');
         });
@@ -370,7 +370,7 @@ describe('PoolController', function () {
 
     async function deployPool2 () {
         await poolController.connect(reignDAO).createPool(
-            underlying2.address, interestStrategyAddress, oracle.address,helpers.baseAdjustment
+            underlying2.address, interestStrategyAddress, oracle.address
         )
         let len = await poolController.allPoolsLength();
         return (await poolController.allPools(len.sub(1)));
