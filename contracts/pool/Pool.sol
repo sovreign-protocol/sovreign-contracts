@@ -30,8 +30,9 @@ contract Pool is IPool, PoolErc20 {
     address public override svrToken;
     address public override reignToken;
     address public override treasoury;
+    address public override liquidityBuffer;
 
-    uint256 private reserve; // uses single storage slot, accessible via getReserves
+    uint256 private reserve;
     uint256 public BASE_MULTIPLIER = 10**18;
     uint256 public depositFeeMultiplier = 100000;
 
@@ -53,18 +54,14 @@ contract Pool is IPool, PoolErc20 {
     }
 
     // called once by the controller at time of deployment
-    function initialize(
-        address _token,
-        address _tresoury,
-        address _svr,
-        address _reign
-    ) external override {
+    function initialize(address _token) external override {
         require(msg.sender == controllerAddress, "UniswapV2: FORBIDDEN"); // sufficient check
-        token = _token;
-        treasoury = _tresoury;
-        svrToken = _svr;
-        reignToken = _reign;
         controller = IPoolController(msg.sender);
+        token = _token;
+        treasoury = controller.treasoury();
+        svrToken = controller.svrToken();
+        reignToken = controller.reignToken();
+        liquidityBuffer = controller.liquidityBuffer();
     }
 
     function getReserves() public view override returns (uint256 _reserve) {
@@ -129,7 +126,7 @@ contract Pool is IPool, PoolErc20 {
                 reign.allowance(msg.sender, address(this)) >= withdrawFee,
                 "Insufficient allowance"
             );
-            reign.transferFrom(msg.sender, treasoury, withdrawFee);
+            reign.transferFrom(msg.sender, liquidityBuffer, withdrawFee);
         }
 
         //Burn LP tokens
@@ -161,7 +158,7 @@ contract Pool is IPool, PoolErc20 {
             controller.getInterestStrategy(address(this));
 
         (uint256 _, uint256 interestRate) =
-            InterestStrategyInterface(interestStrategy).getInterestForReserve(
+            InterestStrategyInterface(interestStrategy).getFormulaOutput(
                 getReserves(),
                 target
             );

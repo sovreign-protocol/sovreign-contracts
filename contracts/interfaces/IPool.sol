@@ -15,6 +15,12 @@ interface IPool {
 
     function treasoury() external view returns (address);
 
+    function liquidityBuffer() external view returns (address);
+
+    function svrToken() external view returns (address);
+
+    function reignToken() external view returns (address);
+
     function getReserves() external view returns (uint256 reserve);
 
     function feeIn() external view returns (uint256);
@@ -22,10 +28,6 @@ interface IPool {
     function feeOut() external view returns (uint256);
 
     function premiumFactor() external view returns (uint256);
-
-    function svrToken() external view returns (address);
-
-    function reignToken() external view returns (address);
 
     function mint(address to) external returns (uint256 liquidity);
 
@@ -35,10 +37,5 @@ interface IPool {
 
     function sync() external;
 
-    function initialize(
-        address,
-        address,
-        address,
-        address
-    ) external;
+    function initialize(address) external;
 }

@@ -21,6 +21,7 @@ describe('Pool', function () {
     let treasury: Signer, treasuryAddress: string;
     let reignDAO: Signer, reignDAOAddress: string;
     let newUser: Signer, newUserAddress:string;
+    let liquidityBufferAddress:string;
 
 
     before(async function () {
@@ -58,7 +59,7 @@ describe('Pool', function () {
 
         poolController = (
             await deploy.deployContract('PoolController', [
-                balancer.address, svr.address, reign.address, reignDAOAddress, treasuryAddress
+                balancer.address, svr.address, reign.address, reignDAOAddress, treasuryAddress, liquidityBufferAddress
             ])
         ) as PoolController; 
 
@@ -212,7 +213,7 @@ describe('Pool', function () {
             let target = await poolController.getTargetSize(pool.address)
             let reservesAfter = (await pool.getReserves()).add(amount)
 
-            let expectedDepositFee = (await interestStrategy.getInterestForReserve(reservesAfter,target))[1]
+            let expectedDepositFee = (await interestStrategy.getFormulaOutput(reservesAfter,target))[1]
             .mul(await pool.depositFeeMultiplier())
             .mul(amount)
             .mul(await poolController.getTokenPrice(pool.address))
@@ -411,12 +412,13 @@ describe('Pool', function () {
         user = accounts[0];
         treasury = accounts[1];
         reignDAO = accounts[2];
-        newUser = accounts[2];
+        newUser = accounts[3];
 
         userAddress = await user.getAddress();
         treasuryAddress = await treasury.getAddress();
         reignDAOAddress = await reignDAO.getAddress();
         newUserAddress = await newUser.getAddress();
+        liquidityBufferAddress = await accounts[4].getAddress();
     }
 
 });

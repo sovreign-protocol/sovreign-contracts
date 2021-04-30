@@ -22,6 +22,7 @@ describe('PoolController', function () {
 
     let user: Signer, userAddress: string;
     let treasoury: Signer, treasouryAddress: string;
+    let liquidityBufferAddress: string;
     let reignDAO: Signer, reignDAOAddress: string;
     let newAddress:string;
 
@@ -55,7 +56,7 @@ describe('PoolController', function () {
 
         poolController = (
             await deploy.deployContract('PoolController', [
-                balancer.address, svr.address, reign.address, reignDAOAddress, treasouryAddress
+                balancer.address, svr.address, reign.address, reignDAOAddress, treasouryAddress, liquidityBufferAddress
             ])
         ) as PoolController; 
 
@@ -421,6 +422,7 @@ describe('PoolController', function () {
         treasouryAddress = await treasoury.getAddress();
         reignDAOAddress = await reignDAO.getAddress();
         newAddress = await accounts[3].getAddress();
+        liquidityBufferAddress = await accounts[4].getAddress();
     }
 
 });

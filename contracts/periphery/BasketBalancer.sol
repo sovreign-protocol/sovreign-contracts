@@ -47,7 +47,6 @@ contract BasketBalancer is IBasketBalancer {
         _;
     }
 
-    // 'controller' here means the PoolController contract
     address public reignDAO;
 
     modifier onlyDAO() {

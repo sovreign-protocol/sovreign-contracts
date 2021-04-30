@@ -45,4 +45,12 @@ interface IPoolController {
     function getTargetSize(address) external view returns (uint256);
 
     function getTargetAllocation(address) external view returns (uint256);
+
+    function treasoury() external view returns (address);
+
+    function liquidityBuffer() external view returns (address);
+
+    function svrToken() external view returns (address);
+
+    function reignToken() external view returns (address);
 }

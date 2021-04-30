@@ -13,9 +13,10 @@ contract PoolController is IPoolController {
     using SafeMath for uint256;
 
     IBasketBalancer public basketBalancer;
-    address public svrToken;
-    address public reignToken;
-    address public treasoury;
+    address public override svrToken;
+    address public override reignToken;
+    address public override treasoury;
+    address public override liquidityBuffer;
 
     address public reignDAO;
 
@@ -36,13 +37,15 @@ contract PoolController is IPoolController {
         address _svrToken,
         address _reignToken,
         address _reignDAO,
-        address _treasoury
+        address _treasoury,
+        address _liquidityBuffer
     ) {
         basketBalancer = IBasketBalancer(_basketBalancer);
         svrToken = _svrToken;
         reignToken = _reignToken;
         reignDAO = _reignDAO;
         treasoury = _treasoury;
+        liquidityBuffer = _liquidityBuffer;
     }
 
     function createPool(
@@ -76,12 +79,7 @@ contract PoolController is IPoolController {
             pool := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
 
-        IPool(pool).initialize(
-            underlyingToken,
-            treasoury,
-            svrToken,
-            reignToken
-        );
+        IPool(pool).initialize(underlyingToken);
 
         getPool[underlyingToken] = pool;
         getInterestStrategy[pool] = interestStrategy;
