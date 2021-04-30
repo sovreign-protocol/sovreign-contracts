@@ -25,30 +25,37 @@ describe('InterestStrategy', function () {
             ) as InterestStrategy;
     });
 
-    describe('interestRate', function () {
+    describe('formula output', function () {
 
         it("returns positive rate when reserves < target", async () => {
 
-            let rates = await interest.getFormulaOutput(100, 110);
+            let output = await interest.getFormulaOutput(100, 110);
             
-            expect(rates[0]).to.gt(0);
-            expect(rates[1]).to.equal(0);
+            expect(output[0]).to.gt(0);
+            expect(output[1]).to.equal(0);
         }); 
 
         it("returns offset when reserves == target", async () => {
 
             let magnitudeAdjustment = await interest.MAGNITUDE_ADJUST();
 
-            let rates  = await interest.getFormulaOutput(100,100);
+            let output  = await interest.getFormulaOutput(100,100);
             let offset = (await interest.offset()).div(BigNumber.from(10).pow(magnitudeAdjustment));
 
-            expect(rates[0]).to.equal(offset);
+            expect(output[0]).to.equal(offset);
         });
 
-        it("returns negative rates when reserves > target", async () => {
-            let rates = await interest.getFormulaOutput(110, 100);
-            expect(rates[0]).to.equal(0);
-            expect(rates[1]).to.gt(0);
+        it("returns negative output when reserves are much bigger then target", async () => {
+            let output = await interest.getFormulaOutput(110, 100);
+            expect(output[0]).to.equal(0);
+            expect(output[1]).to.gt(0);
+        }); 
+
+        it("returns positive output when reserves a little target", async () => {
+            let output = await interest.getFormulaOutput(1020000, 1000000);
+            expect(output[0]).to.gt(0);
+            expect(output[1]).to.equal(0);
+
         }); 
         
         it("returns for large numbers", async () => {
@@ -56,9 +63,9 @@ describe('InterestStrategy', function () {
             let reserves = BigNumber.from(1400000000000000).mul(helpers.tenPow18); // 1.4 * 10**33
             let target   = BigNumber.from(700000000000000).mul(helpers.tenPow18);
 
-            let rates = await interest.getFormulaOutput(reserves,target);
-            expect(rates[0]).to.equal(0);
-            expect(rates[1]).to.gt(0);
+            let output = await interest.getFormulaOutput(reserves,target);
+            expect(output[0]).to.equal(0);
+            expect(output[1]).to.gt(0);
         }); 
     })
     describe('delta', function () {
@@ -142,39 +149,6 @@ describe('InterestStrategy', function () {
         });
     })
 
-    /*
-    describe('base Interest', function () {
-        it("returns correct base Interest for Delta = 0", async () => {
-            let magnitudeAdjustment = await interest.MAGNITUDE_ADJUST();
-
-            let rates  = await interest.getBaseInterest();
-            let offset = (await interest.offset()).div(BigNumber.from(10).pow(magnitudeAdjustment));
-
-            expect(rates[0]).to.equal(offset);
-        });
-
-        it("returns correct base Interest for Delta > 0", async () => {
-            let newBaseDelta = BigNumber.from(-15).mul(helpers.tenPow18);
-            await interest.connect(reignDAO).setBaseDelta(newBaseDelta)
-
-
-            let rates  = await interest.getBaseInterest();
-            let expected = (await interest.getFormulaOutput(115, 100));
-            expect(rates[1]).to.equal(expected[1]);
-        });
-
-        it("returns correct base Interest for Delta < 0", async () => {
-            let newBaseDelta = BigNumber.from(15).mul(helpers.tenPow18);
-            await interest.connect(reignDAO).setBaseDelta(newBaseDelta);
-
-            let rates  = await interest.getBaseInterest();
-            let expected = (await interest.getFormulaOutput(85,100));
-            expect(rates[0]).to.equal(expected[0]);
-        });
-    });
-
-    */
-
     describe('mock inputs', function () {
         it("returns correct values for mock inputs 1", async () => {
 
@@ -204,6 +178,28 @@ describe('InterestStrategy', function () {
                 (await interest.getEpochRewards(await helpers.getCurrentEpoch())).div(helpers.tenPow18)
                 ).to.be.eq(blockDelta)
         }); 
+
+        it("returns correct values for mock inputs 3", async () => {
+
+            let newBaseDelta = BigNumber.from(-15).mul(helpers.tenPow18);
+
+            await interest.connect(reignDAO).setBaseDelta(newBaseDelta)
+
+            let reserves = BigNumber.from(1150000).mul(helpers.tenPow18);
+            let target   = BigNumber.from(1000000).mul(helpers.tenPow18);
+
+            let blockBefore = await interest.blockNumberLast();
+            await interest.accrueInterest(reserves,target);
+            let blockAfter = await interest.blockNumberLast();
+
+            let blockDelta = (blockAfter.sub(blockBefore))
+
+            // as base Delta is -15 for inputs with that Delta the normalizes value is 1
+            // and accumulated value should equal the number of blocks
+            expect(await interest.withdrawFeeAccrued()).to.be.eq(blockDelta)
+        }); 
+
+    
            
     })
 
