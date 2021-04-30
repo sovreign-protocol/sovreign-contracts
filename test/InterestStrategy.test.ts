@@ -29,7 +29,7 @@ describe('InterestStrategy', function () {
 
         it("returns positive rate when reserves < target", async () => {
 
-            let rates = await interest.getInterestForReserve(100, 110);
+            let rates = await interest.getFormulaOutput(100, 110);
             
             expect(rates[0]).to.gt(0);
             expect(rates[1]).to.equal(0);
@@ -39,14 +39,14 @@ describe('InterestStrategy', function () {
 
             let magnitudeAdjustment = await interest.MAGNITUDE_ADJUST();
 
-            let rates  = await interest.getInterestForReserve(100,100);
+            let rates  = await interest.getFormulaOutput(100,100);
             let offset = (await interest.offset()).div(BigNumber.from(10).pow(magnitudeAdjustment));
 
             expect(rates[0]).to.equal(offset);
         });
 
         it("returns negative rates when reserves > target", async () => {
-            let rates = await interest.getInterestForReserve(110, 100);
+            let rates = await interest.getFormulaOutput(110, 100);
             expect(rates[0]).to.equal(0);
             expect(rates[1]).to.gt(0);
         }); 
@@ -56,7 +56,7 @@ describe('InterestStrategy', function () {
             let reserves = BigNumber.from(1400000000000000).mul(helpers.tenPow18); // 1.4 * 10**33
             let target   = BigNumber.from(700000000000000).mul(helpers.tenPow18);
 
-            let rates = await interest.getInterestForReserve(reserves,target);
+            let rates = await interest.getFormulaOutput(reserves,target);
             expect(rates[0]).to.equal(0);
             expect(rates[1]).to.gt(0);
         }); 
@@ -110,7 +110,7 @@ describe('InterestStrategy', function () {
 
         it("reverts if setOffset is called by other then DAO", async () => {
             let newValue = BigNumber.from(5);
-            await expect(interest.connect(user).setOffset(newValue)).to.be.revertedWith("SoVReign: FORBIDDEN")
+            await expect(interest.connect(user).setOffset(newValue)).to.be.revertedWith("Only the DAO can execute this")
         });
 
         it("sets correct baseDelta", async () => {
@@ -121,7 +121,7 @@ describe('InterestStrategy', function () {
 
         it("reverts if setOffset is called by other then DAO", async () => {
             let newValue = BigNumber.from(5);
-            await expect(interest.connect(user).setBaseDelta(newValue)).to.be.revertedWith("SoVReign: FORBIDDEN")
+            await expect(interest.connect(user).setBaseDelta(newValue)).to.be.revertedWith("Only the DAO can execute this")
         });
         
         it("sets correct multiplier", async () => {
@@ -131,7 +131,7 @@ describe('InterestStrategy', function () {
         });
         it("reverts if setMultiplier is called by other then DAO", async () => {
             let newValue = BigNumber.from(5);
-            await expect(interest.connect(user).setMultiplier(newValue)).to.be.revertedWith("SoVReign: FORBIDDEN")
+            await expect(interest.connect(user).setMultiplier(newValue)).to.be.revertedWith("Only the DAO can execute this")
         });
 
     })
@@ -142,6 +142,7 @@ describe('InterestStrategy', function () {
         });
     })
 
+    /*
     describe('base Interest', function () {
         it("returns correct base Interest for Delta = 0", async () => {
             let magnitudeAdjustment = await interest.MAGNITUDE_ADJUST();
@@ -158,7 +159,7 @@ describe('InterestStrategy', function () {
 
 
             let rates  = await interest.getBaseInterest();
-            let expected = (await interest.getInterestForReserve(115, 100));
+            let expected = (await interest.getFormulaOutput(115, 100));
             expect(rates[1]).to.equal(expected[1]);
         });
 
@@ -167,10 +168,12 @@ describe('InterestStrategy', function () {
             await interest.connect(reignDAO).setBaseDelta(newBaseDelta);
 
             let rates  = await interest.getBaseInterest();
-            let expected = (await interest.getInterestForReserve(85,100));
+            let expected = (await interest.getFormulaOutput(85,100));
             expect(rates[0]).to.equal(expected[0]);
         });
     });
+
+    */
 
     describe('mock inputs', function () {
         it("returns correct values for mock inputs 1", async () => {
@@ -179,7 +182,7 @@ describe('InterestStrategy', function () {
             let target   = BigNumber.from(1000000).mul(helpers.tenPow18);
 
             let delta = await interest.getDelta(reserves,target);
-            let rates = await interest.getInterestForReserve(reserves,target);
+            let rates = await interest.getFormulaOutput(reserves,target);
 
             expect(rates[0]).to.equal(904347826086);
             expect(rates[1]).to.equal(0);
@@ -219,9 +222,10 @@ describe('InterestStrategy', function () {
 
             let blockDelta = blockAfter.sub(blockBefore)
 
-            let interests = (await interest.getInterestForReserve(11000,10000))
-            let expectedWithdrawFeeMultiplier = (await interest.getNormalizedToBase(interests[0],interests[1]))[1]
-            .mul(blockDelta)
+            let interests = (await interest.getFormulaOutput(11000,10000))
+            let expectedWithdrawFeeMultiplier = interests[1].mul(helpers.tenPow18).div(
+                (await interest.getFormulaOutput(10000,10000)
+                )[0]).mul(blockDelta)
 
             expect(await interest.withdrawFeeAccrued()).to.not.be.eq(BigNumber.from(0))
             expect(await interest.withdrawFeeAccrued()).to.be.eq(expectedWithdrawFeeMultiplier)
@@ -234,9 +238,10 @@ describe('InterestStrategy', function () {
             let blockAfter = await interest.blockNumberLast();
             let blockDelta = blockAfter.sub(blockBefore)
 
-            let interestsBase = (await interest.getInterestForReserve(11000,10000))
-            let expectedWithdrawFeeMultiplier = (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[1]
-            .mul(blockDelta)
+            let baseOutput = (await interest.getFormulaOutput(11000,10000))
+            let expectedWithdrawFeeMultiplier = baseOutput[1].mul(helpers.tenPow18).div(
+                (await interest.getFormulaOutput(10000,10000)
+                )[0]).mul(blockDelta)
 
             expect(await interest.withdrawFeeAccrued()).to.not.be.eq(BigNumber.from(0))
             expect(await interest.withdrawFeeAccrued()).to.be.eq(expectedWithdrawFeeMultiplier)
@@ -247,10 +252,12 @@ describe('InterestStrategy', function () {
             blockAfter = await interest.blockNumberLast();
             let blockDelta2 = blockAfter.sub(blockBefore)
 
-            interestsBase = (await interest.getInterestForReserve(12000,10000))
+            baseOutput = (await interest.getFormulaOutput(12000,10000))
 
             expectedWithdrawFeeMultiplier = expectedWithdrawFeeMultiplier.add(
-                (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[1]
+                baseOutput[1].mul(helpers.tenPow18).div(
+                    (await interest.getFormulaOutput(10000,10000)
+                )[0])
             .mul(blockDelta2))
 
             expect(await interest.withdrawFeeAccrued()).to.be.eq(expectedWithdrawFeeMultiplier)
@@ -303,9 +310,10 @@ describe('InterestStrategy', function () {
             let blockAfter = await interest.blockNumberLast();
             let blockDelta = blockAfter.sub(blockBefore)
 
-            let interestsBase = (await interest.getInterestForReserve(10000,11000))
-            let expectedEpochRewards = (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[0]
-            .mul(blockDelta)
+            let baseOutput = (await interest.getFormulaOutput(10000,11000))
+            let expectedEpochRewards = baseOutput[0].mul(helpers.tenPow18).div(
+                (await interest.getFormulaOutput(10000,10000)
+                )[0]).mul(blockDelta)
 
             expect(await interest.getEpochRewards(await helpers.getCurrentEpoch())).to.be.eq(expectedEpochRewards)
             
@@ -314,11 +322,13 @@ describe('InterestStrategy', function () {
             blockAfter = await interest.blockNumberLast();
             let blockDelta2 = blockAfter.sub(blockBefore)
 
-            interestsBase = (await interest.getInterestForReserve(10000,11000))
+            baseOutput = (await interest.getFormulaOutput(10000,11000))
 
             expectedEpochRewards = expectedEpochRewards.add(
-                (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[0]
-            .mul(blockDelta2))
+                    baseOutput[0].mul(helpers.tenPow18).div((
+                        await interest.getFormulaOutput(10000,10000)
+                )[0]
+            ).mul(blockDelta2))
 
             expect(await interest.getEpochRewards(await helpers.getCurrentEpoch())).to.be.eq(expectedEpochRewards)
         });
@@ -331,9 +341,11 @@ describe('InterestStrategy', function () {
             let blockAfter = await interest.blockNumberLast();
             let blockDelta = blockAfter.sub(blockBefore)
 
-            let interestsBase = (await interest.getInterestForReserve(10000,11000))
-            let expectedEpochRewards = (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[0]
-            .mul(blockDelta)
+            let baseOutput = (await interest.getFormulaOutput(10000,11000))
+            //normalise against baseDelta which is 0
+            let expectedEpochRewards = baseOutput[0].mul(helpers.tenPow18).div(
+                (await interest.getFormulaOutput(10000,10000)
+                )[0]).mul(blockDelta)
 
             expect(await interest.getEpochRewards(await helpers.getCurrentEpoch())).to.be.eq(expectedEpochRewards)
     
@@ -347,9 +359,10 @@ describe('InterestStrategy', function () {
             blockAfter = await interest.blockNumberLast();
             let blockDelta2 = blockAfter.sub(blockBefore)
 
-            interestsBase = (await interest.getInterestForReserve(10000,11000))
-            expectedEpochRewards = (await interest.getNormalizedToBase(interestsBase[0],interestsBase[1]))[0]
-            .mul(blockDelta2)
+            baseOutput = (await interest.getFormulaOutput(10000,11000))
+            expectedEpochRewards = baseOutput[0].mul(helpers.tenPow18).div(
+                (await interest.getFormulaOutput(10000,10000)
+                )[0]).mul(blockDelta2)
 
             expect(await interest.getEpochRewards(await helpers.getCurrentEpoch())).to.be.eq(expectedEpochRewards)
     

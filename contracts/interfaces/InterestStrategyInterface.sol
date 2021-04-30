@@ -11,7 +11,7 @@ interface InterestStrategyInterface {
     function getEpochRewards(uint128) external view returns (uint256);
 
     //Computes what the interest is at the point on the curve at the difference between reserves and target
-    function getInterestForReserve(uint256 reserves, uint256 target)
+    function getFormulaOutput(uint256 reserves, uint256 target)
         external
         view
         returns (uint256, uint256);
