@@ -3,7 +3,7 @@ name: contracts-cicd
 on: [push]
 
 jobs:
-  compile:
+  compile-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -13,25 +13,12 @@ jobs:
           node-version: 16.x
       - uses: actions/cache@v2
         with:
-          path: ~/.npm
+          path: '**/node_modules'
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+      - name: Install
+        if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm install
       - name: Compile
         run: hardhat compile
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Use Node.js 16.x
-        uses: actions/setup-node@v1
-        with:
-          node-version: 16.x
-      - uses: actions/cache@v2
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
       - name: Test
         run: hardhat test
