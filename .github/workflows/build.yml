@@ -14,11 +14,11 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: '**/node_modules'
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
       - name: Install
         if: steps.npm-cache.outputs.cache-hit != 'true'
         run: npm install
       - name: Compile
-        run: hardhat compile
+        run: $(npm bin hardhat)/hardhat compile
       - name: Test
-        run: hardhat test
+        run: $(npm bin hardhat)/hardhat test
