@@ -1,0 +1,30 @@
+name: contracts-cicd
+
+on:
+  push:
+
+jobs:
+  compile:
+    runs-on: "node:16-alpine"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Compile
+        run: hardhat compile
+  test:
+    runs-on: "node:16-alpine"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Test
+        run: hardhat test
