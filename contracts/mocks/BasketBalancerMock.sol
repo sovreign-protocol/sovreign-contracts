@@ -20,26 +20,18 @@ contract BasketBalancerMock is IBasketBalancer {
     function updateAllocationVote(
         address[] calldata pools,
         uint256[] calldata allocations
-    ) public override {}
+    ) public {}
 
-    function updateBasketBalance() external pure override returns (bool) {
-        return true;
-    }
+    function updateBasketBalance() external pure {}
 
-    function computeAllocation()
-        public
-        pure
-        override
-        returns (uint256[] memory)
-    {
+    function computeAllocation() public pure returns (uint256[] memory) {
         uint256[] memory empty;
         return empty;
     }
 
-    function getAllocationVote(address voter)
+    function getAllocationVote()
         public
         pure
-        override
         returns (
             address[] memory,
             uint256[] memory,
@@ -65,7 +57,7 @@ contract BasketBalancerMock is IBasketBalancer {
         return allPools.length;
     }
 
-    function getPools() public view override returns (address[] memory) {
+    function getPools() public view returns (address[] memory) {
         return allPools;
     }
 }
