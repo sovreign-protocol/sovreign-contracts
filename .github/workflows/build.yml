@@ -24,9 +24,3 @@ jobs:
         run: npm run compile
       - name: Test
         run: npm run test
-#      - name: Clean
-#        run: $(npm bin hardhat)/hardhat clean
-#      - name: Compile
-#        run: $(npm bin hardhat)/hardhat compile
-#      - name: Test
-#        run: $(npm bin hardhat)/hardhat test
