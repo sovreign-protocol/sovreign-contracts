@@ -26,7 +26,7 @@ contract BasketBalancer is IBasketBalancer {
     mapping(address => uint256) private poolAllocation;
     mapping(address => uint256) private poolAllocationBefore;
 
-    mapping(address => mapping(uint256 => bool)) public hasVotedInEpoch;
+    mapping(address => mapping(uint128 => bool)) private votedInEpoch;
 
     IReign private reign;
     address public controller;
@@ -121,9 +121,15 @@ contract BasketBalancer is IBasketBalancer {
         uint128 _epoch = getCurrentEpoch();
 
         require(
-            hasVotedInEpoch[msg.sender][_epoch] == false,
+            votedInEpoch[msg.sender][_epoch] == false,
             "Can not vote twice in an epoch"
         );
+
+        uint256 _totalPower = reign.bondStaked();
+        // we take the voting power from the end of the last epoch to avoid flashloan attacks
+        // or users sending their stake to multiple wallets and vote again
+        uint256 _votingPower = reign.votingPowerAtTs(msg.sender, lastEpochEnd);
+        uint256 _remainingPower = _totalPower.sub(_votingPower);
 
         uint256 amountAllocated = 0;
         for (uint256 i = 0; i < allPools.length; i++) {
@@ -140,9 +146,6 @@ contract BasketBalancer is IBasketBalancer {
                 require(_current - _votedFor <= maxDelta, "Above Max Delta");
             }
             // if all checkst have passed we update the allocation vote
-            uint256 _totalPower = reign.bondStaked();
-            uint256 _votingPower = reign.balanceOf(msg.sender);
-            uint256 _remainingPower = _totalPower.sub(_votingPower);
 
             continuousVote[allPools[i]] = (
                 _current.mul(_remainingPower).add(_votedFor.mul(_votingPower))
@@ -156,7 +159,7 @@ contract BasketBalancer is IBasketBalancer {
             "Allocation is not complete"
         );
 
-        hasVotedInEpoch[msg.sender][_epoch] = true;
+        votedInEpoch[msg.sender][_epoch] = true;
 
         //emit event
     }
@@ -226,10 +229,6 @@ contract BasketBalancer is IBasketBalancer {
         }
     }
 
-    function getPools() public view returns (address[] memory) {
-        return allPools;
-    }
-
     //Returns the id of the current epoch derived from block.timestamp
     function getCurrentEpoch() public view returns (uint128) {
         if (block.timestamp < epoch1Start) {
@@ -237,5 +236,18 @@ contract BasketBalancer is IBasketBalancer {
         }
 
         return uint128((block.timestamp - epoch1Start) / EPOCH_DURATION + 1);
+    }
+
+    function getPools() external view returns (address[] memory) {
+        return allPools;
+    }
+
+    function hasVotedInEpoch(address user, uint128 epoch)
+        external
+        view
+        override
+        returns (bool)
+    {
+        return votedInEpoch[user][epoch];
     }
 }

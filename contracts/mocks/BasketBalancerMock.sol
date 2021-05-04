@@ -2,8 +2,11 @@
 pragma solidity 0.7.6;
 
 import "../interfaces/IBasketBalancer.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract BasketBalancerMock is IBasketBalancer {
+    using SafeMath for uint128;
+
     uint256 public override FULL_ALLOCATION = 1000000000; // 9 decimals precision
 
     address[] allPools;
@@ -27,6 +30,19 @@ contract BasketBalancerMock is IBasketBalancer {
     function computeAllocation() public pure returns (uint256[] memory) {
         uint256[] memory empty;
         return empty;
+    }
+
+    function hasVotedInEpoch(address user, uint128 epoch)
+        external
+        pure
+        override
+        returns (bool)
+    {
+        if (epoch.mod(2) == 0) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     function getAllocationVote()

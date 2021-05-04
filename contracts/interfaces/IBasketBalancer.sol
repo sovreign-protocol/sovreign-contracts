@@ -5,6 +5,8 @@ pragma experimental ABIEncoderV2;
 interface IBasketBalancer {
     function addPool(address pool) external returns (uint256);
 
+    function hasVotedInEpoch(address, uint128) external view returns (bool);
+
     function getTargetAllocation(address pool) external view returns (uint256);
 
     function FULL_ALLOCATION() external view returns (uint256);

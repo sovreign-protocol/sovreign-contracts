@@ -8,7 +8,7 @@ import * as deploy from './helpers/deploy';
 import { diamondAsFacet } from './helpers/diamond';
 import { moveAtTimestamp } from './helpers/helpers';
 
-describe('Barn', function () {
+describe('Reign', function () {
     const amount = BigNumber.from(100).mul(BigNumber.from(10).pow(18));
 
     let reign: ReignFacet, bond: ERC20Mock, rewardsMock: RewardsMock, changeRewards: ChangeRewardsFacet;

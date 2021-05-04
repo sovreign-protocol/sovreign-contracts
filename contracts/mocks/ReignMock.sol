@@ -4,7 +4,6 @@ pragma solidity 0.7.6;
 import "../interfaces/IRewards.sol";
 
 contract ReignMock {
-
     IRewards public r;
     uint256 public bondStaked;
     mapping(address => uint256) private balances;
@@ -34,6 +33,14 @@ contract ReignMock {
     }
 
     function balanceOf(address user) public view returns (uint256) {
+        return balances[user];
+    }
+
+    function votingPowerAtTs(address user, uint256 ts)
+        public
+        view
+        returns (uint256)
+    {
         return balances[user];
     }
 }
