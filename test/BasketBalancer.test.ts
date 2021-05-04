@@ -3,7 +3,7 @@ import { BigNumber, Signer } from 'ethers';
 import * as helpers from './helpers/helpers';
 import { expect } from 'chai';
 import * as deploy from './helpers/deploy';
-import {BasketBalancer, Erc20Mock, ReignMock, Rewards} from "../typechain";
+import {BasketBalancer, Erc20Mock, ReignMock, Rewards} from '../typechain';
 
 const address1 = '0x0000000000000000000000000000000000000001';
 const address2 = '0x0000000000000000000000000000000000000002';

@@ -64,7 +64,7 @@ contract Pool is IPool, PoolErc20 {
         liquidityBuffer = controller.liquidityBuffer();
     }
 
-    //recieve liquidty mint LP tokens and mint SVR tokens
+    //receive liquidity: mint LP tokens and mint SVR tokens
     function mint(address to)
         external
         override
