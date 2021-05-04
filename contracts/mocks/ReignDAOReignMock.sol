@@ -3,7 +3,7 @@ pragma solidity ^0.7.1;
 
 import "../interfaces/IReign.sol";
 
-contract GovernanceReignMock {
+contract ReignDAOReignMock {
 
     uint256 private _bondStaked;
     mapping(address => uint256) private _votingPowerAtTs;
