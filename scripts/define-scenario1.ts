@@ -1,7 +1,7 @@
 import {DeployConfig} from "./config";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
-import {Governance, PoolController, ReignFacet, ReignToken, Rewards} from "../typechain";
-import * as helpers from "../test/helpers/governance-helpers";
+import {ReignDAO, PoolController, ReignFacet, ReignToken, Rewards} from "../typechain";
+import * as helpers from "../test/helpers/reigndao-helpers";
 import {diamondAsFacet} from "../test/helpers/diamond";
 import {minute} from "../test/helpers/time";
 import {moveAtTimestamp} from "../test/helpers/helpers";
@@ -12,7 +12,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     const reignToken = c.reignToken as ReignToken;
     const reignDiamond = c.reignDiamond as Contract;
     const reignFacet = await diamondAsFacet(reignDiamond, 'ReignFacet') as ReignFacet;
-    const reignDAO = c.reignDAO as Governance;
+    const reignDAO = c.reignDAO as ReignDAO;
     const poolController = c.poolController as PoolController;
     const rewards = c.rewards as Rewards;
 

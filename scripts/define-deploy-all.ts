@@ -2,7 +2,7 @@ import {DeployConfig} from "./config";
 import * as deploy from "../test/helpers/deploy";
 import {
     BasketBalancer,
-    Governance,
+    ReignDAO,
     InterestStrategy,
     PoolController,
     Reign,
@@ -84,11 +84,11 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     console.log(`SvrToken deployed at: ${svrToken.address.toLowerCase()}`);
 
     ///////////////////////////
-    // Deploy "Governance" contract:
+    // Deploy "ReignDAO" contract:
     ///////////////////////////
-    const reignDAO = await deploy.deployContract('Governance') as Governance;
+    const reignDAO = await deploy.deployContract('ReignDAO') as ReignDAO;
     c.reignDAO = reignDAO;
-    console.log(`Governance deployed at: ${reignDAO.address.toLowerCase()}`);
+    console.log(`ReignDAO deployed at: ${reignDAO.address.toLowerCase()}`);
 
     ///////////////////////////
     // Deploy "Rewards" contract:
@@ -125,9 +125,9 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     await reignDiamondFacet.connect(c.sovReignOwnerAcct).initReign(reignToken.address, rewards.address);
 
     ///////////////////////////
-    // Init "Governance":
+    // Init "ReignDAO":
     ///////////////////////////
-    console.log(`Calling initialize() at '${reignDAO.address.toLowerCase()}' (Governance contract)`);
+    console.log(`Calling initialize() at '${reignDAO.address.toLowerCase()}' (ReignDAO contract)`);
     await reignDAO.connect(c.sovReignOwnerAcct).initialize(reignDiamond.address);
 
     ///////////////////////////

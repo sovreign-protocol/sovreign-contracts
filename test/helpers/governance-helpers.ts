@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { BigNumber, ContractFactory } from 'ethers';
-import { GovernanceReignMock, Governance } from '../../typechain';
+import { ReignDAOReignMock, ReignDAO } from '../../typechain';
 
 enum ProposalState {
     WarmUp,
@@ -18,20 +18,20 @@ enum ProposalState {
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 export const tenPow18 = BigNumber.from(10).pow(18);
 
-export async function deployReign (): Promise<GovernanceReignMock> {
-    const ReignMock: ContractFactory = await ethers.getContractFactory('GovernanceReignMock');
-    const reign: GovernanceReignMock = (await ReignMock.deploy()) as GovernanceReignMock;
+export async function deployReign (): Promise<ReignDAOReignMock> {
+    const ReignMock: ContractFactory = await ethers.getContractFactory('ReignDAOReignMock');
+    const reign: ReignDAOReignMock = (await ReignMock.deploy()) as ReignDAOReignMock;
     await reign.deployed();
 
     return reign;
 }
 
-export async function deployGovernance (): Promise<Governance> {
-    const Governance: ContractFactory = await ethers.getContractFactory('Governance');
-    const governance: Governance = (await Governance.deploy()) as Governance;
-    await governance.deployed();
+export async function deployReignDAO (): Promise<ReignDAO> {
+    const ReignDAO: ContractFactory = await ethers.getContractFactory('ReignDAO');
+    const reignDAO: ReignDAO = (await ReignDAO.deploy()) as ReignDAO;
+    await reignDAO.deployed();
 
-    return governance;
+    return reignDAO;
 }
 
 export async function getLatestBlock (): Promise<any> {
