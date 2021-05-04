@@ -206,7 +206,7 @@ contract InterestStrategy is InterestStrategyInterface {
             reserves > 0,
             "SoVReign InterestStrategy: reserves can not be 0"
         );
-        require(target > 0, "SoVReign InterestStrategy: reserves can not be 0");
+        require(target > 0, "SoVReign InterestStrategy: target can not be 0");
 
         int256 _delta = getDelta(reserves, target);
         int256 _interestInt =
@@ -281,8 +281,6 @@ contract InterestStrategy is InterestStrategyInterface {
     function _getBaseOutput() internal view returns (uint256, uint256) {
         int256 target = 1 * 10**26;
         int256 reserves = target.sub(target.mul(baseDelta).div(SCALER));
-        require(target > 0);
-        require(reserves > 0);
 
         return getFormulaOutput(uint256(reserves), uint256(target));
     }

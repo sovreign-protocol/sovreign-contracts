@@ -66,7 +66,21 @@ describe('InterestStrategy', function () {
             let output = await interest.getFormulaOutput(reserves,target);
             expect(output[0]).to.equal(0);
             expect(output[1]).to.gt(0);
-        }); 
+        });
+        
+        it("should revert if reserves or target is 0 ", async () => {
+
+            let reserves = BigNumber.from(1400000000000000).mul(helpers.tenPow18); // 1.4 * 10**33
+            let target   = BigNumber.from(700000000000000).mul(helpers.tenPow18);
+
+            await expect(
+                interest.getFormulaOutput(reserves,0)
+            ).to.be.revertedWith("SoVReign InterestStrategy: target can not be 0");
+
+            await expect(
+                interest.getFormulaOutput(0,target)
+            ).to.be.revertedWith("SoVReign InterestStrategy: reserves can not be 0");
+        });
     })
     describe('delta', function () {
 
@@ -114,7 +128,6 @@ describe('InterestStrategy', function () {
             await interest.connect(reignDAO).setOffset(newValue);
             expect(await interest.offset()).to.be.eq(newValue)
         });
-
         it("reverts if setOffset is called by other then DAO", async () => {
             let newValue = BigNumber.from(5);
             await expect(interest.connect(user).setOffset(newValue)).to.be.revertedWith("Only the DAO can execute this")
@@ -125,12 +138,12 @@ describe('InterestStrategy', function () {
             await interest.connect(reignDAO).setBaseDelta(newValue);
             expect(await interest.baseDelta()).to.be.eq(newValue)
         });
-
-        it("reverts if setOffset is called by other then DAO", async () => {
+        it("reverts if baseDelta is called by other then DAO", async () => {
             let newValue = BigNumber.from(5);
             await expect(interest.connect(user).setBaseDelta(newValue)).to.be.revertedWith("Only the DAO can execute this")
         });
-        
+
+    
         it("sets correct multiplier", async () => {
             let newValue = BigNumber.from(5);
             await interest.connect(reignDAO).setMultiplier(newValue);
@@ -140,7 +153,6 @@ describe('InterestStrategy', function () {
             let newValue = BigNumber.from(5);
             await expect(interest.connect(user).setMultiplier(newValue)).to.be.revertedWith("Only the DAO can execute this")
         });
-
     })
 
     describe('epochs', function () {
@@ -196,7 +208,7 @@ describe('InterestStrategy', function () {
 
             // as base Delta is -15 for inputs with that Delta the normalizes value is 1
             // and accumulated value should equal the number of blocks
-            expect(await interest.withdrawFeeAccrued()).to.be.eq(blockDelta)
+            expect(await (await interest.withdrawFeeAccrued()).div(helpers.tenPow18)).to.be.eq(blockDelta)
         }); 
 
     
@@ -209,6 +221,18 @@ describe('InterestStrategy', function () {
             let multiplier = await interest.withdrawFeeAccrued();
             await interest.accrueInterest(0,1);
             expect(await interest.withdrawFeeAccrued()).to.be.equal(multiplier)
+        });
+
+        it('skips accrual if called in same block', async function () {
+
+            helpers.setAutomine(false)
+            let multiplier = await interest.withdrawFeeAccrued();
+            await interest.accrueInterest(11000,10000);
+            expect(await interest.withdrawFeeAccrued()).to.be.equal(multiplier)
+            //this should not change the multiplier
+            await interest.accrueInterest(11000,10000);
+            expect(await interest.withdrawFeeAccrued()).to.be.equal(multiplier)
+            helpers.setAutomine(true)
         });
 
         it('returns correct withdraw fee multiplier', async function () {
@@ -260,18 +284,18 @@ describe('InterestStrategy', function () {
         });
 
         it('correctly reduces withdraw fee multiplier', async function () {
-            await interest.accrueInterest(12000,10000);
+            await interest.accrueInterest(10800,10000);
 
             let withdrawFeeAccruedBefore = await interest.withdrawFeeAccrued()
-            await interest.accrueInterest(11000,10000);
+            await interest.accrueInterest(10700, 10000);
+            expect(await interest.withdrawFeeAccrued()).to.be.lt(withdrawFeeAccruedBefore)
+
+            withdrawFeeAccruedBefore = await interest.withdrawFeeAccrued()
+            await interest.accrueInterest(10600, 10000);
             expect(await interest.withdrawFeeAccrued()).to.be.lt(withdrawFeeAccruedBefore)
 
             withdrawFeeAccruedBefore = await interest.withdrawFeeAccrued()
             await interest.accrueInterest(10500, 10000);
-            expect(await interest.withdrawFeeAccrued()).to.be.lt(withdrawFeeAccruedBefore)
-
-            withdrawFeeAccruedBefore = await interest.withdrawFeeAccrued()
-            await interest.accrueInterest(10400, 10000);
             expect(await interest.withdrawFeeAccrued()).to.be.lt(withdrawFeeAccruedBefore)
         });
 

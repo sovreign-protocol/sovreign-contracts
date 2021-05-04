@@ -58,6 +58,9 @@ export async function getCurrentEpoch(): Promise<number> {
 export async function contractAt(name: string, address: string): Promise<Contract> {
     return await ethers.getContractAt(name, address);
 }
+export async function setAutomine(val: boolean) {
+    await ethers.provider.send("evm_setAutomine", [val])
+}
 
 export function addMinutes(date: Date, minutes: number): Date {
     return new Date(date.getTime() + (minutes * 60000));
