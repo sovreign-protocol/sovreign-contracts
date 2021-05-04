@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 contract PoolController is IPoolController {
     using SafeMath for uint256;
 
-    IBasketBalancer public basketBalancer;
+    IBasketBalancer private basketBalancer;
     address public override svrToken;
     address public override reignToken;
     address public override treasoury;
@@ -200,5 +200,9 @@ contract PoolController is IPoolController {
             IOracle(getOracle[allPools[0]]).consult(reignToken, 10**18);
 
         return reign_price;
+    }
+
+    function getBasketBalancer() external view override returns (address) {
+        return address(basketBalancer);
     }
 }

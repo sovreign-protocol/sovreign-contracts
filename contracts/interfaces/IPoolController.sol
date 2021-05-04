@@ -53,4 +53,6 @@ interface IPoolController {
     function svrToken() external view returns (address);
 
     function reignToken() external view returns (address);
+
+    function getBasketBalancer() external view returns (address);
 }

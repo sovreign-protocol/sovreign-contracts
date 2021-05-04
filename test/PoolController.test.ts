@@ -224,7 +224,7 @@ describe('PoolController', function () {
     describe('Getters and Setters', async function () {
 
         it('sets correct addresses at construction', async function () {
-           expect((await poolController.basketBalancer())).to.be.eq(balancer.address)
+           expect((await poolController.getBasketBalancer())).to.be.eq(balancer.address)
            expect(await poolController.svrToken()).to.be.eq(svr.address)
            expect(await poolController.reignToken()).to.be.eq(reign.address)
            expect(await poolController.reignDAO()).to.be.eq(reignDAOAddress)
@@ -246,7 +246,7 @@ describe('PoolController', function () {
 
             it('sets correct address otherwise', async function () {
                 await expect(poolController.connect(reignDAO).setBaseketBalancer(newAddress)).to.not.be.reverted;
-                expect(await poolController.basketBalancer()).to.be.eq(newAddress)
+                expect(await poolController.getBasketBalancer()).to.be.eq(newAddress)
             });
         });
 
