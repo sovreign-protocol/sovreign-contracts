@@ -21,7 +21,6 @@ interface IReign {
     // stopDelegate allows a user to take back the delegated voting power
     function stopDelegate() external;
 
-    // MISSING in governance/IBarn.sol
     // lock the balance of a proposal creator until the voting ends; only callable by DAO
     function lockCreatorBalance(address user, uint256 timestamp) external;
 
@@ -78,7 +77,6 @@ interface IReign {
     // userDidDelegate returns the address to which a user delegated their voting power; address(0) if not delegated
     function userDelegatedTo(address user) external view returns (address);
 
-    // MISSING in governance/IBarn.sol
     // bondCirculatingSupply returns the current circulating supply of BOND
     function bondCirculatingSupply() external view returns (uint256);
 }

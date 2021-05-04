@@ -32,10 +32,10 @@ contract UniswapPairOracle is IOracle {
     FixedPoint.uq112x112 public price0Average;
     FixedPoint.uq112x112 public price1Average;
 
-    modifier onlyByOwnerOrGovernance() {
+    modifier onlyByOwnerOrReignDAO() {
         require(
             msg.sender == owner_address || msg.sender == timelock_address,
-            "You are not an owner or the governance timelock"
+            "You are not an owner or the reignDAO timelock"
         );
         _;
     }
@@ -66,31 +66,31 @@ contract UniswapPairOracle is IOracle {
         timelock_address = _timelock_address;
     }
 
-    function setOwner(address _owner_address) external onlyByOwnerOrGovernance {
+    function setOwner(address _owner_address) external onlyByOwnerOrReignDAO {
         owner_address = _owner_address;
     }
 
     function setTimelock(address _timelock_address)
         external
-        onlyByOwnerOrGovernance
+        onlyByOwnerOrReignDAO
     {
         timelock_address = _timelock_address;
     }
 
-    function setPeriod(uint256 _period) external onlyByOwnerOrGovernance {
+    function setPeriod(uint256 _period) external onlyByOwnerOrReignDAO {
         PERIOD = _period;
     }
 
     function setConsultLeniency(uint256 _consult_leniency)
         external
-        onlyByOwnerOrGovernance
+        onlyByOwnerOrReignDAO
     {
         CONSULT_LENIENCY = _consult_leniency;
     }
 
     function setAllowStaleConsults(bool _allow_stale_consults)
         external
-        onlyByOwnerOrGovernance
+        onlyByOwnerOrReignDAO
     {
         ALLOW_STALE_CONSULTS = _allow_stale_consults;
     }

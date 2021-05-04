@@ -7,7 +7,7 @@ import "./Reign.sol";
 import "./Bridge.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract Governance is Bridge {
+contract ReignDAO is Bridge {
 
     using SafeMath for uint256;
 

@@ -5,7 +5,7 @@ import * as helpers from "../test/helpers/helpers";
 import {addMinutes} from "../test/helpers/helpers";
 import {
     BasketBalancer,
-    Governance,
+    ReignDAO,
     InterestStrategy,
     PoolController,
     ReignToken,
@@ -66,12 +66,12 @@ export class DeployConfig {
     public reignToken?: ReignToken;
     public svrToken?: SvrToken;
     public rewards?: Rewards;
-    public reignDAO?: Governance;
+    public reignDAO?: ReignDAO;
     public basketBalancer?: BasketBalancer;
     public interestStrategy?: InterestStrategy;
     public poolController?: PoolController;
 
-    constructor(sovReignOwnerAddr: string, user1Addr: string, user2Addr: string, sovReignOwnerAcct: SignerWithAddress, user1Acct: SignerWithAddress, user2Acct: SignerWithAddress, amountReignTokenInitTotal: BigNumber, amountReignTokenToSoVReignOwner: BigNumber, amountReignTokenToRewardsVault: BigNumber, amountReignTokenToUser1: BigNumber, amountReignTokenToUser2: BigNumber, rewardsStartTs: number, rewardsEndTs: number, rewardsAmount: BigNumber, reignDiamond?: Contract, rewardsVault?: RewardsVault, reignToken?: ReignToken, svrToken?: SvrToken, rewards?: Rewards, reignDAO?: Governance, basketBalancer?: BasketBalancer, interestStrategy?: InterestStrategy, poolController?: PoolController) {
+    constructor(sovReignOwnerAddr: string, user1Addr: string, user2Addr: string, sovReignOwnerAcct: SignerWithAddress, user1Acct: SignerWithAddress, user2Acct: SignerWithAddress, amountReignTokenInitTotal: BigNumber, amountReignTokenToSoVReignOwner: BigNumber, amountReignTokenToRewardsVault: BigNumber, amountReignTokenToUser1: BigNumber, amountReignTokenToUser2: BigNumber, rewardsStartTs: number, rewardsEndTs: number, rewardsAmount: BigNumber, reignDiamond?: Contract, rewardsVault?: RewardsVault, reignToken?: ReignToken, svrToken?: SvrToken, rewards?: Rewards, reignDAO?: ReignDAO, basketBalancer?: BasketBalancer, interestStrategy?: InterestStrategy, poolController?: PoolController) {
         this.sovReignOwnerAddr = sovReignOwnerAddr;
         this.user1Addr = user1Addr;
         this.user2Addr = user2Addr;
