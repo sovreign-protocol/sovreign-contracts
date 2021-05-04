@@ -3,14 +3,14 @@ import { BigNumber, Signer } from "ethers";
 import { moveAtEpoch, tenPow18 } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
-import { RewardsVault, Erc20Mock, Staking, LpRewards } from "../typechain";
+import {RewardsVault, ERC20Mock, Staking, LPRewards, ERC20} from "../typechain";
 
 describe('YieldFarm Liquidity Pool', function () {
     let staking: Staking;
-    let reignToken: Erc20Mock;
-    let uniLP: Erc20Mock;
+    let reignToken: ERC20Mock;
+    let uniLP: ERC20Mock;
     let rewardsVault: RewardsVault;
-    let yieldFarm: LpRewards;
+    let yieldFarm: LPRewards;
     let creator: Signer, user: Signer;
     let userAddr: string;
 
@@ -28,8 +28,8 @@ describe('YieldFarm Liquidity Pool', function () {
         userAddr = await user.getAddress();
 
         staking = (await deployContract("Staking", [epochStart])) as Staking;
-        reignToken = (await deployContract("ERC20Mock")) as Erc20Mock;
-        uniLP = (await deployContract("ERC20Mock")) as Erc20Mock;
+        reignToken = (await deployContract("ERC20Mock")) as ERC20Mock;
+        uniLP = (await deployContract("ERC20Mock")) as ERC20Mock;
 
         rewardsVault = (await deployContract("RewardsVault", [reignToken.address])) as RewardsVault;
         yieldFarm = (await deployContract("LPRewards", [
@@ -37,7 +37,7 @@ describe('YieldFarm Liquidity Pool', function () {
             uniLP.address,
             staking.address,
             rewardsVault.address,
-        ])) as LpRewards;
+        ])) as LPRewards;
 
         await reignToken.mint(rewardsVault.address, distributedAmount);
         await rewardsVault.connect(creator).setAllowance(yieldFarm.address, distributedAmount);

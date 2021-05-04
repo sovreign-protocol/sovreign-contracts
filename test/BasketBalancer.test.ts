@@ -3,7 +3,7 @@ import { BigNumber, Signer } from 'ethers';
 import * as helpers from './helpers/helpers';
 import { expect } from 'chai';
 import * as deploy from './helpers/deploy';
-import {BasketBalancer, Erc20Mock, ReignMock, Rewards} from '../typechain';
+import {BasketBalancer, ERC20Mock, ReignMock, Rewards} from '../typechain';
 
 const address1 = '0x0000000000000000000000000000000000000001';
 const address2 = '0x0000000000000000000000000000000000000002';
@@ -11,7 +11,7 @@ const address3 = '0x0000000000000000000000000000000000000003';
 
 describe('BasketBalancer', function () {
 
-    let reign: ReignMock,reignToken:Erc20Mock, rewards: Rewards, balancer: BasketBalancer;
+    let reign: ReignMock,reignToken:ERC20Mock, rewards: Rewards, balancer: BasketBalancer;
 
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
@@ -27,7 +27,7 @@ describe('BasketBalancer', function () {
     var maxAllocation = 1000000000;
 
     before(async function () {
-        reignToken = (await deploy.deployContract('ERC20Mock')) as Erc20Mock;
+        reignToken = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
 
         await setupSigners();
         await setupContracts();

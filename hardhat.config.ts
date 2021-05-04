@@ -3,7 +3,7 @@ import * as config from './config';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
 import 'hardhat-abi-exporter';
-import 'hardhat-typechain';
+import '@typechain/hardhat';
 import 'solidity-coverage';
 import 'hardhat-gas-reporter';
 
