@@ -89,39 +89,73 @@ describe('BasketBalancer', function () {
                     reignDAO.getAddress(), 
                     controller.getAddress(), 
                     maxAllocation/10, 
-                    await helpers.getLatestBlockTimestamp()+10000
+                    helpers.stakingEpochStart
             ])
                 ) as BasketBalancer;
             expect(balancerEmpty.address).to.not.eql(0).and.to.not.be.empty;
-            expect(await balancerEmpty.getCurrentEpoch()).to.be.eq(0);
         });
 
-        it('sets correct allocations', async function () {
-            await awaitUpdatePeriod();
+        it('can not deployed with incompatible length arrays', async function () {
+            await expect( deploy.deployContract(
+                'BasketBalancer', 
+                [
+                    pools,
+                    [500000000],
+                    reign.address,
+                    reignDAO.getAddress(), 
+                    controller.getAddress(), 
+                    maxAllocation/10, 
+                    helpers.stakingEpochStart
+            ])).to.be.revertedWith("Need to have same length");
+        });
+
+        it('can not deployed with incorrect Allocation', async function () {
+            await expect( deploy.deployContract(
+                'BasketBalancer', 
+                [
+                    pools,
+                    [700000000,500000000],
+                    reign.address,
+                    reignDAO.getAddress(), 
+                    controller.getAddress(), 
+                    maxAllocation/10, 
+                    helpers.stakingEpochStart
+            ])).to.be.revertedWith("Allocation is not complete");
+        });
+
+        it('sets correct allocations during deployment', async function () {
             let alloc = await balancer.getTargetAllocation(pools[0]);
             expect(alloc).to.equal(500000000);
             alloc = await balancer.getTargetAllocation(pools[1]);
             expect(alloc).to.equal(500000000);
         });
 
-        it('initial allocation vote is empty ', async function () {
-            let alloc = await balancer.connect(user).getAllocationVote(userAddress);
-            expect(alloc[0].length).to.equal(0);
-            expect(alloc[1].length).to.equal(0);
-            expect(alloc[2]).to.equal(0);
+        it('sets correct current vote during deployment', async function () {
+            let alloc = await balancer.continuousVote(pools[0]);
+            expect(alloc).to.equal(500000000);
+            alloc = await balancer.continuousVote(pools[1]);
+            expect(alloc).to.equal(500000000);
         });
 
         it('can vote with correct allocation', async function () {
             await reign.deposit(userAddress, 100);
-            await reign.deposit(flyingParrotAddress, 200);
+            await expect( 
+                balancer.connect(user).updateAllocationVote(pools, [450000000,550000000])
+            ).to.not.be.reverted;
+        });
 
-            await balancer.connect(user).updateAllocationVote(pools, [450000000,550000000]);
+        it('can vote again after the epoch ends', async function () {
+            await reign.deposit(userAddress, 100);
 
-            let resp = await balancer.connect(user).getAllocationVote(userAddress);
-            expect(resp[0][0]).to.equal(pools[0]);
-            expect(resp[1][0]).to.equal(450000000);
-            expect(resp[1][1]).to.equal(550000000);
-            expect(resp[2]).to.gt(0);
+            await expect( 
+                balancer.connect(user).updateAllocationVote(pools, [450000000,550000000])
+            ).to.not.be.reverted;
+
+            await awaitUntilNextEpoch()
+            await expect( 
+                balancer.connect(user).updateAllocationVote(pools, [450000000,550000000])
+            ).to.not.be.reverted;
+
         });
 
         it('can not vote with too small allocation', async function () {
@@ -144,56 +178,115 @@ describe('BasketBalancer', function () {
 
         });
 
-        it('computes allocation correctly', async function () {
+        it('can not vote with no stake', async function () {
+            await expect( 
+                balancer.connect(user).updateAllocationVote(pools, [500000000,500000000])
+            ).to.be.revertedWith('Not allowed to vote')
+
+        });
+
+        it('can not vote with incorrectly ordered pools', async function () {
+            await reign.deposit(userAddress, 100);
+
+            await expect( 
+                balancer.connect(user).updateAllocationVote([address2,address1], [500000000,500000000])
+            ).to.be.revertedWith('Pools have incorrect order')
+
+        });
+
+        it('can not vote with incorrect number of pools', async function () {
+            await reign.deposit(userAddress, 100);
+            
+            await expect( 
+                balancer.connect(user).updateAllocationVote([address1], [500000000])
+            ).to.be.revertedWith('Need to vote for all pools')
+
+        });
+
+        it('can not vote with incorrect number of allocation', async function () {
+            await reign.deposit(userAddress, 100);
+
+            await expect( 
+                balancer.connect(user).updateAllocationVote(pools, [500000000])
+            ).to.be.revertedWith('Need to have same length')
+
+        });
+
+        it('can not vote twice in an epoch', async function () {
+            await reign.deposit(userAddress, 100);
+
+            balancer.connect(user).updateAllocationVote(pools, [500000000,500000000])
+            await expect( 
+                balancer.connect(user).updateAllocationVote(pools, [500000000,500000000])
+            ).to.be.revertedWith('Can not vote twice in an epoch')
+
+        });
+
+        it('updates continuous vote correctly', async function () {
             await reign.deposit(userAddress, 100);
             await reign.deposit(flyingParrotAddress, 200);
+            await reign.deposit(happyPirateAddress, 300);
 
-            await balancer.connect(user).updateAllocationVote(pools, [450000000,550000000]);
+            await balancer.connect(user).updateAllocationVote(pools, [480000000,520000000]);
 
-            let resp = await balancer.connect(user).getAllocationVote(userAddress);
+            // (480000000 * 100 + 500000000 * 500)/600 = 496666666
+            // (520000000 * 100 + 500000000 * 500)/600 = 503333333
+            expect(await balancer.continuousVote(pools[0])).to.equal(BigNumber.from(496666666));
+            expect(await balancer.continuousVote(pools[1])).to.equal(BigNumber.from(503333333));
 
-            // (500000000 * 200 + 450000000 * 100) / 300 = 483333334
-            // (500000000 * 200 + 550000000 * 100) / 300 = 526666666
-            let alloc = await balancer.computeAllocation();
-            expect(alloc[0]).to.equal(BigNumber.from(483333334));
-            expect(alloc[1]).to.equal(BigNumber.from(516666666));
+            
+            await balancer.connect(flyingParrot).updateAllocationVote(pools, [450000000,550000000]);
+
+            // (450000000 * 200 + 496666666 * 400)/600 = 481111110
+            // (550000000 * 200 + 503333333 * 400)/600 = 518888888
+            expect(await balancer.continuousVote(pools[0])).to.equal(BigNumber.from(481111110));
+            expect(await balancer.continuousVote(pools[1])).to.equal(BigNumber.from(518888888));
+        });
+        
+
+        it('sets correct basket balance after update period', async function () {
+
+            await reign.deposit(userAddress, 100);
+            await reign.deposit(flyingParrotAddress, 200);
+            await reign.deposit(happyPirateAddress, 300);
+
+            await balancer.connect(user).updateAllocationVote(pools, [480000000,520000000]);
+            await balancer.connect(flyingParrot).updateAllocationVote(pools, [450000000,550000000]);
+
+            
+            await balancer.updateBasketBalance();
+            await awaitUpdatePeriod();
+            
+            // New target is the average with the previous one  
+            // (481111110 + 500000000 ) / 2 = 490555555
+            // (518888888 + 500000000 ) / 2 = 509444444
+            expect(await balancer.getTargetAllocation(pools[0])).to.equal(BigNumber.from(490555555));
+            expect(await balancer.getTargetAllocation(pools[1])).to.equal(BigNumber.from(509444444));
 
         });
 
         it('sets correct basket balance during update period', async function () {
+
             await reign.deposit(userAddress, 100);
             await reign.deposit(flyingParrotAddress, 200);
+            await reign.deposit(happyPirateAddress, 300);
+            await balancer.connect(user).updateAllocationVote(pools, [480000000,520000000]);
+            await balancer.connect(flyingParrot).updateAllocationVote(pools, [450000000,550000000]);
 
-            await balancer.connect(user).updateAllocationVote(pools, [450000000,550000000]);
-
-            // (500000000 * 200 + 450000000 * 100) / 300 = 483333334
-            // (500000000 * 200 + 550000000 * 100) / 300 = 526666666
             await balancer.updateBasketBalance();
+
             //let half of the period elapse, allocation should be half-way updated
-            await helpers.moveAtTimestamp(
-            (await balancer.lastEpochEnd()).toNumber() + (172800/2)
-               )
-            // 500000000 + (500000000 - 483333334) / 2 = 491666667
-            // 500000000 + (516666666 - 500000000) / 2 = 508333333
-            expect(await balancer.getTargetAllocation(pools[0])).to.equal(BigNumber.from(491666667));
-            expect(await balancer.getTargetAllocation(pools[1])).to.equal(BigNumber.from(508333333));
+            await helpers.moveAtTimestamp((await balancer.lastEpochEnd()).toNumber() + (172800/2))
+
+            // Half way during update period 
+            // 500000000 - (500000000 - 490555555) / 2 = 495277778
+            // 500000000 + (509444444 - 500000000) / 2 = 504722222
+            expect(await balancer.getTargetAllocation(pools[0])).to.equal(BigNumber.from(495277778));
+            expect(await balancer.getTargetAllocation(pools[1])).to.equal(BigNumber.from(504722222));
 
         });
 
-        it('sets correct basket balance after update period', async function () {
-            await reign.deposit(userAddress, 100);
-            await reign.deposit(flyingParrotAddress, 200);
-
-            await balancer.connect(user).updateAllocationVote(pools, [450000000,550000000]);
-
-            // (500000000 * 200 + 450000000 * 100) / 300 = 483333334
-            // (500000000 * 200 + 550000000 * 100) / 300 = 526666666
-            await balancer.updateBasketBalance();
-            await awaitUpdatePeriod();
-            expect(await balancer.getTargetAllocation(pools[0])).to.equal(BigNumber.from(483333334));
-            expect(await balancer.getTargetAllocation(pools[1])).to.equal(BigNumber.from(516666666));
-
-        });
+        
 
         it('can not update twice in same epoch', async function () {
             await reign.deposit(userAddress, 100);
@@ -287,9 +380,16 @@ describe('BasketBalancer', function () {
     });
 
     async function awaitUpdatePeriod() {
-        //wait until the update perios is over
+        //wait until the update periods is over
         await helpers.moveAtTimestamp(
              await helpers.getLatestBlockTimestamp() + 172800 + 1000
+            )
+    }
+
+    async function awaitUntilNextEpoch() {
+        //wait until the update periods is over
+        await helpers.moveAtTimestamp(
+            (await balancer.lastEpochEnd()).toNumber() + helpers.stakingEpochDuration + 1000
             )
     }
 

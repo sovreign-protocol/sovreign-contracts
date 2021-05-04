@@ -11,32 +11,24 @@ contract BasketBalancer is IBasketBalancer {
 
     uint256 public epoch1Start;
 
-    uint256 public EPOCH_DURATION = 604800;
+    uint256 public override FULL_ALLOCATION = 1000000000; // 9 decimals precision
+    uint256 public EPOCH_DURATION = 604800; // ca. one week in seconds
+    uint256 public UPDATE_PERIOD = 172800; // ca. two days in seconds
 
     uint256 public lastEpochUpdate;
     uint256 public lastEpochEnd;
 
-    address[] allPools;
-    mapping(address => uint256) poolAllocation;
-    mapping(address => uint256) poolAllocationBefore;
-
-    address[] public voters;
-
-    struct AllocationVote {
-        address[] pools;
-        uint256[] allocations;
-        uint256 lastUpdated;
-    }
-    mapping(address => AllocationVote) allocationVotes;
-
-    uint256 public override FULL_ALLOCATION = 1000000000; // 9 decimals precision
-    uint256 public UPDATE_PERIOD = 172800; // ca. two days in seconds
-
     uint256 public maxDelta;
 
-    IReign reign;
+    address[] public allPools;
 
-    // 'controller' here means the PoolController contract
+    mapping(address => uint256) public continuousVote;
+    mapping(address => uint256) private poolAllocation;
+    mapping(address => uint256) private poolAllocationBefore;
+
+    mapping(address => mapping(uint256 => bool)) public hasVotedInEpoch;
+
+    IReign private reign;
     address public controller;
 
     modifier onlyController() {
@@ -54,10 +46,8 @@ contract BasketBalancer is IBasketBalancer {
         _;
     }
 
-    // - init newPools with empty array
-    // - init newAllocation with empty array
-    // - both are only required if we would like to update
-    // the BasketBalancer at a later stage and re-use existing pools.
+    // The _newPools and _newAllocation will be set empty for the first deployment but can be used
+    // if the BasketBalancer is updated and existing allocation values need to be migrated to a new instance.
     constructor(
         address[] memory _newPools,
         uint256[] memory _newAllocation,
@@ -69,15 +59,21 @@ contract BasketBalancer is IBasketBalancer {
     ) {
         uint256 amountAllocated = 0;
 
+        require(
+            _newPools.length == _newAllocation.length,
+            "Need to have same length"
+        );
         if (_newPools.length != 0 && _newAllocation.length != 0) {
             for (uint256 i = 0; i < _newPools.length; i++) {
                 uint256 poolPercentage = _newAllocation[i];
                 amountAllocated = amountAllocated.add(poolPercentage);
+                continuousVote[_newPools[i]] = poolPercentage;
                 poolAllocation[_newPools[i]] = poolPercentage;
+                poolAllocationBefore[_newPools[i]] = poolPercentage;
             }
             require(
                 amountAllocated == FULL_ALLOCATION,
-                "allocation is not complete"
+                "Allocation is not complete"
             );
         }
         epoch1Start = _epoch1Start;
@@ -89,69 +85,85 @@ contract BasketBalancer is IBasketBalancer {
         reignDAO = _reignDAO;
     }
 
-    function updateBasketBalance() external override returns (bool) {
+    // Counts votes and sets the outcome allocation for each pool, can be called by anyone after an epoch ends.
+    // The new allocation value is the average of the vote outcome and the current value
+    // Note: this is not the actual target value that will be used by the pools,
+    // the actual target will be returned by getTargetAllocation and includes update period adjustemnts
+    function updateBasketBalance() external {
         require(lastEpochUpdate < getCurrentEpoch(), "Epoch is not over");
-        uint256[] memory allocations = computeAllocation();
 
         for (uint256 i = 0; i < allPools.length; i++) {
-            poolAllocationBefore[allPools[i]] = poolAllocation[allPools[i]];
-            poolAllocation[allPools[i]] = allocations[i];
+            uint256 _currentValue = continuousVote[allPools[i]]; // new vote outcome
+            uint256 _previousValue = poolAllocation[allPools[i]]; // before this vote
+
+            // the new current value is the average between the 3 values
+            poolAllocation[allPools[i]] = (_currentValue.add(_previousValue))
+                .div(2);
+
+            // update the previous value
+            poolAllocationBefore[allPools[i]] = _previousValue;
         }
 
         lastEpochUpdate = getCurrentEpoch();
         lastEpochEnd = block.timestamp;
-
-        return true;
     }
 
+    // Allows users to update their vote by giving a desired allocation for each pool
+    // pools and allocations need to share the index, pool at index 1 will get allocation at index 1
     function updateAllocationVote(
         address[] calldata pools,
         uint256[] calldata allocations
-    ) public override {
+    ) external {
+        require(pools.length == allPools.length, "Need to vote for all pools");
         require(pools.length == allocations.length, "Need to have same length");
-
         require(reign.balanceOf(msg.sender) > 0, "Not allowed to vote");
 
-        AllocationVote memory currentVote = allocationVotes[msg.sender];
+        uint128 _epoch = getCurrentEpoch();
 
-        if (currentVote.lastUpdated == 0) {
-            voters.push(msg.sender);
-        }
+        require(
+            hasVotedInEpoch[msg.sender][_epoch] == false,
+            "Can not vote twice in an epoch"
+        );
 
         uint256 amountAllocated = 0;
         for (uint256 i = 0; i < allPools.length; i++) {
-            require(allPools[i] == pools[i], "pools have incorrect order");
-            uint256 _newAllocation = allocations[i];
-            uint256 _oldAllocation = poolAllocation[allPools[i]];
-            if (_newAllocation > _oldAllocation) {
-                require(
-                    _newAllocation - _oldAllocation <= maxDelta,
-                    "Above Max Delta"
-                );
+            //Pools need to have the same order as allPools
+            require(allPools[i] == pools[i], "Pools have incorrect order");
+            uint256 _votedFor = allocations[i];
+            uint256 _current = continuousVote[allPools[i]];
+            amountAllocated = amountAllocated.add(_votedFor);
+
+            // The difference between the voted for allocation and the current value can not exceed maxDelta
+            if (_votedFor > _current) {
+                require(_votedFor - _current <= maxDelta, "Above Max Delta");
             } else {
-                require(
-                    _oldAllocation - _newAllocation <= maxDelta,
-                    "Above Max Delta"
-                );
+                require(_current - _votedFor <= maxDelta, "Above Max Delta");
             }
-            amountAllocated = amountAllocated.add(_newAllocation);
+            // if all checkst have passed we update the allocation vote
+            uint256 _totalPower = reign.bondStaked();
+            uint256 _votingPower = reign.balanceOf(msg.sender);
+            uint256 _remainingPower = _totalPower.sub(_votingPower);
+
+            continuousVote[allPools[i]] = (
+                _current.mul(_remainingPower).add(_votedFor.mul(_votingPower))
+            )
+                .div(_totalPower);
         }
+
+        //transaction will revert if allocation is not complete
         require(
             amountAllocated == FULL_ALLOCATION,
             "Allocation is not complete"
         );
 
-        currentVote.pools = pools;
-        currentVote.allocations = allocations;
-        currentVote.lastUpdated = block.timestamp;
-
-        allocationVotes[msg.sender] = currentVote;
+        hasVotedInEpoch[msg.sender][_epoch] = true;
 
         //emit event
     }
 
+    // adds a new pool to the list, can only be called by PoolController as a new Pool is created
     function addPool(address pool)
-        public
+        external
         override
         onlyController
         returns (uint256)
@@ -177,62 +189,12 @@ contract BasketBalancer is IBasketBalancer {
         maxDelta = _maxDelta;
     }
 
-    function computeAllocation()
-        public
-        view
-        override
-        returns (uint256[] memory)
-    {
-        uint256[] memory _allocations = new uint256[](allPools.length);
-
-        uint256 totalAllocation = 0;
-        uint256 totalPower = reign.bondStaked();
-
-        for (uint256 i = 0; i < voters.length; i++) {
-            address voter = voters[i];
-
-            uint256 votingPower = reign.balanceOf(voter);
-            uint256 remainingPower = totalPower.sub(votingPower);
-
-            AllocationVote storage votersVote = allocationVotes[voter];
-
-            for (uint256 ii = 0; ii < votersVote.pools.length; ii++) {
-                uint256 poolPercentage = votersVote.allocations[ii];
-
-                address pool = votersVote.pools[ii];
-                _allocations[ii] = getTargetAllocation(pool)
-                    .mul(remainingPower)
-                    .add(poolPercentage.mul(votingPower))
-                    .div(totalPower);
-                totalAllocation.add(_allocations[ii]);
-            }
-        }
-        //division may create a reminder of 1
-        if (totalAllocation != FULL_ALLOCATION) {
-            _allocations[0] = _allocations[0].add(1);
-        }
-
-        return (_allocations);
-    }
-
     /*
      *   VIEWS
      */
-    function getAllocationVote(address voter)
-        public
-        view
-        override
-        returns (
-            address[] memory,
-            uint256[] memory,
-            uint256
-        )
-    {
-        AllocationVote memory vote = allocationVotes[voter];
 
-        return (vote.pools, vote.allocations, vote.lastUpdated);
-    }
-
+    // gets the current target allocation taking into account the update period in which the allocation changes
+    // from the previous one to the one last voted with a linear change each block
     function getTargetAllocation(address pool)
         public
         view
@@ -264,13 +226,11 @@ contract BasketBalancer is IBasketBalancer {
         }
     }
 
-    function getPools() public view override returns (address[] memory) {
+    function getPools() public view returns (address[] memory) {
         return allPools;
     }
 
-    /*
-     * Returns the id of the current epoch derived from block.timestamp
-     */
+    //Returns the id of the current epoch derived from block.timestamp
     function getCurrentEpoch() public view returns (uint128) {
         if (block.timestamp < epoch1Start) {
             return 0;
