@@ -5,7 +5,7 @@ import {
     ReignDAO,
     InterestStrategy,
     PoolController,
-    Reign,
+    ReignDiamond,
     ReignFacet,
     ReignToken,
     Rewards,
@@ -43,12 +43,12 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     // Deploy "ReignDiamond" contract:
     ///////////////////////////
     const reignDiamond = await deploy.deployDiamond(
-        'Reign',
+        'ReignDiamond',
         [cutFacet, loupeFacet, ownershipFacet, crf, reignFacet],
         c.sovReignOwnerAddr,
     );
     c.reignDiamond = reignDiamond;
-    console.log(`Reign deployed at: ${reignDiamond.address.toLowerCase()}`);
+    console.log(`ReignDiamond deployed at: ${reignDiamond.address.toLowerCase()}`);
 
     ///////////////////////////
     // Deploy "ReignToken" contract:

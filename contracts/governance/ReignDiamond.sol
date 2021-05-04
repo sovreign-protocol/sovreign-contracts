@@ -10,7 +10,7 @@ import "../libraries/LibDiamondStorage.sol";
 import "../interfaces/IERC165.sol";
 import "../interfaces/IERC173.sol";
 
-contract Reign {
+contract ReignDiamond {
 
     constructor(IDiamondCut.FacetCut[] memory _diamondCut, address _owner)
         payable

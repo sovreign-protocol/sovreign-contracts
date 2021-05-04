@@ -29,7 +29,7 @@ describe('Barn', function () {
         const reignFacet = await deploy.deployContract('ReignFacet');
         const changeRewardsFacet = await deploy.deployContract('ChangeRewardsFacet');
         const diamond = await deploy.deployDiamond(
-            'Reign',
+            'ReignDiamond',
             [cutFacet, loupeFacet, ownershipFacet, reignFacet, changeRewardsFacet],
             userAddress,
         );
