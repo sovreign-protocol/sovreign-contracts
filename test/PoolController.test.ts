@@ -31,7 +31,6 @@ describe('PoolController', function () {
 
         await setupSigners();
 
-        svr = (await deploy.deployContract('SvrToken', [userAddress])) as SvrToken;
         reign = (await deploy.deployContract('ReignToken', [userAddress])) as ReignToken;
         underlying1 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
         underlying2 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock;
@@ -54,11 +53,16 @@ describe('PoolController', function () {
 
     beforeEach(async function() {
 
+        svr = (await deploy.deployContract('SvrToken', [userAddress])) as SvrToken;
+
+        
         poolController = (
             await deploy.deployContract('PoolController', [
                 balancer.address, svr.address, reign.address, reignDAOAddress, treasouryAddress, liquidityBufferAddress
             ])
         ) as PoolController; 
+
+        await svr.connect(user).setController(poolController.address);
 
         await poolController.connect(reignDAO).createPool(
             underlying1.address, interestStrategy.address, oracle.address
@@ -388,10 +392,10 @@ describe('PoolController', function () {
         pool2 = pool2.attach(pool2_address);
 
         await underlying1.connect(user).transfer(pool.address,BigNumber.from(1400000).mul(helpers.tenPow18));
-        await pool.connect(user).sync();
+        await pool.connect(user).mint(userAddress);
 
         await underlying2.connect(user).transfer(pool2_address, BigNumber.from(1000000).mul(helpers.tenPow18));
-        await pool2.connect(user).sync();
+        await pool2.connect(user).mint(userAddress);
     }
 
 

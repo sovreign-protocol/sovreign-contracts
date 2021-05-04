@@ -28,9 +28,6 @@ describe('Pool', function () {
 
         await setupSigners();
         
-        underlying1 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
-        underlying2 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
-        
         oracle = (await deploy.deployContract('OracleMock', [reignDAOAddress])) as OracleMock;
 
 
@@ -53,6 +50,9 @@ describe('Pool', function () {
     });
 
     beforeEach(async function() {
+        
+        underlying1 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
+        underlying2 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
 
         svr = (await deploy.deployContract('SvrToken', [userAddress])) as SvrToken;
         reign = (await deploy.deployContract('ReignToken', [userAddress])) as ReignToken;
@@ -98,6 +98,17 @@ describe('Pool', function () {
             expect(pool.address).to.not.eql(0).and.to.not.be.empty;
         });
 
+        it('reverts if initialised again', async function () {
+            await expect(
+                pool.connect(user).initialize(underlying1.address)
+                ).to.be.revertedWith("Can not be initialized again");
+        });
+
+
+        it('totalSupply starts at 0', async function () {
+            expect(await pool.totalSupply()).to.be.eq(0)
+        });
+
         it('should allow to skim', async function () {
             let amount = BigNumber.from(27);
             await underlying1.connect(user).transfer(pool.address,amount);
@@ -140,14 +151,14 @@ describe('Pool', function () {
     describe('ERC-20', async function () {
 
         it('transfers amounts correctly', async function () {
-            await mintSVR(100000,pool)
+            await depositToPool(100000,pool)
             let transfers = BigNumber.from(10)
             await pool.connect(user).transfer(newUserAddress,transfers);
             expect(await pool.balanceOf(newUserAddress)).to.be.eq(transfers)
         })
 
         it('reverts if transfers more then balance', async function () {
-            await mintSVR(100000,pool)
+            await depositToPool(100000,pool)
             let transfers = (await pool.balanceOf(userAddress)).add(1000)
             await expect(
                 pool.connect(user).transfer(newUserAddress,transfers)
@@ -155,14 +166,14 @@ describe('Pool', function () {
         })
 
         it('set allowance amounts correctly', async function () {
-            await mintSVR(100000,pool)
+            await depositToPool(100000,pool)
             let allow = BigNumber.from(10)
             await pool.connect(user).approve(newUserAddress,allow);
             expect(await pool.allowance(userAddress,newUserAddress)).to.be.eq(allow)
         })
 
         it('makes TransferFrom correctly', async function () {
-            await mintSVR(100000,pool)
+            await depositToPool(100000,pool)
             let allow = BigNumber.from(10)
             await pool.connect(user).approve(newUserAddress,allow);
             await pool.connect(newUser).transferFrom(userAddress,treasuryAddress, allow);
@@ -170,7 +181,7 @@ describe('Pool', function () {
         })
 
         it('reverts if transferFrom is above allowance', async function () {
-            await mintSVR(100000,pool)
+            await depositToPool(100000,pool)
             let allow = BigNumber.from(10)
             await pool.connect(user).approve(newUserAddress,allow);
             await expect(
@@ -179,27 +190,18 @@ describe('Pool', function () {
         })
 
         it('TransferFrom reduces allowance', async function () {
-            await mintSVR(100000,pool)
+            await depositToPool(100000,pool)
             let allow = BigNumber.from(10)
             await pool.connect(user).approve(newUserAddress,allow);
             await pool.connect(newUser).transferFrom(userAddress,treasuryAddress, allow.sub(5));
             expect(await pool.allowance(userAddress,newUserAddress)).to.be.eq(allow.sub(5))
         })
     })
-
-    describe('Syncing', async function () {
-
-        it('totalSupply starts at 0', async function () {
-            expect(await pool.totalSupply()).to.be.eq(0)
-        });
-
-    });
-
     describe('Computing Fees', async function () {
 
         it('returns correct expected deposit fee', async function () {
-            await mintSVR(11000,pool);
-            await mintSVR(10000,pool2);
+            await depositToPool(11000,pool);
+            await depositToPool(10000,pool2);
 
             let amount = BigNumber.from(1000)
 
@@ -219,12 +221,11 @@ describe('Pool', function () {
 
         it('returns correct expected withdraw Fee', async function () {
 
-            await mintSVR(1,pool);
+            await depositToPool(1,pool);
             let blockBefore = await interestStrategy.blockNumberLast();
             await helpers.mineBlocks(100)
-            await mintSVR(1000,pool);
+            await depositToPool(1000,pool);
 
-            let blockDelta = (await interestStrategy.blockNumberLast()).sub(blockBefore);
 
             let amount = BigNumber.from(1000)
 
@@ -243,8 +244,37 @@ describe('Pool', function () {
 
     describe('Minting', async function () {
 
-        it('mints the the correct amount of LP Tokens', async function () {
-            let amount = await mintSVR(100000,pool)
+        it('reverts if amount is 0', async function () {
+            let amountBN = BigNumber.from(0).mul(helpers.tenPow18);
+            let depositFee = await pool.getDepositFeeReign(amountBN);
+
+            await reign.connect(user).approve(pool.address, depositFee); 
+            await underlying1.connect(user).transfer(pool.address,amountBN);
+            await underlying2.connect(user).transfer(pool.address,amountBN);
+            await expect(pool.mint(userAddress)).to.be.revertedWith("Can only issue positive amounts")
+        });
+
+        it('reverts if deposit fee allowance is to low', async function () {
+            await depositToPool(11000,pool);
+            await depositToPool(10000,pool2);
+
+            let amountBN = BigNumber.from(10000).mul(helpers.tenPow18);
+
+            await underlying1.connect(user).transfer(pool.address,amountBN);
+            await expect(pool.mint(userAddress)).to.be.revertedWith("Insufficient allowance")
+        });
+
+        it('reverts if first deposit amount is equal min liquidity', async function () {
+            let amountBN = await pool.MINIMUM_LIQUIDITY();
+            let depositFee = await pool.getDepositFeeReign(amountBN);
+
+            await reign.connect(user).approve(pool.address, depositFee); 
+            await underlying1.connect(user).transfer(pool.address,amountBN);
+            await expect(pool.mint(userAddress)).to.be.revertedWith("Insufficient Liquidity Minted")
+        });
+
+        it('mints the correct amount of LP Tokens', async function () {
+            let amount = await depositToPool(100000,pool)
 
             expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount)
             let expected_amount_lp = amount.sub(await pool.MINIMUM_LIQUIDITY())
@@ -255,7 +285,7 @@ describe('Pool', function () {
         });
 
         it('mints the base amount of Svr for an empty pool', async function () {
-            let amount = await mintSVR(100000,pool)
+            let amount = await depositToPool(100000,pool)
             expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount)
 
             let expected_amount_svr = await pool.BASE_SVR_AMOUNT(); // Base amount
@@ -263,13 +293,13 @@ describe('Pool', function () {
         });
 
         it('mints correct amount of Svr for non-empty pool', async function () {
-            await mintSVR(100000,pool2)
-            await mintSVR(100000,pool)
+            await depositToPool(930000,pool2) //mints base amount
+            await depositToPool(930000,pool)
 
             let svrBalanceAfter = await svr.balanceOf(userAddress);
             let svrSupplyAfter = await svr.totalSupply();
 
-            let amount2 = await mintSVR(110000,pool)
+            let amount2 = await depositToPool(110000,pool)
 
             let underlyingPrice = await poolController.getTokenPrice(pool.address);
     
@@ -284,7 +314,7 @@ describe('Pool', function () {
         });
 
         it('mints correct amounts of Svr for very small balances', async function () {
-            await mintSVR(1001,pool)
+            await depositToPool(1001,pool)
 
             let svrBalanceAfter = await svr.balanceOf(userAddress);
             let svrSupplyAfter = await svr.totalSupply();
@@ -312,8 +342,33 @@ describe('Pool', function () {
 
     describe('Burning', async function () {
 
+        it('reverts if amount is 0', async function () {
+            await depositToPool(110000,pool)
+
+            let userBalanceLP = await pool.balanceOf(userAddress);
+            let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
+
+            let withdrawFee = await pool.getWithdrawFeeReign(amountToBurn);
+            await reign.connect(user).approve(pool.address, withdrawFee);
+
+            await expect(pool.connect(user).burn(0)).to.be.revertedWith("Can only burn positive amounts")
+
+        });
+
+        it('reverts if withdraw fee allowance is too low', async function () {
+            await depositToPool(110000,pool)
+
+            let userBalanceLP = await pool.balanceOf(userAddress);
+            let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
+
+            await pool.getWithdrawFeeReign(amountToBurn);
+
+            await expect(pool.connect(user).burn(userBalanceLP)).to.be.revertedWith("Insufficient allowance")
+
+        });
+
         it('transfers out the correct amount of underlying', async function () {
-            await mintSVR(110000,pool)
+            await depositToPool(110000,pool)
 
             let userBalanceUnderlying = await underlying1.balanceOf(userAddress);
             let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
@@ -326,7 +381,7 @@ describe('Pool', function () {
         });
 
         it('burns the correct amount of LP token', async function () {
-            await mintSVR(110000,pool)
+            await depositToPool(110000,pool)
 
             let userBalanceLP = await pool.balanceOf(userAddress);
             let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
@@ -340,7 +395,7 @@ describe('Pool', function () {
         });
 
         it('burns the correct amount of Svr token', async function () {
-            await mintSVR(110000,pool)
+            await depositToPool(110000,pool)
 
             let svrBalanceAfter = await svr.balanceOf(userAddress);
             let svrSupplyAfter = await svr.totalSupply();
@@ -364,7 +419,7 @@ describe('Pool', function () {
 
     });
 
-    async function mintSVR (amount:number, poolUsed:Pool) {
+    async function depositToPool (amount:number, poolUsed:Pool) {
         let amountBN = BigNumber.from(amount).mul(helpers.tenPow18);
         let depositFee = await poolUsed.getDepositFeeReign(amountBN);
 
@@ -376,15 +431,6 @@ describe('Pool', function () {
         return amountBN;
     }
 
-    async function burnSVR (amount:number, poolUsed:Pool) {
-        let amountToBurn = BigNumber.from(amount).mul(helpers.tenPow18);
-        let withdrawFee = await poolUsed.getWithdrawFeeReign(amountToBurn);
-
-        await reign.connect(user).approve(poolUsed.address, withdrawFee);
-        await poolUsed.connect(user).burn(amountToBurn);
-
-        return amountToBurn
-    }
 
     async function rewardsPerPool(pool:Pool){
         let rewardsTotal=BigNumber.from(25000000).mul(helpers.tenPow18).div(4600000);

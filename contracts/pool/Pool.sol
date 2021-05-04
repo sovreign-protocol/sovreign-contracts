@@ -55,7 +55,10 @@ contract Pool is IPool, PoolErc20 {
 
     // called once by the controller at time of deployment
     function initialize(address _token) external override {
-        require(msg.sender == controllerAddress, "UniswapV2: FORBIDDEN"); // sufficient check
+        require(
+            msg.sender == controllerAddress,
+            "Can not be initialized again"
+        ); // sufficient check, poolController will initialize once after deployment
         controller = IPoolController(msg.sender);
         token = _token;
         treasoury = controller.treasoury();
@@ -75,12 +78,12 @@ contract Pool is IPool, PoolErc20 {
         uint256 balance = IERC20(token).balanceOf(address(this));
         uint256 amount = balance.sub(_reserve);
 
+        require(amount > 0, "Can only issue positive amounts");
+
         uint256 depositFee = getDepositFeeReign(amount);
 
         if (depositFee > 0) {
             IMintBurnErc20 reign = IMintBurnErc20(reignToken);
-
-            require(amount > 0, "Can only issue positive amounts");
 
             require(
                 reign.allowance(msg.sender, address(this)) >= depositFee,
@@ -96,19 +99,19 @@ contract Pool is IPool, PoolErc20 {
         } else {
             liquidity = amount;
         }
-        require(liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED");
+        require(liquidity > 0, "Insufficient Liquidity Minted");
 
         //Mint LP Tokens
         _mint(to, liquidity);
-
-        //mint SVR tokens
-        _mintSvr(to, amount);
 
         //store new balance in reserve
         _updateReserves();
 
         //accrue interest based on new balance
         _accrueInterest();
+
+        //mint SVR tokens based on new balance
+        _mintSvr(to, amount);
     }
 
     //burns LP tokens,burns SVR tokens and returns liquidity to user
