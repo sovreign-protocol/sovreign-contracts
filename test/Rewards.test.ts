@@ -3,7 +3,7 @@ import { BigNumber, Signer } from 'ethers';
 import * as helpers from './helpers/helpers';
 import * as time from './helpers/time';
 import { expect } from 'chai';
-import { ReignMock, Erc20Mock, Rewards } from '../typechain';
+import { ReignMock, ERC20Mock, Rewards } from '../typechain';
 import * as deploy from './helpers/deploy';
 
 const zeroAddress = '0x0000000000000000000000000000000000000000';
@@ -11,7 +11,7 @@ const zeroAddress = '0x0000000000000000000000000000000000000000';
 describe('Rewards', function () {
     const amount = BigNumber.from(100).mul(BigNumber.from(10).pow(18));
 
-    let reign: ReignMock, bond: Erc20Mock, rewards: Rewards;
+    let reign: ReignMock, bond: ERC20Mock, rewards: Rewards;
 
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
@@ -24,7 +24,7 @@ describe('Rewards', function () {
     let snapshotTs: number;
 
     before(async function () {
-        bond = (await deploy.deployContract('ERC20Mock')) as Erc20Mock;
+        bond = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
 
         await setupSigners();
         await setupContracts();

@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { BigNumber, Signer } from 'ethers';
 import * as helpers from './helpers/helpers';
 import { expect } from 'chai';
-import { ReignFacet, Erc20Mock, RewardsMock, MulticallMock, ChangeRewardsFacet } from '../typechain';
+import { ReignFacet, ERC20Mock, RewardsMock, MulticallMock, ChangeRewardsFacet } from '../typechain';
 import * as time from './helpers/time';
 import * as deploy from './helpers/deploy';
 import { diamondAsFacet } from './helpers/diamond';
@@ -11,7 +11,7 @@ import { moveAtTimestamp } from './helpers/helpers';
 describe('Barn', function () {
     const amount = BigNumber.from(100).mul(BigNumber.from(10).pow(18));
 
-    let reign: ReignFacet, bond: Erc20Mock, rewardsMock: RewardsMock, changeRewards: ChangeRewardsFacet;
+    let reign: ReignFacet, bond: ERC20Mock, rewardsMock: RewardsMock, changeRewards: ChangeRewardsFacet;
 
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
@@ -21,7 +21,7 @@ describe('Barn', function () {
 
     before(async function () {
         await setupSigners();
-        bond = (await deploy.deployContract('ERC20Mock')) as Erc20Mock;
+        bond = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
 
         const cutFacet = await deploy.deployContract('DiamondCutFacet');
         const loupeFacet = await deploy.deployContract('DiamondLoupeFacet');
@@ -29,7 +29,7 @@ describe('Barn', function () {
         const reignFacet = await deploy.deployContract('ReignFacet');
         const changeRewardsFacet = await deploy.deployContract('ChangeRewardsFacet');
         const diamond = await deploy.deployDiamond(
-            'Reign',
+            'ReignDiamond',
             [cutFacet, loupeFacet, ownershipFacet, reignFacet, changeRewardsFacet],
             userAddress,
         );

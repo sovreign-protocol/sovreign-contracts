@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import * as helpers from './helpers/helpers';
 
 import { 
-    Erc20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy,
+    ERC20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy,
 } from '../typechain';
 import * as deploy from './helpers/deploy';
 import { prependOnceListener } from 'process';
@@ -12,7 +12,7 @@ import { prependOnceListener } from 'process';
 
 describe('Pool', function () {
 
-    let  svr: SvrToken, reign: ReignToken, underlying1: Erc20Mock, underlying2: Erc20Mock
+    let  svr: SvrToken, reign: ReignToken, underlying1: ERC20Mock, underlying2: ERC20Mock
     let  balancer: BasketBalancerMock, poolController:PoolController;
     let  oracle:OracleMock, interestStrategy: InterestStrategy;
     let  pool:Pool, pool2:Pool;
@@ -51,8 +51,8 @@ describe('Pool', function () {
 
     beforeEach(async function() {
         
-        underlying1 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
-        underlying2 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
+        underlying1 = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
+        underlying2 = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
 
         svr = (await deploy.deployContract('SvrToken', [userAddress])) as SvrToken;
         reign = (await deploy.deployContract('ReignToken', [userAddress])) as ReignToken;

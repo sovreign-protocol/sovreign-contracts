@@ -3,7 +3,7 @@ import * as config from './config';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
 import 'hardhat-abi-exporter';
-import 'hardhat-typechain';
+import '@typechain/hardhat';
 import 'solidity-coverage';
 import 'hardhat-gas-reporter';
 
@@ -36,7 +36,7 @@ const cfg: HardhatUserConfig = {
     etherscan: config.etherscan,
 
     abiExporter: {
-        only: ['Reign', 'ReignFacet', 'OwnershipFacet', 'DiamondCutFacet', 'DiamondLoupeFacet', 'Rewards', 'RewardsVault', 'ReignDAO'],
+        only: ['ReignDiamond', 'ReignFacet', 'OwnershipFacet', 'DiamondCutFacet', 'DiamondLoupeFacet', 'Rewards', 'RewardsVault', 'ReignDAO'],
         except: ['.*Mock$'],
         clear: true,
         flat: true,

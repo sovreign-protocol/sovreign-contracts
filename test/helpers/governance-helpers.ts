@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { BigNumber, ContractFactory } from 'ethers';
-import { ReignDaoReignMock, ReignDao } from '../../typechain';
+import { ReignDAOReignMock, ReignDAO } from '../../typechain';
 
 enum ProposalState {
     WarmUp,
@@ -18,17 +18,17 @@ enum ProposalState {
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 export const tenPow18 = BigNumber.from(10).pow(18);
 
-export async function deployReign (): Promise<ReignDaoReignMock> {
+export async function deployReign (): Promise<ReignDAOReignMock> {
     const ReignMock: ContractFactory = await ethers.getContractFactory('ReignDAOReignMock');
-    const reign: ReignDaoReignMock = (await ReignMock.deploy()) as ReignDaoReignMock;
+    const reign: ReignDAOReignMock = (await ReignMock.deploy()) as ReignDAOReignMock;
     await reign.deployed();
 
     return reign;
 }
 
-export async function deployReignDAO (): Promise<ReignDao> {
+export async function deployReignDAO (): Promise<ReignDAO> {
     const ReignDAO: ContractFactory = await ethers.getContractFactory('ReignDAO');
-    const reignDAO: ReignDao = (await ReignDAO.deploy()) as ReignDao;
+    const reignDAO: ReignDAO = (await ReignDAO.deploy()) as ReignDAO;
     await reignDAO.deployed();
 
     return reignDAO;

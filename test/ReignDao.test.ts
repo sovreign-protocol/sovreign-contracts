@@ -3,11 +3,11 @@ import { BigNumber, ethers as ejs, Signer } from 'ethers';
 import * as helpers from './helpers/governance-helpers';
 import { moveAtTimestamp } from './helpers/helpers';
 import { expect } from 'chai';
-import {ReignDaoReignMock, ReignDao} from '../typechain';
+import {ReignDAOReignMock, ReignDAO} from '../typechain';
 
 describe('ReignDAO', function () {
 
-    let reignDAO: ReignDao, reign: ReignDaoReignMock;
+    let reignDAO: ReignDAO, reign: ReignDAOReignMock;
     let user: Signer, userAddress: string;
     let voter1: Signer, voter2: Signer, voter3: Signer;
     let snapshotId: any;

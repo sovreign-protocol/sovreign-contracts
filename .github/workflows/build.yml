@@ -18,7 +18,9 @@ jobs:
       - name: Install
         if: steps.npm-cache.outputs.cache-hit != 'true'
         run: npm install
+      - name: Clean
+        run: npm run clean
       - name: Compile
-        run: $(npm bin hardhat)/hardhat compile
+        run: npm run compile
       - name: Test
-        run: $(npm bin hardhat)/hardhat test
+        run: npm run test

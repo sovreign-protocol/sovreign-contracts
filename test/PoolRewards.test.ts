@@ -3,13 +3,13 @@ import { BigNumber, Signer } from "ethers";
 import { moveAtEpoch, tenPow18,mineBlocks,setNextBlockTimestamp,getCurrentUnix, moveAtTimestamp } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
-import { RewardsVault, Erc20Mock, Staking, PoolRewards, PoolControllerMock,LiquidityBufferVault, InterestStrategy, BasketBalancerMock } from "../typechain";
+import { RewardsVault, ERC20Mock, Staking, PoolRewards, PoolControllerMock,LiquidityBufferVault, InterestStrategy, BasketBalancerMock  } from "../typechain";
 
 describe("YieldFarm REIGN Pool", function () {
     let staking: Staking;
-    let reignToken: Erc20Mock;
-    let svrToken: Erc20Mock;
-    let poolLP: Erc20Mock;
+    let reignToken: ERC20Mock;
+    let svrToken: ERC20Mock;
+    let poolLP: ERC20Mock;
     let yieldFarm: PoolRewards;
     let interest: InterestStrategy;
     let controller: PoolControllerMock;
@@ -33,9 +33,9 @@ describe("YieldFarm REIGN Pool", function () {
         await setupSigners()
         userAddr = await user.getAddress();
 
-        reignToken = (await deployContract("ERC20Mock")) as Erc20Mock;
-        svrToken = (await deployContract("ERC20Mock")) as Erc20Mock;
-        poolLP = (await deployContract("ERC20Mock")) as Erc20Mock;
+        reignToken = (await deployContract("ERC20Mock")) as ERC20Mock;
+        svrToken = (await deployContract("ERC20Mock")) as ERC20Mock;
+        poolLP = (await deployContract("ERC20Mock")) as ERC20Mock;
 
         let balancer = (await deployContract("BasketBalancerMock",[[],[]])) as BasketBalancerMock;
 

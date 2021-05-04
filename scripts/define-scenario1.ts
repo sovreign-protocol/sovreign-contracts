@@ -1,7 +1,7 @@
 import {DeployConfig} from "./config";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
 import {ReignDAO, PoolController, ReignFacet, ReignToken, Rewards} from "../typechain";
-import * as helpers from "../test/helpers/reigndao-helpers";
+import * as helpers from "../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../test/helpers/diamond";
 import {minute} from "../test/helpers/time";
 import {moveAtTimestamp} from "../test/helpers/helpers";

@@ -3,8 +3,8 @@ import { BigNumber, Signer } from 'ethers';
 import { expect } from 'chai';
 import * as helpers from './helpers/helpers';
 
-import { 
-    Erc20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy
+import {
+    ERC20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy
  } from '../typechain';
 import * as deploy from './helpers/deploy';
 import { stringify } from 'querystring';
@@ -14,7 +14,7 @@ import { stringify } from 'querystring';
 
 describe('PoolController', function () {
 
-    let  svr: SvrToken, reign: ReignToken, underlying1: Erc20Mock, underlying2: Erc20Mock
+    let  svr: SvrToken, reign: ReignToken, underlying1: ERC20Mock, underlying2: ERC20Mock
     let  balancer: BasketBalancerMock, poolController:PoolController;
     let  oracle:OracleMock
     let  interestStrategy: InterestStrategy
@@ -32,8 +32,8 @@ describe('PoolController', function () {
         await setupSigners();
 
         reign = (await deploy.deployContract('ReignToken', [userAddress])) as ReignToken;
-        underlying1 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock; 
-        underlying2 = (await deploy.deployContract('ERC20Mock')) as Erc20Mock;
+        underlying1 = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
+        underlying2 = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
         
         oracle = (await deploy.deployContract('OracleMock', [reignDAOAddress])) as OracleMock;
  
