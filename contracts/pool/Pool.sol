@@ -64,11 +64,7 @@ contract Pool is IPool, PoolErc20 {
         liquidityBuffer = controller.liquidityBuffer();
     }
 
-    function getReserves() public view override returns (uint256 _reserve) {
-        _reserve = reserve;
-    }
-
-    // this low-level function should be called from a contract which performs important safety checks
+    //recieve liquidty mint LP tokens and mint SVR tokens
     function mint(address to)
         external
         override
@@ -93,8 +89,7 @@ contract Pool is IPool, PoolErc20 {
             reign.transferFrom(msg.sender, treasoury, depositFee);
         }
 
-        //bool feeOn = _takeFeeIn(amount);
-        uint256 _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
+        uint256 _totalSupply = totalSupply; // gas savings
         if (_totalSupply == 0) {
             liquidity = amount.sub(MINIMUM_LIQUIDITY);
             _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
@@ -102,16 +97,21 @@ contract Pool is IPool, PoolErc20 {
             liquidity = amount;
         }
         require(liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED");
+
         //Mint LP Tokens
         _mint(to, liquidity);
 
+        //mint SVR tokens
+        _mintSvr(to, amount);
+
+        //store new balance in reserve
         _updateReserves();
 
+        //accrue interest based on new balance
         _accrueInterest();
-
-        _mintSvr(to, amount);
     }
 
+    //burns LP tokens,burns SVR tokens and returns liquidity to user
     function burn(uint256 amount) external override lock returns (bool) {
         require(amount > 0, "Can only burn positive amounts");
 
@@ -129,24 +129,90 @@ contract Pool is IPool, PoolErc20 {
             reign.transferFrom(msg.sender, liquidityBuffer, withdrawFee);
         }
 
-        //Burn LP tokens
+        //burn LP tokens
         _burn(msg.sender, amount);
 
+        //return liquidity
         _safeTransfer(to, amount);
 
+        //burn SVR tokens
         _burnSvr(to, amount);
 
+        //store new balance in reserve
         _updateReserves();
 
+        //accrue interest based on new balance
         _accrueInterest();
     }
 
-    // force balances to match reserves
+    // allow anyone to remove tokens if accidentaly sent to pool addres
     function skim(address to) external override lock {
         address _token = token; // gas savings
         _safeTransfer(to, IERC20(_token).balanceOf(address(this)).sub(reserve));
     }
 
+    // ERC20 transfer that can revert
+    function _safeTransfer(address to, uint256 value) internal {
+        IERC20(token).safeTransfer(to, value);
+    }
+
+    // update reserves to match token
+    function _updateReserves() internal {
+        address _token = token;
+        reserve = IERC20(_token).balanceOf(address(this));
+        emit Sync(reserve);
+    }
+
+    // Mints SVR tokens using the minting/burn formula, if there are no tokens mints the BASE_AMOUNT
+    function _mintSvr(address to, uint256 amount) internal {
+        uint256 svrSupply = IMintBurnErc20(svrToken).totalSupply();
+        uint256 TVL = controller.getPoolsTVL();
+        uint256 price = controller.getTokenPrice(address(this));
+        uint256 amountSvr;
+        if (svrSupply == 0) {
+            amountSvr = BASE_SVR_AMOUNT;
+        } else {
+            amountSvr = amount.mul(price).mul(svrSupply).div(TVL).div(10**18);
+        }
+
+        IMintBurnErc20(svrToken).mint(to, amountSvr);
+
+        emit Mint(msg.sender, amount, amountSvr);
+    }
+
+    // Burnd SVR tokens using the minting/burn formula
+    function _burnSvr(address from, uint256 amount) internal {
+        uint256 svrSupply = IMintBurnErc20(svrToken).totalSupply();
+        uint256 TVL = controller.getPoolsTVL();
+        uint256 price = controller.getTokenPrice(address(this));
+        uint256 amountSvr =
+            amount.mul(price).mul(svrSupply).div(TVL).div(10**18);
+
+        IMintBurnErc20(svrToken).burnFrom(from, amountSvr);
+
+        emit Burn(msg.sender, amount, amountSvr);
+    }
+
+    // Calls accrue interest in the pools interest startegy contract
+    function _accrueInterest() internal {
+        uint256 target = controller.getTargetSize(address(this));
+        address interestStrategy =
+            controller.getInterestStrategy(address(this));
+        InterestStrategyInterface(interestStrategy).accrueInterest(
+            getReserves(),
+            target
+        );
+    }
+
+    /*
+     * VIEWS
+     */
+
+    function getReserves() public view override returns (uint256 _reserve) {
+        _reserve = reserve;
+    }
+
+    // get the deposit fee to be paid to deposit a given amount of liquidity
     function getDepositFeeReign(uint256 amount) public view returns (uint256) {
         uint256 target = controller.getTargetSize(address(this));
 
@@ -174,6 +240,7 @@ contract Pool is IPool, PoolErc20 {
                 .div(10**18);
     }
 
+    // get the withdraw fee to be paid to withdraw a given amount of liquidity
     function getWithdrawFeeReign(uint256 amount)
         public
         view
@@ -192,61 +259,5 @@ contract Pool is IPool, PoolErc20 {
             );
 
         userFee = totalFeeAccrued.mul(amount).div(getReserves()).div(10**18);
-    }
-
-    // force reserves to match balances
-    function sync() external override lock {
-        _updateReserves();
-    }
-
-    function _safeTransfer(address to, uint256 value) private {
-        IERC20(token).safeTransfer(to, value);
-    }
-
-    // update reserves and, on the first call per block
-    function _updateReserves() private {
-        address _token = token;
-        reserve = IERC20(_token).balanceOf(address(this));
-        emit Sync(reserve);
-    }
-
-    function _mintSvr(address to, uint256 amount) private returns (bool) {
-        uint256 svrSupply = IMintBurnErc20(svrToken).totalSupply();
-        uint256 TVL = controller.getPoolsTVL();
-        uint256 price = controller.getTokenPrice(address(this));
-        uint256 amountSvr;
-        if (svrSupply == 0) {
-            amountSvr = BASE_SVR_AMOUNT;
-        } else {
-            amountSvr = amount.mul(price).mul(svrSupply).div(TVL).div(10**18);
-        }
-
-        emit Mint(msg.sender, amount, amountSvr);
-
-        return IMintBurnErc20(svrToken).mint(to, amountSvr);
-    }
-
-    function _burnSvr(address from, uint256 amount) private returns (bool) {
-        uint256 svrSupply = IMintBurnErc20(svrToken).totalSupply();
-        uint256 TVL = controller.getPoolsTVL();
-        uint256 price = controller.getTokenPrice(address(this));
-        uint256 amountSvr =
-            amount.mul(price).mul(svrSupply).div(TVL).div(10**18);
-
-        emit Burn(msg.sender, amount, amountSvr);
-
-        return IMintBurnErc20(svrToken).burnFrom(from, amountSvr);
-    }
-
-    function _accrueInterest() public returns (bool) {
-        uint256 target = controller.getTargetSize(address(this));
-        address interestStrategy =
-            controller.getInterestStrategy(address(this));
-        InterestStrategyInterface(interestStrategy).accrueInterest(
-            getReserves(),
-            target
-        );
-
-        return true;
     }
 }

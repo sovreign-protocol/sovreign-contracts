@@ -193,13 +193,6 @@ describe('Pool', function () {
             expect(await pool.totalSupply()).to.be.eq(0)
         });
 
-        it('reserves are updated correctly after deposit', async function () {
-            let amount = BigNumber.from(1100000).mul(helpers.tenPow18);
-            await underlying1.connect(user).transfer(pool.address,amount);
-            await pool.sync();
-            expect(await pool.getReserves()).to.be.eq(amount)
-        });
-
     });
 
     describe('Computing Fees', async function () {
