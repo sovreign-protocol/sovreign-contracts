@@ -5,7 +5,7 @@ import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
 import { RewardsVault, Erc20Mock, Staking, PoolRewards, PoolControllerMock,LiquidityBufferVault, InterestStrategy } from "../typechain";
 
-describe("YieldFarm Bond Pool", function () {
+describe("YieldFarm REIGN Pool", function () {
     let staking: Staking;
     let reignToken: Erc20Mock;
     let svrToken: Erc20Mock;

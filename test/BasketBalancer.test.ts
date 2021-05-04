@@ -1,10 +1,9 @@
 import { ethers } from 'hardhat';
 import { BigNumber, Signer } from 'ethers';
 import * as helpers from './helpers/helpers';
-import * as time from './helpers/time';
 import { expect } from 'chai';
-import { ReignMock, Erc20Mock, Rewards, BasketBalancer } from '../typechain';
 import * as deploy from './helpers/deploy';
+import {BasketBalancer, Erc20Mock, ReignMock, Rewards} from '../typechain';
 
 const address1 = '0x0000000000000000000000000000000000000001';
 const address2 = '0x0000000000000000000000000000000000000002';

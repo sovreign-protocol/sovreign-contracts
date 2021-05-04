@@ -2,7 +2,7 @@ import {DeployConfig} from "./config";
 import * as deploy from "../test/helpers/deploy";
 import {
     BasketBalancer,
-    ReignDAO,
+    ReignDao,
     InterestStrategy,
     PoolController,
     Reign,
@@ -86,7 +86,7 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Deploy "ReignDAO" contract:
     ///////////////////////////
-    const reignDAO = await deploy.deployContract('ReignDAO') as ReignDAO;
+    const reignDAO = await deploy.deployContract('ReignDAO') as ReignDao;
     c.reignDAO = reignDAO;
     console.log(`ReignDAO deployed at: ${reignDAO.address.toLowerCase()}`);
 
