@@ -92,6 +92,13 @@ contract BasketBalancer is IBasketBalancer {
     function updateBasketBalance() external {
         require(lastEpochUpdate < getCurrentEpoch(), "Epoch is not over");
 
+        // This is to prevent flashloan attacks to increase voting power,
+        //users can not deposit into staking and initialize epoch in the same block
+        require(
+            reign.userLastAction(msg.sender) < block.timestamp,
+            "Can not end epoch if deposited in same block"
+        );
+
         for (uint256 i = 0; i < allPools.length; i++) {
             uint256 _currentValue = continuousVote[allPools[i]]; // new vote outcome
             uint256 _previousValue = poolAllocation[allPools[i]]; // before this vote
@@ -126,8 +133,8 @@ contract BasketBalancer is IBasketBalancer {
         );
 
         uint256 _totalPower = reign.bondStaked();
-        // we take the voting power from the end of the last epoch to avoid flashloan attacks
-        // or users sending their stake to multiple wallets and vote again
+        // we take the voting power as it was at the end of the last epoch to avoid flashloan attacks
+        // or users sending their stake to new wallets and vote again
         uint256 _votingPower = reign.votingPowerAtTs(msg.sender, lastEpochEnd);
         uint256 _remainingPower = _totalPower.sub(_votingPower);
 
@@ -146,7 +153,6 @@ contract BasketBalancer is IBasketBalancer {
                 require(_current - _votedFor <= maxDelta, "Above Max Delta");
             }
             // if all checkst have passed we update the allocation vote
-
             continuousVote[allPools[i]] = (
                 _current.mul(_remainingPower).add(_votedFor.mul(_votingPower))
             )

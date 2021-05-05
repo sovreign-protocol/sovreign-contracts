@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "../libraries/LibReignStorage.sol";
 
 interface IReign {
+    function BASE_MULTIPLIER() external view returns (uint256);
 
     // deposit allows a user to add more bond to his staked balance
     function deposit(uint256 amount) external;
@@ -64,6 +65,10 @@ interface IReign {
         view
         returns (uint256);
 
+    // multiplierOf calculates the multiplier on the user's stake at the current timestamp
+    // it includes the decay mechanism
+    function multiplierOf(address user) external view returns (uint256);
+
     // multiplierAtTs calculates the multiplier at a given timestamp based on the user's stake a the given timestamp
     // it includes the decay mechanism
     function multiplierAtTs(address user, uint256 timestamp)
@@ -76,6 +81,9 @@ interface IReign {
 
     // userDidDelegate returns the address to which a user delegated their voting power; address(0) if not delegated
     function userDelegatedTo(address user) external view returns (address);
+
+    // returns the last timestamp in which the user intercated with the staking contarct
+    function userLastAction(address user) external view returns (uint256);
 
     // bondCirculatingSupply returns the current circulating supply of BOND
     function bondCirculatingSupply() external view returns (uint256);

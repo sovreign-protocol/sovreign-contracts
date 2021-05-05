@@ -225,14 +225,14 @@ describe('InterestStrategy', function () {
 
         it('skips accrual if called in same block', async function () {
 
-            helpers.setAutomine(false)
+            await helpers.setAutomine(false)
             let multiplier = await interest.withdrawFeeAccrued();
             await interest.accrueInterest(11000,10000);
             expect(await interest.withdrawFeeAccrued()).to.be.equal(multiplier)
             //this should not change the multiplier
             await interest.accrueInterest(11000,10000);
             expect(await interest.withdrawFeeAccrued()).to.be.equal(multiplier)
-            helpers.setAutomine(true)
+            await helpers.setAutomine(true)
         });
 
         it('returns correct withdraw fee multiplier', async function () {

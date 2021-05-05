@@ -12,7 +12,7 @@ contract ReignFacet {
     using SafeMath for uint256;
 
     uint256 public constant MAX_LOCK = 365 days;
-    uint256 constant BASE_MULTIPLIER = 1e18;
+    uint256 public constant BASE_MULTIPLIER = 1e18;
 
     event Deposit(address indexed user, uint256 amount, uint256 newBalance);
     event Withdraw(
@@ -288,8 +288,7 @@ contract ReignFacet {
             ownVotingPower = 0;
         } else {
             uint256 balance = stake.amount;
-            uint256 multiplier = _stakeMultiplier(stake, timestamp);
-            ownVotingPower = balance.mul(multiplier).div(BASE_MULTIPLIER);
+            ownVotingPower = balance;
         }
 
         uint256 delegatedVotingPower = delegatedPowerAtTs(user, timestamp);
@@ -344,7 +343,7 @@ contract ReignFacet {
     {
         LibReignStorage.Stake memory stake = stakeAtTs(user, timestamp);
 
-        return _stakeMultiplier(stake, timestamp);
+        return _stakeMultiplier(stake);
     }
 
     // userLockedUntil returns the timestamp until the user's balance is locked
@@ -359,6 +358,17 @@ contract ReignFacet {
         LibReignStorage.Stake memory c = stakeAtTs(user, block.timestamp);
 
         return c.delegatedTo;
+    }
+
+    // returns the last time a user interacted with the contract
+    function userLastAction(address user) public view returns (uint256) {
+        LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
+
+        LibReignStorage.Stake[] storage checkpoints = ds.userStakeHistory[user];
+
+        LibReignStorage.Stake storage lastCheckpoint =
+            checkpoints[checkpoints.length - 1];
+        return lastCheckpoint.timestamp;
     }
 
     // _checkpointsBinarySearch executes a binary search on a list of checkpoints that's sorted chronologically
@@ -391,16 +401,13 @@ contract ReignFacet {
         return checkpoints[min].amount;
     }
 
-    // _stakeMultiplier calculates the multiplier for the given stake at the given timestamp
-    function _stakeMultiplier(
-        LibReignStorage.Stake memory stake,
-        uint256 timestamp
-    ) internal view returns (uint256) {
-        if (timestamp >= stake.expiryTimestamp) {
-            return BASE_MULTIPLIER;
-        }
-
-        uint256 diff = stake.expiryTimestamp - timestamp;
+    // _stakeMultiplier calculates the multiplier for the given stake
+    function _stakeMultiplier(LibReignStorage.Stake memory stake)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 diff = stake.expiryTimestamp - stake.timestamp;
         if (diff >= MAX_LOCK) {
             return BASE_MULTIPLIER.mul(2);
         }

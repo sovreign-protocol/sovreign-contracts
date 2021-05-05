@@ -64,8 +64,8 @@ describe('BasketBalancer', function () {
     });
 
     afterEach(async function () {
+        await helpers.setAutomine(true)
         await ethers.provider.send('evm_revert', [snapshotId]);
-
         await helpers.moveAtTimestamp(snapshotTs + 5);
     });
 
@@ -137,10 +137,16 @@ describe('BasketBalancer', function () {
         });
 
         it('can vote with correct allocation', async function () {
+
+            let epoch = await balancer.getCurrentEpoch();
+            expect(await balancer.hasVotedInEpoch(userAddress,epoch)).to.be.false;
+
             await reign.deposit(userAddress, 100);
             await expect( 
                 balancer.connect(user).updateAllocationVote(pools, [450000000,550000000])
             ).to.not.be.reverted;
+
+            expect(await balancer.hasVotedInEpoch(userAddress, epoch)).to.be.true;
         });
 
         it('can vote again after the epoch ends', async function () {
@@ -286,7 +292,6 @@ describe('BasketBalancer', function () {
         });
 
         
-
         it('can not update twice in same epoch', async function () {
             await reign.deposit(userAddress, 100);
             await reign.deposit(flyingParrotAddress, 200);

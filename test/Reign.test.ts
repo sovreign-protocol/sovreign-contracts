@@ -78,6 +78,13 @@ describe('Reign', function () {
             expect(await rewardsMock.calledWithUser()).to.equal(userAddress);
         });
 
+        it('updates last action checkpoint', async function () {
+            await prepareAccount(user, amount);
+            await reign.connect(user).deposit(amount);
+
+            expect(await reign.userLastAction(userAddress)).to.eq(await helpers.getLatestBlockTimestamp())
+        });
+
         it('stores the user balance in storage', async function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
@@ -238,8 +245,17 @@ describe('Reign', function () {
         it('calls registerUserAction on rewards contract', async function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
+            await reign.connect(user).withdraw(amount);
 
             expect(await rewardsMock.calledWithUser()).to.equal(userAddress);
+        });
+
+        it('updates last action checkpoint', async function () {
+            await prepareAccount(user, amount);
+            await reign.connect(user).deposit(amount);
+            await reign.connect(user).withdraw(amount);
+
+            expect(await reign.userLastAction(userAddress)).to.eq(await helpers.getLatestBlockTimestamp())
         });
 
         it('sets user balance to 0', async function () {
@@ -380,7 +396,7 @@ describe('Reign', function () {
     });
 
     describe('multiplierAtTs', async function () {
-        it('returns expected multiplier', async function () {
+        it('returns expected multiplier for over a year lock', async function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
 
@@ -399,30 +415,34 @@ describe('Reign', function () {
                 actualMultiplier
             ).to.be.equal(expectedMultiplier);
         });
+
+        it('returns expected multiplier', async function () {
+            await prepareAccount(user, amount);
+            await reign.connect(user).deposit(amount);
+
+            let ts: number = await helpers.getLatestBlockTimestamp();
+            await helpers.setNextBlockTimestamp(ts + 5);
+
+            const lockExpiryTs = ts + 5 + 15778800;
+            await reign.connect(user).lock(lockExpiryTs);
+
+            ts = await helpers.getLatestBlockTimestamp();
+
+            const expectedMultiplier = multiplierAtTs(lockExpiryTs, ts);
+            const actualMultiplier = await reign.multiplierAtTs(userAddress, ts);
+
+            expect(
+                actualMultiplier
+            ).to.be.equal(expectedMultiplier);
+        });
     });
 
     describe('votingPower', async function () {
-        it('returns raw balance if user did not lock', async function () {
+        it('returns raw balance', async function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
 
             expect(await reign.votingPower(userAddress)).to.be.equal(amount);
-        });
-
-        it('returns adjusted balance if user locked bond', async function () {
-            await prepareAccount(user, amount);
-            await reign.connect(user).deposit(amount);
-
-            const expiryTs = time.futureTimestamp(time.year);
-            await reign.connect(user).lock(expiryTs);
-
-            const blockTs = await helpers.getLatestBlockTimestamp();
-
-            expect(
-                await reign.votingPower(userAddress)
-            ).to.be.equal(
-                amount.mul(multiplierAtTs(expiryTs, blockTs)).div(helpers.tenPow18)
-            );
         });
     });
 
@@ -442,57 +462,6 @@ describe('Reign', function () {
             expect(await reign.votingPowerAtTs(userAddress, firstDepositTs + 10)).to.be.equal(amount);
             expect(await reign.votingPowerAtTs(userAddress, secondDepositTs - 10)).to.be.equal(amount);
             expect(await reign.votingPowerAtTs(userAddress, secondDepositTs + 10)).to.be.equal(amount.mul(2));
-        });
-
-        it('returns correct balance with lock', async function () {
-            await prepareAccount(user, amount.mul(2));
-
-            await reign.connect(user).deposit(amount);
-            const firstDepositTs = await helpers.getLatestBlockTimestamp();
-
-            await helpers.setNextBlockTimestamp(firstDepositTs + 3600);
-
-            const expiryTs = time.futureTimestamp(1 * time.year);
-            await reign.connect(user).lock(expiryTs);
-            const lockTs = await helpers.getLatestBlockTimestamp();
-            const expectedMultiplier = multiplierAtTs(expiryTs, lockTs + 10);
-            const expectedBalance1 = amount.mul(expectedMultiplier).div(helpers.tenPow18);
-
-            await helpers.setNextBlockTimestamp(lockTs + 3600);
-
-            await reign.connect(user).deposit(amount);
-            const secondDepositTs = await helpers.getLatestBlockTimestamp();
-            const expectedMultiplier2 = multiplierAtTs(expiryTs, secondDepositTs + 10);
-            const expectedBalance2 = amount.mul(2).mul(expectedMultiplier2).div(helpers.tenPow18);
-
-            expect(await reign.votingPowerAtTs(userAddress, firstDepositTs - 10)).to.be.equal(0);
-            expect(await reign.votingPowerAtTs(userAddress, firstDepositTs + 10)).to.be.equal(amount);
-            expect(await reign.votingPowerAtTs(userAddress, lockTs + 10)).to.be.equal(expectedBalance1);
-            expect(await reign.votingPowerAtTs(userAddress, secondDepositTs + 10)).to.be.equal(expectedBalance2);
-        });
-
-        it('returns voting power with decaying bonus', async function () {
-            await prepareAccount(user, amount.mul(2));
-            await reign.connect(user).deposit(amount);
-            const ts = await helpers.getLatestBlockTimestamp();
-            const startTs = ts + 10;
-
-            await helpers.setNextBlockTimestamp(startTs);
-            const expiryTs = startTs + time.year;
-            await reign.connect(user).lock(expiryTs);
-
-            let bonus = helpers.tenPow18;
-            const dec = helpers.tenPow18.div(10);
-
-            for (let i = 0; i <= 365; i += 36.5) {
-                const ts = startTs + i * time.day;
-                const multiplier = helpers.tenPow18.add(bonus);
-                const expectedVP = amount.mul(multiplier).div(helpers.tenPow18);
-
-                expect(await reign.votingPowerAtTs(userAddress, ts)).to.be.equal(expectedVP);
-
-                bonus = bonus.sub(dec);
-            }
         });
     });
 
