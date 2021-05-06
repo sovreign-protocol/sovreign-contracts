@@ -15,7 +15,7 @@ contract BasketBalancer is IBasketBalancer {
     uint256 public EPOCH_DURATION = 604800; // ca. one week in seconds
     uint256 public UPDATE_PERIOD = 172800; // ca. two days in seconds
 
-    uint256 public lastEpochUpdate;
+    uint128 public lastEpochUpdate;
     uint256 public lastEpochEnd;
 
     uint256 public maxDelta;
@@ -135,7 +135,8 @@ contract BasketBalancer is IBasketBalancer {
         uint256 _totalPower = reign.bondStaked();
         // we take the voting power as it was at the end of the last epoch to avoid flashloan attacks
         // or users sending their stake to new wallets and vote again
-        uint256 _votingPower = reign.votingPowerAtTs(msg.sender, lastEpochEnd);
+        uint256 _votingPower =
+            reign.votingPowerAtEpoch(msg.sender, lastEpochUpdate);
         uint256 _remainingPower = _totalPower.sub(_votingPower);
 
         uint256 amountAllocated = 0;
@@ -237,11 +238,7 @@ contract BasketBalancer is IBasketBalancer {
 
     //Returns the id of the current epoch derived from block.timestamp
     function getCurrentEpoch() public view returns (uint128) {
-        if (block.timestamp < epoch1Start) {
-            return 0;
-        }
-
-        return uint128((block.timestamp - epoch1Start) / EPOCH_DURATION + 1);
+        return reign.getCurrentEpoch();
     }
 
     function getPools() external view returns (address[] memory) {

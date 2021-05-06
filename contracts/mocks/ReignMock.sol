@@ -18,8 +18,12 @@ contract ReignMock {
     uint256 public constant MAX_LOCK = 365 days;
     uint256 public constant BASE_MULTIPLIER = 1e18;
 
-    function setRewards(address rewards) public {
-        r = IRewards(rewards);
+    uint256 public epoch1Start;
+    uint256 public epochDuration;
+
+    constructor(uint256 _epoch1Start, uint256 _epochDuration) {
+        epoch1Start = _epoch1Start;
+        epochDuration = _epochDuration;
     }
 
     function callRegisterUserAction(address user) public {
@@ -27,7 +31,6 @@ contract ReignMock {
     }
 
     function deposit(address user, uint256 amount) public {
-        callRegisterUserAction(user);
         lastAction[user] = block.timestamp;
 
         balances[user] = balances[user] + amount;
@@ -67,11 +70,19 @@ contract ReignMock {
         return lastAction[user];
     }
 
-    function votingPowerAtTs(address user, uint256 ts)
+    function votingPowerAtEpoch(address user, uint128 epochId)
         public
         view
         returns (uint256)
     {
         return balances[user];
+    }
+
+    function stakingBoostAtEpoch(address user, uint128 epochId)
+        public
+        view
+        returns (uint256)
+    {
+        return 10**18;
     }
 }

@@ -1,403 +1,297 @@
-import { ethers } from 'hardhat';
-import { BigNumber, Signer } from 'ethers';
-import * as helpers from './helpers/helpers';
+import { ethers } from "hardhat";
+import { BigNumber, Signer } from "ethers";
+import { moveAtEpoch, tenPow18,mineBlocks,setNextBlockTimestamp,getCurrentUnix, moveAtTimestamp, getLatestBlockTimestamp } from "./helpers/helpers";
+import { deployContract, deployDiamond } from "./helpers/deploy";
+import {diamondAsFacet} from "./helpers/diamond";
 import * as time from './helpers/time';
-import { expect } from 'chai';
-import { ReignMock, ERC20Mock, Rewards } from '../typechain';
-import * as deploy from './helpers/deploy';
+import { expect } from "chai";
+import { RewardsVault, ERC20Mock, StakingRewards, ReignFacet,ChangeRewardsFacet,EpochClockFacet} from "../typechain";
 
-const zeroAddress = '0x0000000000000000000000000000000000000000';
+describe("Rewards", function () {
+    let reignToken: ERC20Mock;
+    let yieldFarm: StakingRewards;
+    let reign: ReignFacet, changeRewards: ChangeRewardsFacet;
+    let rewardsVault: RewardsVault;
+    let user: Signer
+    let flayingParrot: Signer;
+    let userAddr: string;
 
-describe('Rewards', function () {
-    const amount = BigNumber.from(100).mul(BigNumber.from(10).pow(18));
+    const epochStart = Math.floor(Date.now() / 1000) + 1000;
+    const epochDuration = 604800;
 
-    let reign: ReignMock, bond: ERC20Mock, rewards: Rewards;
-
-    let user: Signer, userAddress: string;
-    let happyPirate: Signer, happyPirateAddress: string;
-    let flyingParrot: Signer, flyingParrotAddress: string;
-    let communityVault: Signer, treasury: Signer;
-
-    let defaultStartAt: number;
+    const distributedAmount: BigNumber = BigNumber.from(10000000).mul(tenPow18);
+    const amount = BigNumber.from(100).mul(tenPow18) as BigNumber;
 
     let snapshotId: any;
-    let snapshotTs: number;
 
     before(async function () {
-        bond = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
+        await setupSigners()
+        userAddr = await user.getAddress();
 
-        await setupSigners();
-        await setupContracts();
+        reignToken = (await deployContract("ERC20Mock")) as ERC20Mock;
 
-        reign = (await deploy.deployContract('ReignMock')) as ReignMock;
+        const cutFacet = await deployContract('DiamondCutFacet');
+        const loupeFacet = await deployContract('DiamondLoupeFacet');
+        const ownershipFacet = await deployContract('OwnershipFacet');
+        const reignFacet = await deployContract('ReignFacet');
+        const epochClockFacet = await deployContract('EpochClockFacet');
+        const changeRewardsFacet = await deployContract('ChangeRewardsFacet');
+        const diamond = await deployDiamond(
+            'ReignDiamond',
+            [cutFacet, loupeFacet, ownershipFacet, reignFacet, changeRewardsFacet,epochClockFacet],
+            userAddr,
+        );
 
-        rewards = (await deploy.deployContract(
-            'Rewards',
-            [await treasury.getAddress(), bond.address, reign.address])
-        ) as Rewards;
+        changeRewards = (await diamondAsFacet(diamond, 'ChangeRewardsFacet')) as ChangeRewardsFacet;
+        reign = (await diamondAsFacet(diamond, 'ReignFacet')) as ReignFacet;
+        await reign.initReign(reignToken.address, epochStart, epochDuration);
 
-        await reign.setRewards(rewards.address);
+
+        rewardsVault = (await deployContract("RewardsVault", [reignToken.address])) as RewardsVault;
+        
+        yieldFarm = (await deployContract("StakingRewards", [
+            reignToken.address,
+            reign.address,
+            rewardsVault.address,
+        ])) as StakingRewards;
+
+        await reignToken.mint(rewardsVault.address, distributedAmount);
+        await rewardsVault.connect(user).setAllowance(yieldFarm.address, distributedAmount);
+
+        await reignToken.mint(userAddr, amount);
+
+        await setNextBlockTimestamp(await getCurrentUnix());
     });
 
+    
     beforeEach(async function () {
-        snapshotId = await ethers.provider.send('evm_snapshot', []);
-        snapshotTs = await helpers.getLatestBlockTimestamp();
+        snapshotId = await ethers.provider.send("evm_snapshot", []);
     });
 
     afterEach(async function () {
-        await ethers.provider.send('evm_revert', [snapshotId]);
-
-        await helpers.moveAtTimestamp(snapshotTs + 5);
+        await ethers.provider.send("evm_revert", [snapshotId]);
     });
 
-    describe('General', function () {
+    describe('General Contract checks', function () {
         it('should be deployed', async function () {
-            expect(rewards.address).to.not.eql(0).and.to.not.be.empty;
-        });
-
-        it('sets correct owner', async function () {
-            expect(await rewards.owner()).to.equal(await treasury.getAddress());
-        });
-
-        it('can set pullTokenFrom if called by owner', async function () {
-            const startAt = await helpers.getLatestBlockTimestamp();
-            const endsAt = startAt + 60 * 60 * 24 * 7;
-
-            await expect(
-                rewards.connect(happyPirate).setupPullToken(await communityVault.getAddress(), startAt, endsAt, amount)
-            ).to.be.revertedWith('!owner');
-
-            await expect(
-                rewards.connect(treasury).setupPullToken(flyingParrotAddress, startAt, endsAt, amount)
-            ).to.not.be.reverted;
-
-            expect((await rewards.pullFeature()).source).to.equal(flyingParrotAddress);
-        });
-
-        it('sanitizes the parameters on call to setPullToken', async function () {
-            const startAt = await helpers.getLatestBlockTimestamp();
-
-            // checks on contract setup
-            await expect(
-                rewards.connect(treasury).setupPullToken(helpers.zeroAddress, startAt, startAt + 100, amount)
-            ).to.be.revertedWith('contract is not setup, source must be != 0x0');
-
-            await expect(
-                rewards.connect(treasury).setupPullToken(flyingParrotAddress, startAt, 0, amount)
-            ).to.be.revertedWith('endTs must be greater than startTs');
-
-            await expect(
-                rewards.connect(treasury).setupPullToken(flyingParrotAddress, startAt, startAt + 100, 0)
-            ).to.be.revertedWith('setup contract: amount must be greater than 0');
-
-            // setup the contract correctly and test contract disabling
-            await expect(
-                rewards.connect(treasury).setupPullToken(flyingParrotAddress, startAt, startAt + 100, amount)
-            ).to.not.be.reverted;
-
-            await expect(
-                rewards.connect(treasury).setupPullToken(flyingParrotAddress, startAt, 0, amount)
-            ).to.be.revertedWith('contract is already set up, source must be 0x0');
-
-            await expect(
-                rewards.connect(treasury).setupPullToken(helpers.zeroAddress, startAt, startAt + 100, amount)
-            ).to.be.revertedWith('disable contract: startTs must be 0');
-
-            await expect(
-                rewards.connect(treasury).setupPullToken(helpers.zeroAddress, 0, startAt + 100, amount)
-            ).to.be.revertedWith('disable contract: endTs must be 0');
-
-            await expect(
-                rewards.connect(treasury).setupPullToken(helpers.zeroAddress, 0, 0, amount)
-            ).to.be.revertedWith('disable contract: amount must be 0');
-
-            await expect(
-                rewards.connect(treasury).setupPullToken(helpers.zeroAddress, 0, 0, 0)
-            ).to.not.be.reverted;
-
-            expect((await rewards.pullFeature()).source).to.be.equal(helpers.zeroAddress);
-
-            expect(await rewards.disabled()).to.equal(true);
-
-            await expect(
-                rewards.connect(treasury).setupPullToken(flyingParrotAddress, startAt, startAt + 100, amount)
-            ).to.be.revertedWith('contract is disabled');
-        });
-
-        it('can set reign address if called by owner', async function () {
-            await expect(rewards.connect(happyPirate).setReign(reign.address))
-                .to.be.revertedWith('!owner');
-
-            await expect(rewards.connect(treasury).setReign(flyingParrotAddress))
-                .to.not.be.reverted;
-
-            expect(await rewards.reign()).to.equal(flyingParrotAddress);
-        });
-
-        it('reverts if setReign called with 0x0', async function () {
-            await expect(rewards.connect(treasury).setReign(helpers.zeroAddress))
-                .to.be.revertedWith('reign address must not be 0x0');
-        });
-    });
-
-    describe('ackFunds', function () {
-        it('calculates the new multiplier when funds are added', async function () {
-            expect(await rewards.currentMultiplier()).to.equal(0);
-
-            await bond.mint(rewards.address, amount);
-            await reign.deposit(happyPirateAddress, amount);
-
-            await expect(rewards.ackFunds()).to.not.be.reverted;
-
-            expect(await rewards.currentMultiplier()).to.equal(helpers.tenPow18);
-            expect(await rewards.balanceBefore()).to.equal(amount);
-
-            await bond.mint(rewards.address, amount);
-
-            await expect(rewards.ackFunds()).to.not.be.reverted;
-            expect(await rewards.currentMultiplier()).to.equal(helpers.tenPow18.mul(2));
-            expect(await rewards.balanceBefore()).to.equal(amount.mul(2));
-        });
-
-        it('does not change multiplier on funds balance decrease but changes balance', async function () {
-            await bond.mint(rewards.address, amount);
-            await reign.deposit(happyPirateAddress, amount);
-
-            await expect(rewards.ackFunds()).to.not.be.reverted;
-            expect(await rewards.currentMultiplier()).to.equal(helpers.tenPow18);
-            expect(await rewards.balanceBefore()).to.equal(amount);
-
-            await bond.burnFrom(rewards.address, amount.div(2));
-
-            await expect(rewards.ackFunds()).to.not.be.reverted;
-            expect(await rewards.currentMultiplier()).to.equal(helpers.tenPow18);
-            expect(await rewards.balanceBefore()).to.equal(amount.div(2));
-
-            await bond.mint(rewards.address, amount.div(2));
-            await rewards.ackFunds();
-
-            // 1 + 50 / 100 = 1.5
-            expect(await rewards.currentMultiplier()).to.equal(helpers.tenPow18.add(helpers.tenPow18.div(2)));
-        });
-    });
-
-    describe('registerUserAction', function () {
-        it('can only be called by reign', async function () {
-            await expect(rewards.connect(happyPirate).registerUserAction(flyingParrotAddress))
-                .to.be.revertedWith('only callable by reign');
-
-            await reign.deposit(happyPirateAddress, amount);
-
-            await expect(reign.callRegisterUserAction(happyPirateAddress)).to.not.be.reverted;
-        });
-
-        it('does not pull bond if function is disabled', async function () {
-            await reign.callRegisterUserAction(happyPirateAddress);
-
-            expect(await bond.balanceOf(rewards.address)).to.equal(0);
-
-            await bond.connect(communityVault).approve(rewards.address, amount);
-
-            const startAt = await helpers.getLatestBlockTimestamp();
-            const endsAt = startAt + 60 * 60 * 24 * 7;
-            await rewards.connect(treasury).setupPullToken(await communityVault.getAddress(), startAt, endsAt, amount);
-            await reign.deposit(happyPirateAddress, amount);
-
-            await helpers.moveAtTimestamp(startAt + time.day);
-            await reign.callRegisterUserAction(happyPirateAddress);
-
-            // total time is 7 days & total amount is 100  => 1 day worth of rewards ~14.28
-            const balance = await bond.balanceOf(rewards.address);
-            expect(balance.gt(BigNumber.from(14).mul(helpers.tenPow18))).to.be.true;
-            expect(balance.lt(BigNumber.from(15).mul(helpers.tenPow18))).to.be.true;
-        });
-
-        it('does not pull bond if already pulled everything', async function () {
-            const { start, end } = await setupRewards();
-
-            await helpers.moveAtTimestamp(end + 1 * time.day);
-
-            await reign.callRegisterUserAction(happyPirateAddress);
-
-            expect(await bond.balanceOf(rewards.address)).to.equal(amount);
-
-            await helpers.moveAtTimestamp(end + 1 * time.day);
-            await reign.callRegisterUserAction(happyPirateAddress);
-
-            expect(await bond.balanceOf(rewards.address)).to.equal(amount);
-        });
-
-        it('updates the amount owed to user but does not send funds', async function () {
-            await bond.connect(communityVault).approve(rewards.address, amount);
-
-            await reign.deposit(happyPirateAddress, amount);
-
-            await helpers.moveAtTimestamp(defaultStartAt + time.day);
-
-            expect(await bond.balanceOf(happyPirateAddress)).to.equal(0);
-
-            const balance = await bond.balanceOf(rewards.address);
-            expect(balance.gte(0)).to.be.true;
-            expect(await rewards.owed(happyPirateAddress)).to.equal(balance);
-        });
-    });
-
-    describe('claim', function () {
-        it('reverts if user has nothing to claim', async function () {
-            await expect(rewards.connect(happyPirate).claim()).to.be.revertedWith('nothing to claim');
-        });
-
-        it('transfers the amount to user', async function () {
-            const { start, end } = await setupRewards();
-
-            await reign.deposit(happyPirateAddress, amount);
-            const depositTs = await helpers.getLatestBlockTimestamp();
-
-            const expectedBalance1 = calcTotalReward(start, depositTs, end - start, amount);
-
-            await helpers.moveAtTimestamp(start + time.day);
-
-            await expect(rewards.connect(happyPirate).claim()).to.not.be.reverted;
-            const claimTs = await helpers.getLatestBlockTimestamp();
-
-            const expectedBalance2 = calcTotalReward(depositTs, claimTs, end - start, amount);
-
-            expect(await bond.transferCalled()).to.be.true;
-            expect(await bond.balanceOf(happyPirateAddress)).to.be.equal(expectedBalance1.add(expectedBalance2));
-            expect(await rewards.owed(happyPirateAddress)).to.be.equal(0);
-            expect(await rewards.balanceBefore()).to.be.equal(0);
-        });
-
-        it('works with multiple users', async function () {
-            const { start, end } = await setupRewards();
-
-            await reign.deposit(happyPirateAddress, amount);
-            const deposit1Ts = await helpers.getLatestBlockTimestamp();
-            const expectedBalance1 = calcTotalReward(start, deposit1Ts, end - start, amount);
-
-            expect(await bond.balanceOf(rewards.address)).to.equal(expectedBalance1);
-
-            await reign.deposit(flyingParrotAddress, amount);
-            const deposit2Ts = await helpers.getLatestBlockTimestamp();
-            const expectedBalance2 = calcTotalReward(deposit1Ts, deposit2Ts, end - start, amount);
-
-            expect(await bond.balanceOf(rewards.address)).to.equal(expectedBalance1.add(expectedBalance2));
-
-            await reign.deposit(userAddress, amount);
-            const deposit3Ts = await helpers.getLatestBlockTimestamp();
-            const expectedBalance3 = calcTotalReward(deposit2Ts, deposit3Ts, end - start, amount);
-
-            expect(await bond.balanceOf(rewards.address))
-                .to.equal(expectedBalance1.add(expectedBalance2).add(expectedBalance3));
-
-            await helpers.moveAtTimestamp(start + 10 * time.day);
-
-            await rewards.connect(happyPirate).claim();
-            const multiplier = await rewards.currentMultiplier();
-            const expectedReward = multiplier.mul(amount).div(helpers.tenPow18);
-
-            expect(await bond.balanceOf(happyPirateAddress)).to.equal(expectedReward);
-        });
-
-        it('works fine after claim', async function () {
-            const { start, end } = await setupRewards();
-
-            await reign.deposit(happyPirateAddress, amount);
-            const deposit1Ts = await helpers.getLatestBlockTimestamp();
-            const expectedBalance1 = calcTotalReward(start, deposit1Ts, end - start, amount);
-
-            expect(await bond.balanceOf(rewards.address)).to.equal(expectedBalance1);
-
-            await reign.deposit(flyingParrotAddress, amount);
-            const deposit2Ts = await helpers.getLatestBlockTimestamp();
-            const multiplierAtDeposit2 = await rewards.currentMultiplier();
-            const expectedBalance2 = calcTotalReward(deposit1Ts, deposit2Ts, end - start, amount);
-
-            expect(await bond.balanceOf(rewards.address)).to.equal(expectedBalance1.add(expectedBalance2));
-
-            await reign.deposit(userAddress, amount);
-            const deposit3Ts = await helpers.getLatestBlockTimestamp();
-            const expectedBalance3 = calcTotalReward(deposit2Ts, deposit3Ts, end - start, amount);
-
-            expect(await bond.balanceOf(rewards.address))
-                .to.equal(expectedBalance1.add(expectedBalance2).add(expectedBalance3));
-
-            await helpers.moveAtTimestamp(start + 1 * time.day);
-
-            await rewards.connect(happyPirate).claim();
-            const claim1Ts = await helpers.getLatestBlockTimestamp();
-            const claim1Multiplier = await rewards.currentMultiplier();
-            const expectedReward = claim1Multiplier.mul(amount).div(helpers.tenPow18);
-
-            expect(await bond.balanceOf(happyPirateAddress)).to.equal(expectedReward);
-
-            // after the first claim is executed, move 1 more day into the future which would increase the
-            // total reward by ~14.28 (one day worth of reward)
-            // happyPirate already claimed his reward for day 1 so he should only be able to claim one day worth of rewards
-            // flyingParrot did not claim before so he should be able to claim 2 days worth of rewards
-            // since there are 3 users, 1 day of rewards for one user is ~4.76 tokens
-            await helpers.moveAtTimestamp(start + 2 * time.day);
-
-            await rewards.connect(happyPirate).claim();
-            const claim2Ts = await helpers.getLatestBlockTimestamp();
-
-            const expectedRewardDay2 = calcTotalReward(claim1Ts, claim2Ts, end - start, amount);
-            const expectedMultiplier = claim1Multiplier.add(expectedRewardDay2.mul(helpers.tenPow18).div(amount.mul(3)));
-
-            const claim2Multiplier = await rewards.currentMultiplier();
-            expect(claim2Multiplier).to.equal(expectedMultiplier);
-
-            const expectedReward2 = (claim2Multiplier.sub(claim1Multiplier)).mul(amount).div(helpers.tenPow18);
+            expect(reign.address).to.not.equal(0)
+            expect(yieldFarm.address).to.not.equal(0)
+            expect(reignToken.address).to.not.equal(0)
+        })
+
+        it('Get epoch PoolSize and distribute tokens', async function () {
+            await moveToEpoch(1)
+            await depositReign(amount, user)
+            await moveToEpoch(2)
+
+            let poolSize = await yieldFarm.getPoolSize(await getLatestBlockTimestamp());
+            expect(poolSize).to.equal(amount)
+            expect(await yieldFarm.getEpochStake(userAddr, 1)).to.equal(amount)
             expect(
-                expectedReward2.gt(BigNumber.from(4).mul(helpers.tenPow18)) &&
-                expectedReward2.lt(BigNumber.from(5).mul(helpers.tenPow18))
-            ).to.be.true;
-            expect(await bond.balanceOf(happyPirateAddress)).to.equal(expectedReward.add(expectedReward2));
+                await reignToken.allowance(rewardsVault.address, yieldFarm.address)
+            ).to.equal(distributedAmount)
+            expect(await yieldFarm.getCurrentEpoch()).to.equal(await reign.getEpoch()) 
+            expect(await yieldFarm.getCurrentEpoch()).to.equal(2) 
 
-            await rewards.connect(flyingParrot).claim();
-            const multiplier3 = await rewards.currentMultiplier();
-            const expectedReward3 = multiplier3.sub(multiplierAtDeposit2).mul(amount).div(helpers.tenPow18);
+            
+            // get epoch 1 rewards
+            let epoch1Rewards = (await yieldFarm.getRewardsForEpoch(1));
+            
+            let balanceBeforeHarvest = await reignToken.balanceOf(userAddr)
+            await yieldFarm.connect(user).harvest(1)
+            expect(await reignToken.balanceOf(userAddr)).to.eq(balanceBeforeHarvest.add(epoch1Rewards));
+        })
+    })
+
+    describe('Harvesting Tests', function () {
+        it('User harvest and mass Harvest', async function () {
+            await depositReign(amount)
+            // initialize epochs meanwhile
+            await moveToEpoch(1)
+            await moveToEpoch(9)
+            expect(await yieldFarm.getPoolSize(await getLatestBlockTimestamp())).to.equal(amount)
+
+            expect(await yieldFarm.lastInitializedEpoch()).to.equal(0) // no epoch initialized
+            await expect(yieldFarm.harvest(10)).to.be.revertedWith('This epoch is in the future')
+            await expect(yieldFarm.harvest(3)).to.be.revertedWith('Harvest in order')
+
+            let balanceBeforeHarvest = await reignToken.balanceOf(userAddr)
+
+            await yieldFarm.connect(user).harvest(1)
+            let epoch1Rewards = 
+                (await yieldFarm.getRewardsForEpoch(1))
+
+            let boostMultiplier = await yieldFarm.getBoost(userAddr, 1);
+            
+            // as the user didn't vote this epoch (see balancerMock) we need to apply Boost
+            let distributedRewards = (epoch1Rewards).mul(boostMultiplier).div(tenPow18);
+            expect(await reignToken.balanceOf(userAddr)).to.equal(
+                distributedRewards.add(balanceBeforeHarvest)
+            )
+            expect(await yieldFarm.connect(user).userLastEpochIdHarvested()).to.equal(1)
+            expect(await yieldFarm.lastInitializedEpoch()).to.equal(1) // epoch 1 have been initialized
+
+            let balanceBeforeMassHarvest = await reignToken.balanceOf(userAddr)
+            await (await yieldFarm.connect(user).massHarvest()).wait()
+            const totalDistributedAmount = await totalAccrued(1,8)
+            expect(await reignToken.balanceOf(userAddr)).to.equal(
+                totalDistributedAmount.add(balanceBeforeMassHarvest)
+                )
+            expect(await yieldFarm.connect(user).userLastEpochIdHarvested()).to.equal(8)
+            expect(await yieldFarm.lastInitializedEpoch()).to.equal(8) // epoch 8 has been initialized
+        })
+        it('harvests 0 if there is nothing to harvest', async function () {
+            await moveToEpoch(1)
+            //this initialises the epoch
+            await depositReign(amount)
+            await moveToEpoch(2)
+            expect(await yieldFarm.getPoolSize(await getLatestBlockTimestamp())).to.equal(amount)
+
+            //Flying Parrot has nothing to harvest
+            let balanceBeforeHarvest = await reignToken.balanceOf(await flayingParrot.getAddress())
+            await yieldFarm.connect(flayingParrot).harvest(1)
+            expect(await reignToken.balanceOf(await flayingParrot.getAddress())).to.equal(balanceBeforeHarvest)
+            await yieldFarm.connect(flayingParrot).massHarvest()
+            expect(await reignToken.balanceOf(await flayingParrot.getAddress())).to.equal(balanceBeforeHarvest)
+        })
+        it('has nothing to harvest if no deposits are made', async function () {
+            await moveToEpoch(1)
+            //this initialises the epoch
+            await depositReign(amount)
+            await moveToEpoch(2)
+            let balanceBeforeHarvest = await reignToken.balanceOf(await flayingParrot.getAddress());
+            await yieldFarm.connect(flayingParrot).harvest(1)
+            expect(await reignToken.balanceOf(await flayingParrot.getAddress())).to.equal(balanceBeforeHarvest)
+        })
+        it('gives epochid = 0 for previous epochs', async function () {
+            await moveAtTimestamp(epochStart)
+            await moveAtEpoch(epochStart, epochDuration, -2)
+            expect(await yieldFarm.getCurrentEpoch()).to.equal(0)
+        })
+    })
+
+    describe('Boost', function () {
+        it('Returns Boost for no lockup', async function () {
+            moveToEpoch(1)
+            await depositReign(amount)
+            let boost = await yieldFarm.getBoost(userAddr, 1)
+
+            await expect(boost)
+                .to.be.eq(BigNumber.from(1).mul(tenPow18))
+        })
+
+        it('Returns Boost for lockup', async function () {
+            await depositReign(amount)
+
+            let ts = await getLatestBlockTimestamp();
+
+            //1 Year lockup
+            const lockExpiryTs = ts + 1000000;
+            await reign.connect(user).lock(lockExpiryTs);
+            
+            ts = await getLatestBlockTimestamp();
+
+            const expectedMultiplier = multiplierForLock(ts, lockExpiryTs);
+            const actualMultiplier = await yieldFarm.getBoost(userAddr, await reign.getEpoch());
+
             expect(
-                expectedReward3.gt(BigNumber.from(9).mul(helpers.tenPow18)) &&
-                expectedReward3.lt(BigNumber.from(10).mul(helpers.tenPow18))).to.be.true;
-            expect(await bond.balanceOf(flyingParrotAddress)).to.equal(expectedReward3);
-        });
-    });
+                actualMultiplier
+            ).to.be.equal(expectedMultiplier);
+        })
 
-    async function setupRewards (): Promise<{ start: number, end: number }> {
-        const startAt = await helpers.getLatestBlockTimestamp();
-        const endsAt = startAt + 60 * 60 * 24 * 7;
-        await rewards.connect(treasury).setupPullToken(await communityVault.getAddress(), startAt, endsAt, amount);
-        await bond.connect(communityVault).approve(rewards.address, amount);
+        it('Adds Boost to harvest', async function () {
+            await depositReign(amount)
 
-        return { start: startAt, end: endsAt };
+            let ts = await getLatestBlockTimestamp();
+
+            //1 Year lockup
+            const lockExpiryTs = ts + 1000000;
+            await reign.connect(user).lock(lockExpiryTs);
+
+            let epochBoost = await yieldFarm.getBoost(userAddr, 1);
+
+            // get epoch 1 rewards
+            let epoch1Rewards = (await yieldFarm.getRewardsForEpoch(1));
+            let boostedRewards = epoch1Rewards.mul(epochBoost).div(tenPow18);
+            
+            await moveToEpoch(2)
+            let balanceBeforeHarvest = await reignToken.balanceOf(userAddr)
+            await yieldFarm.connect(user).harvest(1)
+            expect(await reignToken.balanceOf(userAddr)).to.eq(balanceBeforeHarvest.add(boostedRewards));
+        })
+
+        it('Adds Boost to Mass harvest', async function () {
+            await depositReign(amount)
+
+            let ts = await getLatestBlockTimestamp();
+
+            //1 Year lockup
+            const lockExpiryTs = ts + time.year;
+            await reign.connect(user).lock(lockExpiryTs);
+
+            await moveToEpoch(8)
+            // get epoch 1 rewards
+            let boostedRewards = await totalAccrued(0,7);
+            let balanceBeforeHarvest = await reignToken.balanceOf(userAddr)
+            await yieldFarm.connect(user).massHarvest()
+            expect(await reignToken.balanceOf(userAddr)).to.eq(balanceBeforeHarvest.add(boostedRewards));
+        })
+
+    })
+    describe('Events', function () {
+        it('Harvest emits Harvest', async function () {
+            await depositReign(amount)
+            await moveAtEpoch(epochStart, epochDuration, 9)
+
+            await expect(yieldFarm.connect(user).harvest(1))
+                .to.emit(yieldFarm, 'Harvest')
+        })
+
+        it('MassHarvest emits MassHarvest', async function () {
+            await depositReign(amount)
+            await moveAtEpoch(epochStart, epochDuration, 9)
+
+            await expect(yieldFarm.connect(user).massHarvest())
+                .to.emit(yieldFarm, 'MassHarvest')
+        })
+    })
+
+    async function moveToEpoch(n:number) {
+        await moveAtEpoch(epochStart, epochDuration, n)
+        
     }
 
-    function calcTotalReward (startTs: number, endTs: number, totalDuration: number, totalAmount: BigNumber): BigNumber {
-        const diff = endTs - startTs;
-        const shareToPull = BigNumber.from(diff).mul(helpers.tenPow18).div(totalDuration);
-
-        return shareToPull.mul(totalAmount).div(helpers.tenPow18);
+    function multiplierForLock (ts: number, expiryTs: number): BigNumber {
+        return BigNumber.from(expiryTs - ts)
+            .mul(tenPow18)
+            .div(time.year*2)
+            .add(tenPow18);
     }
 
-    async function setupContracts () {
-        const cvValue = BigNumber.from(2800000).mul(helpers.tenPow18);
-        const treasuryValue = BigNumber.from(4500000).mul(helpers.tenPow18);
 
-        await bond.mint(await communityVault.getAddress(), cvValue);
-        await bond.mint(await treasury.getAddress(), treasuryValue);
+    async function totalAccrued(n:number, m:number) {
+        let total = BigNumber.from(0);
+        for(let i = n; i < m; i++){
+            let epochBoost = await yieldFarm.getBoost(userAddr, i);
+            let adjusted = epochBoost.mul((await yieldFarm.getRewardsForEpoch(i))).div(tenPow18)
+            total = total.add(adjusted);
+        }
+        return total
     }
+
+    async function depositReign(x: BigNumber, u = user) {
+        const ua = await u.getAddress();
+        await reignToken.mint(ua, x);
+        await reignToken.connect(u).approve(reign.address, x);
+        return await reign.connect(u).deposit(x);
+    }
+
 
     async function setupSigners () {
         const accounts = await ethers.getSigners();
         user = accounts[0];
-        communityVault = accounts[1];
-        treasury = accounts[2];
-        happyPirate = accounts[3];
-        flyingParrot = accounts[4];
+        flayingParrot = accounts[1];
 
-        userAddress = await user.getAddress();
-        happyPirateAddress = await happyPirate.getAddress();
-        flyingParrotAddress = await flyingParrot.getAddress();
     }
+
 });

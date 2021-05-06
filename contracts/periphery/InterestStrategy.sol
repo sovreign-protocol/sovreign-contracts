@@ -52,7 +52,7 @@ contract InterestStrategy is InterestStrategyInterface {
         uint256 _offset,
         int256 _baseDelta,
         address _reignDAO,
-        uint256 _epoch1Start
+        uint256 _epoch1Start // set reign Diamond address here and fetch this value from there
     ) {
         multiplier = _multiplier;
         offset = _offset;

@@ -1,9 +1,10 @@
 import { ethers } from 'hardhat';
 import { BigNumber, Signer } from 'ethers';
 import * as helpers from './helpers/helpers';
+import {diamondAsFacet} from "./helpers/diamond";
 import { expect } from 'chai';
 import * as deploy from './helpers/deploy';
-import {BasketBalancer, ERC20Mock, ReignMock, Rewards} from '../typechain';
+import {BasketBalancer, ERC20Mock,ReignFacet } from '../typechain';
 
 const address1 = '0x0000000000000000000000000000000000000001';
 const address2 = '0x0000000000000000000000000000000000000002';
@@ -11,7 +12,7 @@ const address3 = '0x0000000000000000000000000000000000000003';
 
 describe('BasketBalancer', function () {
 
-    let reign: ReignMock,reignToken:ERC20Mock, rewards: Rewards, balancer: BasketBalancer;
+    let reign: ReignFacet, reignToken:ERC20Mock, balancer: BasketBalancer;
 
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
@@ -24,23 +25,37 @@ describe('BasketBalancer', function () {
     let snapshotId: any;
     let snapshotTs: number;
 
+    const epochStart = Math.floor(Date.now() / 1000) + 1000;
+    const epochDuration = 604800;
+
+
     var maxAllocation = 1000000000;
 
     before(async function () {
         reignToken = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
 
         await setupSigners();
+
+
+        const cutFacet = await deploy.deployContract('DiamondCutFacet');
+        const loupeFacet = await deploy.deployContract('DiamondLoupeFacet');
+        const ownershipFacet = await deploy.deployContract('OwnershipFacet');
+        const reignFacet = await deploy.deployContract('ReignFacet');
+        const epochClockFacet = await deploy.deployContract('EpochClockFacet');
+        const changeRewardsFacet = await deploy.deployContract('ChangeRewardsFacet');
+        const diamond = await deploy.deployDiamond(
+            'ReignDiamond',
+            [cutFacet, loupeFacet, ownershipFacet, reignFacet, changeRewardsFacet,epochClockFacet],
+            userAddress,
+        );
+
+        reign = (await diamondAsFacet(diamond, 'ReignFacet')) as ReignFacet;
+        await reign.initReign(reignToken.address, epochStart, epochDuration);
+
+
         await setupContracts();
 
-        reign = (await deploy.deployContract('ReignMock')) as ReignMock;
-
-        rewards = (await deploy.deployContract(
-            'Rewards',
-            [await treasury.getAddress(), reign.address, reign.address])
-        ) as Rewards;
-
-       
-        await reign.setRewards(rewards.address);
+        
     });
 
     beforeEach(async function () {
@@ -75,7 +90,9 @@ describe('BasketBalancer', function () {
         });
 
         it('keeps correct epoch', async function () {
-            expect(await balancer.getCurrentEpoch()).to.eq(await helpers.getCurrentEpoch());
+            expect(await balancer.getCurrentEpoch()).to.eq(0);
+            awaitUntilNextEpoch()
+            expect(await balancer.getCurrentEpoch()).to.eq(1);
         });
 
         it('can be deployed with empty arrays', async function () {
@@ -141,7 +158,7 @@ describe('BasketBalancer', function () {
             let epoch = await balancer.getCurrentEpoch();
             expect(await balancer.hasVotedInEpoch(userAddress,epoch)).to.be.false;
 
-            await reign.deposit(userAddress, 100);
+            await reign.connect(user).deposit(100);
             await expect( 
                 balancer.connect(user).updateAllocationVote(pools, [450000000,550000000])
             ).to.not.be.reverted;
@@ -150,7 +167,7 @@ describe('BasketBalancer', function () {
         });
 
         it('can vote again after the epoch ends', async function () {
-            await reign.deposit(userAddress, 100);
+            await reign.connect(user).deposit(100);
 
             await expect( 
                 balancer.connect(user).updateAllocationVote(pools, [450000000,550000000])
@@ -164,8 +181,8 @@ describe('BasketBalancer', function () {
         });
 
         it('can not vote with too small allocation', async function () {
-            await reign.deposit(userAddress, 100);
-            await reign.deposit(flyingParrotAddress, 200);
+            await reign.connect(user).deposit(100);
+            await reign.connect(flyingParrot).deposit(200);
 
             await expect( 
                 balancer.connect(user).updateAllocationVote(pools, [450000000,500000000])
@@ -174,8 +191,8 @@ describe('BasketBalancer', function () {
         });
 
         it('can not vote with too big allocation', async function () {
-            await reign.deposit(userAddress, 100);
-            await reign.deposit(flyingParrotAddress, 200);
+            await reign.connect(user).deposit(100);
+            await reign.connect(flyingParrot).deposit(200);
 
             await expect( 
                 balancer.connect(user).updateAllocationVote(pools, [600000000,500000000])
@@ -191,7 +208,7 @@ describe('BasketBalancer', function () {
         });
 
         it('can not vote with incorrectly ordered pools', async function () {
-            await reign.deposit(userAddress, 100);
+            await reign.connect(user).deposit(100);
 
             await expect( 
                 balancer.connect(user).updateAllocationVote([address2,address1], [500000000,500000000])
@@ -200,7 +217,7 @@ describe('BasketBalancer', function () {
         });
 
         it('can not vote with incorrect number of pools', async function () {
-            await reign.deposit(userAddress, 100);
+            await reign.connect(user).deposit(100);
             
             await expect( 
                 balancer.connect(user).updateAllocationVote([address1], [500000000])
@@ -209,7 +226,7 @@ describe('BasketBalancer', function () {
         });
 
         it('can not vote with incorrect number of allocation', async function () {
-            await reign.deposit(userAddress, 100);
+            await reign.connect(user).deposit(100);
 
             await expect( 
                 balancer.connect(user).updateAllocationVote(pools, [500000000])
@@ -218,7 +235,7 @@ describe('BasketBalancer', function () {
         });
 
         it('can not vote twice in an epoch', async function () {
-            await reign.deposit(userAddress, 100);
+            await reign.connect(user).deposit(100);
 
             balancer.connect(user).updateAllocationVote(pools, [500000000,500000000])
             await expect( 
@@ -228,9 +245,9 @@ describe('BasketBalancer', function () {
         });
 
         it('updates continuous vote correctly', async function () {
-            await reign.deposit(userAddress, 100);
-            await reign.deposit(flyingParrotAddress, 200);
-            await reign.deposit(happyPirateAddress, 300);
+            await reign.connect(user).deposit(100);
+            await reign.connect(flyingParrot).deposit(200);
+            await reign.connect(happyPirate).deposit(300);
 
             await balancer.connect(user).updateAllocationVote(pools, [480000000,520000000]);
 
@@ -250,10 +267,12 @@ describe('BasketBalancer', function () {
         
 
         it('sets correct basket balance after update period', async function () {
+            await reign.connect(user).deposit(100);
+            await reign.connect(flyingParrot).deposit(200);
+            await reign.connect(happyPirate).deposit(300);
 
-            await reign.deposit(userAddress, 100);
-            await reign.deposit(flyingParrotAddress, 200);
-            await reign.deposit(happyPirateAddress, 300);
+            // voting power reflects after epoch is over
+            awaitUntilNextEpoch()
 
             await balancer.connect(user).updateAllocationVote(pools, [480000000,520000000]);
             await balancer.connect(flyingParrot).updateAllocationVote(pools, [450000000,550000000]);
@@ -271,10 +290,14 @@ describe('BasketBalancer', function () {
         });
 
         it('sets correct basket balance during update period', async function () {
+            await reign.connect(user).deposit(100);
+            await reign.connect(flyingParrot).deposit(200);
+            await reign.connect(happyPirate).deposit(300);
 
-            await reign.deposit(userAddress, 100);
-            await reign.deposit(flyingParrotAddress, 200);
-            await reign.deposit(happyPirateAddress, 300);
+
+            // voting power reflects after epoch is over
+            awaitUntilNextEpoch()
+
             await balancer.connect(user).updateAllocationVote(pools, [480000000,520000000]);
             await balancer.connect(flyingParrot).updateAllocationVote(pools, [450000000,550000000]);
 
@@ -293,8 +316,10 @@ describe('BasketBalancer', function () {
 
         
         it('can not update twice in same epoch', async function () {
-            await reign.deposit(userAddress, 100);
-            await reign.deposit(flyingParrotAddress, 200);
+            awaitUntilNextEpoch()
+
+            await reign.connect(user).deposit(100);
+            await reign.connect(flyingParrot).deposit(200);
 
             await balancer.connect(user).updateAllocationVote(pools, [450000000,550000000]);
             await balancer.updateBasketBalance();
@@ -304,8 +329,8 @@ describe('BasketBalancer', function () {
         });
 
         it('can not vote with too big delta', async function () {
-            await reign.deposit(userAddress, 100);
-            await reign.deposit(flyingParrotAddress, 200);
+            await reign.connect(user).deposit(100);
+            await reign.connect(flyingParrot).deposit(200);
 
             await expect( 
                 balancer.connect(user).updateAllocationVote(pools, [350000000,650000000])
@@ -322,8 +347,8 @@ describe('BasketBalancer', function () {
             expect( await balancer.maxDelta()).to.be.equal(400000000)
 
             // now the previous vote passes
-            await reign.deposit(userAddress, 100);
-            await reign.deposit(flyingParrotAddress, 200);
+            await reign.connect(user).deposit(100);
+            await reign.connect(flyingParrot).deposit(200);
             await expect( 
                 balancer.connect(user).updateAllocationVote(pools, [650000000,350000000])
             ).to.not.be.reverted;
@@ -392,14 +417,16 @@ describe('BasketBalancer', function () {
 
     async function awaitUntilNextEpoch() {
         //wait until the update periods is over
-        await helpers.moveAtTimestamp(
-            (await balancer.lastEpochEnd()).toNumber() + helpers.stakingEpochDuration + 1000
-            )
+        helpers.moveAtEpoch(epochStart, epochDuration, ( await balancer.getCurrentEpoch()).add(1).toNumber())
     }
 
     async function setupContracts () {
         reignToken.mint(userAddress, BigNumber.from(9309393));
+        reignToken.connect(user).approve(reign.address, BigNumber.from(9309393));
         reignToken.mint(flyingParrotAddress, BigNumber.from(9309393));
+        reignToken.connect(flyingParrot).approve(reign.address, BigNumber.from(9309393));
+        reignToken.mint(happyPirateAddress, BigNumber.from(9309393));
+        reignToken.connect(happyPirate).approve(reign.address, BigNumber.from(9309393));
     }
 
     async function setupSigners () {

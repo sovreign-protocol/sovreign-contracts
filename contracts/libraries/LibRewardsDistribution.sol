@@ -36,6 +36,10 @@ library LibRewardsDistribution {
         return rewardsPerPeriodTotal() / EPOCHS_IN_PERIOD;
     }
 
+    function rewardsPerEpochStaking() internal pure returns (uint256) {
+        return (1000000 * 10**18) / EPOCHS_IN_PERIOD;
+    }
+
     function rewardsPerBlockTotal() internal view returns (uint256) {
         return rewardsPerPeriodTotal() / BLOCKS_IN_PERIOD;
     }

@@ -1,219 +1,210 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.7.6;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.6;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IReign.sol";
+import "../libraries/LibRewardsDistribution.sol";
 
-contract Rewards is Ownable {
-
+contract StakingRewards {
+    // lib
     using SafeMath for uint256;
+    using SafeMath for uint128;
 
-    uint256 constant decimals = 10**18;
+    // state variables
 
-    struct Pull {
-        address source;
-        uint256 startTs;
-        uint256 endTs;
-        uint256 totalDuration;
-        uint256 totalAmount;
-    }
+    // addreses
+    address private _poolLP;
+    address private _rewardsVault;
+    // contracts
+    IERC20 private _reignToken;
+    IReign private _reign;
 
-    Pull public pullFeature;
-    bool public disabled;
-    uint256 public lastPullTs;
+    mapping(uint128 => uint256) private _sizeAtEpoch;
+    mapping(uint128 => uint256) private _epochInitTime;
+    uint128 public lastInitializedEpoch;
+    mapping(address => uint128) private lastEpochIdHarvested;
+    uint256 public epochDuration; // init from staking contract
+    uint256 public epochStart; // init from staking contract
 
-    uint256 public balanceBefore;
-    uint256 public currentMultiplier;
-
-    mapping(address => uint256) public userMultiplier;
-    mapping(address => uint256) public owed;
-
-    IReign public reign;
-    IERC20 public rewardToken;
-
-    event Claim(address indexed user, uint256 amount);
-
-    constructor(
-        address _owner,
-        address _token,
-        address _reign
-    ) {
-        require(_token != address(0), "reward token must not be 0x0");
-        require(_reign != address(0), "reign address must not be 0x0");
-
-        transferOwnership(_owner);
-
-        rewardToken = IERC20(_token);
-        reign = IReign(_reign);
-    }
-
-    // registerUserAction is called by the Reign every time the user does a deposit or withdrawal in order to
-    // account for the changes in reward that the user should get
-    // it updates the amount owed to the user without transferring the funds
-    function registerUserAction(address user) public {
-        require(msg.sender == address(reign), "only callable by reign");
-
-        _calculateOwed(user);
-    }
-
-    // claim calculates the currently owed reward and transfers the funds to the user
-    function claim() public returns (uint256) {
-        _calculateOwed(msg.sender);
-
-        uint256 amount = owed[msg.sender];
-        require(amount > 0, "nothing to claim");
-
-        owed[msg.sender] = 0;
-
-        rewardToken.transfer(msg.sender, amount);
-
-        // acknowledge the amount that was transferred to the user
-        ackFunds();
-
-        emit Claim(msg.sender, amount);
-
-        return amount;
-    }
-
-    // ackFunds checks the difference between the last known balance of `token` and the current one
-    // if it goes up, the multiplier is re-calculated
-    // if it goes down, it only updates the known balance
-    function ackFunds() public {
-        uint256 balanceNow = rewardToken.balanceOf(address(this));
-
-        if (balanceNow == 0 || balanceNow <= balanceBefore) {
-            balanceBefore = balanceNow;
-            return;
-        }
-
-        uint256 totalStakedBond = reign.bondStaked();
-        // if there's no bond staked, it doesn't make sense to ackFunds because there's nobody to distribute them to
-        // and the calculation would fail anyways due to division by 0
-        if (totalStakedBond == 0) {
-            return;
-        }
-
-        uint256 diff = balanceNow.sub(balanceBefore);
-        uint256 multiplier =
-            currentMultiplier.add(diff.mul(decimals).div(totalStakedBond));
-
-        balanceBefore = balanceNow;
-        currentMultiplier = multiplier;
-    }
-
-    // setupPullToken is used to setup the rewards system; only callable by contract owner
-    // set source to address(0) to disable the functionality
-    function setupPullToken(
-        address source,
-        uint256 startTs,
-        uint256 endTs,
+    // events
+    event MassHarvest(
+        address indexed user,
+        uint256 epochsHarvested,
+        uint256 totalValue
+    );
+    event Harvest(
+        address indexed user,
+        uint128 indexed epochId,
         uint256 amount
-    ) public {
-        require(msg.sender == owner(), "!owner");
-        require(!disabled, "contract is disabled");
+    );
 
-        if (pullFeature.source != address(0)) {
-            require(
-                source == address(0),
-                "contract is already set up, source must be 0x0"
-            );
-            disabled = true;
-        } else {
-            require(
-                source != address(0),
-                "contract is not setup, source must be != 0x0"
-            );
-        }
-
-        if (source == address(0)) {
-            require(startTs == 0, "disable contract: startTs must be 0");
-            require(endTs == 0, "disable contract: endTs must be 0");
-            require(amount == 0, "disable contract: amount must be 0");
-        } else {
-            require(
-                endTs > startTs,
-                "setup contract: endTs must be greater than startTs"
-            );
-            require(
-                amount > 0,
-                "setup contract: amount must be greater than 0"
-            );
-        }
-
-        pullFeature.source = source;
-        pullFeature.startTs = startTs;
-        pullFeature.endTs = endTs;
-        pullFeature.totalDuration = endTs.sub(startTs);
-        pullFeature.totalAmount = amount;
-
-        if (lastPullTs < startTs) {
-            lastPullTs = startTs;
-        }
+    // constructor
+    constructor(
+        address reignTokenAddress,
+        address reign,
+        address rewardsVault
+    ) {
+        _reignToken = IERC20(reignTokenAddress);
+        _reign = IReign(reign);
+        _rewardsVault = rewardsVault;
+        epochDuration = _reign.getEpochDuration();
+        epochStart = _reign.getEpoch1Start();
     }
 
-    // setReign sets the address of the ReignBridge Reign into the state variable
-    function setReign(address _reign) public {
-        require(_reign != address(0), "reign address must not be 0x0");
-        require(msg.sender == owner(), "!owner");
+    // public method to harvest all the unharvested epochs until current epoch - 1
+    function massHarvest() external returns (uint256) {
+        uint256 totalDistributedValue;
+        uint256 epochId = _getEpochId().sub(1); // fails in epoch 0
 
-        reign = IReign(_reign);
-    }
-
-    // _pullToken calculates the amount based on the time passed since the last pull relative
-    // to the total amount of time that the pull functionality is active and executes a transferFrom from the
-    // address supplied as `pullTokenFrom`, if enabled
-    function _pullToken() internal {
-        if (
-            pullFeature.source == address(0) ||
-            block.timestamp < pullFeature.startTs
+        for (
+            uint128 i = lastEpochIdHarvested[msg.sender] + 1;
+            i <= epochId;
+            i++
         ) {
-            return;
+            // i = epochId
+            // compute distributed Value and do one single transfer at the end
+            uint256 userRewards = _harvest(i);
+            totalDistributedValue = totalDistributedValue.add(userRewards);
         }
 
-        uint256 timestampCap = pullFeature.endTs;
-        if (block.timestamp < pullFeature.endTs) {
-            timestampCap = block.timestamp;
-        }
-
-        if (lastPullTs >= timestampCap) {
-            return;
-        }
-
-        uint256 timeSinceLastPull = timestampCap.sub(lastPullTs);
-        uint256 shareToPull =
-            timeSinceLastPull.mul(decimals).div(pullFeature.totalDuration);
-        uint256 amountToPull =
-            pullFeature.totalAmount.mul(shareToPull).div(decimals);
-
-        lastPullTs = block.timestamp;
-        rewardToken.transferFrom(
-            pullFeature.source,
-            address(this),
-            amountToPull
+        emit MassHarvest(
+            msg.sender,
+            epochId - lastEpochIdHarvested[msg.sender],
+            totalDistributedValue
         );
+
+        _reignToken.transferFrom(
+            _rewardsVault,
+            msg.sender,
+            totalDistributedValue
+        );
+
+        return totalDistributedValue;
     }
 
-    // _calculateOwed calculates and updates the total amount that is owed to an user and updates the user's multiplier
-    // to the current value
-    // it automatically attempts to pull the token from the source and acknowledge the funds
-    function _calculateOwed(address user) internal {
-        _pullToken();
-        ackFunds();
+    //gets the rewards for a single epoch
+    function harvest(uint128 epochId) external returns (uint256) {
+        // checks for requested epoch
+        require(_getEpochId() > epochId, "This epoch is in the future");
+        require(
+            lastEpochIdHarvested[msg.sender].add(1) == epochId,
+            "Harvest in order"
+        );
+        uint256 userReward = _harvest(epochId);
+        if (userReward > 0) {
+            _reignToken.transferFrom(_rewardsVault, msg.sender, userReward);
+        }
 
-        uint256 reward = _userPendingReward(user);
-
-        owed[user] = owed[user].add(reward);
-        userMultiplier[user] = currentMultiplier;
+        emit Harvest(msg.sender, epochId, userReward);
+        return userReward;
     }
 
-    // _userPendingReward calculates the reward that should be based on the current multiplier / anything that's not included in the `owed[user]` value
-    // it does not represent the entire reward that's due to the user unless added on top of `owed[user]`
-    function _userPendingReward(address user) internal view returns (uint256) {
-        uint256 multiplier = currentMultiplier.sub(userMultiplier[user]);
+    /*
+     * internal methods
+     */
 
-        return reign.balanceOf(user).mul(multiplier).div(decimals);
+    function _harvest(uint128 epochId) internal returns (uint256) {
+        // try to initialize an epoch
+        if (lastInitializedEpoch < epochId) {
+            _initEpoch(epochId);
+        }
+        // Set user state for last harvested
+        lastEpochIdHarvested[msg.sender] = epochId;
+        // compute and return user total reward. For optimization reasons the transfer have been moved to an upper layer (i.e. massHarvest needs to do a single transfer)
+
+        // exit if there is no stake on the epoch
+        if (_sizeAtEpoch[epochId] == 0) {
+            return 0;
+        }
+
+        uint256 epochRewards = getRewardsForEpoch(epochId);
+
+        uint256 boostMultiplier = getBoost(msg.sender, epochId);
+
+        uint256 userEpochRewards =
+            epochRewards
+                .mul(_getUserBalancePerEpoch(msg.sender, epochId))
+                .mul(boostMultiplier) // apply boost multiplier
+                .div(_sizeAtEpoch[epochId])
+                .div(1 * 10**18);
+
+        return userEpochRewards;
+    }
+
+    function _initEpoch(uint128 epochId) internal {
+        require(
+            lastInitializedEpoch.add(1) == epochId,
+            "Epoch can be init only in order"
+        );
+        lastInitializedEpoch = epochId;
+        _epochInitTime[epochId] = block.timestamp;
+        // call the staking smart contract to init the epoch
+        _sizeAtEpoch[epochId] = _getPoolSize(block.timestamp);
+    }
+
+    /*
+     *   VIEWS
+     */
+
+    //returns the current epoch
+    function getCurrentEpoch() external view returns (uint256) {
+        return _getEpochId();
+    }
+
+    // gets the total amount of rewards accrued to a pool during an epoch
+    function getRewardsForEpoch(uint128 epochId) public view returns (uint256) {
+        return LibRewardsDistribution.rewardsPerEpochStaking();
+    }
+
+    // calls to the staking smart contract to retrieve user balance for an epoch
+    function getEpochStake(address userAddress, uint128 epochId)
+        external
+        view
+        returns (uint256)
+    {
+        return _getUserBalancePerEpoch(userAddress, epochId);
+    }
+
+    function userLastEpochIdHarvested() external view returns (uint256) {
+        return lastEpochIdHarvested[msg.sender];
+    }
+
+    // calls to the staking smart contract to retrieve the epoch total poolLP size
+    function getPoolSize(uint256 timestamp) external view returns (uint256) {
+        return _getPoolSize(timestamp);
+    }
+
+    // checks if the user has voted that epoch and returns accordingly
+    function getBoost(address user, uint128 epoch)
+        public
+        view
+        returns (uint256)
+    {
+        return _reign.stakingBoostAtEpoch(user, epoch);
+    }
+
+    function _getPoolSize(uint256 timestamp) internal view returns (uint256) {
+        // retrieve unilp token balance
+        return _reign.bondStakedAtTs(timestamp);
+    }
+
+    function _getUserBalancePerEpoch(address userAddress, uint128 epochId)
+        internal
+        view
+        returns (uint256)
+    {
+        // retrieve unilp token balance per user per epoch
+        return _reign.getEpochUserBalance(userAddress, epochId);
+    }
+
+    // compute epoch id from blocktimestamp and
+    function _getEpochId() internal view returns (uint128 epochId) {
+        if (block.timestamp < epochStart) {
+            return 0;
+        }
+        epochId = uint128(
+            block.timestamp.sub(epochStart).div(epochDuration).add(1)
+        );
     }
 }

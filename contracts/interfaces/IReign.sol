@@ -49,8 +49,18 @@ interface IReign {
         view
         returns (uint256);
 
+    // votingPowerAtTs returns the voting power (bonus included) + delegated voting power for a user at a point in time
+    function votingPowerAtEpoch(address user, uint128 epochId)
+        external
+        view
+        returns (uint256);
+
     // bondStaked returns the total raw amount of BOND staked at the current block
     function bondStaked() external view returns (uint256);
+
+    // bondStakedAtEpoch returns the total raw amount of BOND users have deposited into the contract
+    // it does not include any bonus
+    function bondStakedAtEpoch(uint128 epochId) external view returns (uint256);
 
     // bondStakedAtTs returns the total raw amount of BOND users have deposited into the contract
     // it does not include any bonus
@@ -87,4 +97,20 @@ interface IReign {
 
     // bondCirculatingSupply returns the current circulating supply of BOND
     function bondCirculatingSupply() external view returns (uint256);
+
+    function getEpochDuration() external view returns (uint256);
+
+    function getEpoch1Start() external view returns (uint256);
+
+    function getCurrentEpoch() external view returns (uint128);
+
+    function stakingBoostAtEpoch(address, uint128)
+        external
+        view
+        returns (uint256);
+
+    function getEpochUserBalance(address, uint128)
+        external
+        view
+        returns (uint256);
 }

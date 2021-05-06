@@ -2,16 +2,21 @@ import { ethers } from 'hardhat';
 import { BigNumber, Signer } from 'ethers';
 import * as helpers from './helpers/helpers';
 import { expect } from 'chai';
-import { ReignFacet, ERC20Mock, RewardsMock, MulticallMock, ChangeRewardsFacet } from '../typechain';
+import { ReignFacet, ERC20Mock, MulticallMock, ChangeRewardsFacet, EpochClockFacet } from '../typechain';
 import * as time from './helpers/time';
 import * as deploy from './helpers/deploy';
-import { diamondAsFacet } from './helpers/diamond';
+import {diamondAsFacet} from "./helpers/diamond";
 import { moveAtTimestamp } from './helpers/helpers';
+import { start } from 'repl';
 
 describe('Reign', function () {
     const amount = BigNumber.from(100).mul(BigNumber.from(10).pow(18));
 
-    let reign: ReignFacet, bond: ERC20Mock, rewardsMock: RewardsMock, changeRewards: ChangeRewardsFacet;
+    const startEpoch = helpers.getCurrentUnix();
+    const duration = 604800;
+
+
+    let reign: ReignFacet, bond: ERC20Mock, changeRewards: ChangeRewardsFacet;
 
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
@@ -28,17 +33,16 @@ describe('Reign', function () {
         const ownershipFacet = await deploy.deployContract('OwnershipFacet');
         const reignFacet = await deploy.deployContract('ReignFacet');
         const changeRewardsFacet = await deploy.deployContract('ChangeRewardsFacet');
+        const epochClockFacet = await deploy.deployContract('EpochClockFacet');
         const diamond = await deploy.deployDiamond(
             'ReignDiamond',
-            [cutFacet, loupeFacet, ownershipFacet, reignFacet, changeRewardsFacet],
+            [cutFacet, loupeFacet, ownershipFacet, reignFacet, changeRewardsFacet,epochClockFacet],
             userAddress,
         );
 
-        rewardsMock = (await deploy.deployContract('RewardsMock')) as RewardsMock;
-
         changeRewards = (await diamondAsFacet(diamond, 'ChangeRewardsFacet')) as ChangeRewardsFacet;
         reign = (await diamondAsFacet(diamond, 'ReignFacet')) as ReignFacet;
-        await reign.initReign(bond.address, rewardsMock.address);
+        await reign.initReign(bond.address, startEpoch, duration);
 
 
         await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
@@ -69,13 +73,6 @@ describe('Reign', function () {
 
         it('reverts if user did not approve token', async function () {
             await expect(reign.connect(user).deposit(amount)).to.be.revertedWith('Token allowance too small');
-        });
-
-        it('calls registerUserAction on rewards contract', async function () {
-            await prepareAccount(user, amount);
-            await reign.connect(user).deposit(amount);
-
-            expect(await rewardsMock.calledWithUser()).to.equal(userAddress);
         });
 
         it('updates last action checkpoint', async function () {
@@ -149,45 +146,51 @@ describe('Reign', function () {
         });
     });
 
-    describe('balanceAtTs', function () {
+    describe('getEpochUserBalance', function () {
         it('returns 0 if no checkpoint', async function () {
-            const ts = await helpers.getLatestBlockTimestamp();
-            expect(await reign.balanceAtTs(userAddress, ts)).to.be.equal(0);
+            const ts = (await reign.getEpoch()).toNumber();
+            expect(await reign.getEpochUserBalance(userAddress, ts)).to.be.equal(0);
         });
 
         it('returns 0 if timestamp older than first checkpoint', async function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
 
-            const ts = await helpers.getLatestBlockTimestamp();
+            const ts = (await reign.getEpoch()).toNumber();
 
-            expect(await reign.balanceAtTs(userAddress, ts - 1)).to.be.equal(0);
+            expect(await reign.getEpochUserBalance(userAddress, ts - 1)).to.be.equal(0);
         });
 
         it('return correct balance if timestamp newer than latest checkpoint', async function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
 
-            const ts = await helpers.getLatestBlockTimestamp();
+            const ts = (await reign.getEpoch()).toNumber();
 
-            expect(await reign.balanceAtTs(userAddress, ts + 1)).to.be.equal(amount);
+            expect(await reign.getEpochUserBalance(userAddress, ts + 1)).to.be.equal(amount);
         });
 
-        it('returns correct balance if timestamp between checkpoints', async function () {
-            await prepareAccount(user, amount.mul(3));
-            await reign.connect(user).deposit(amount);
+        it("Deposit at random points inside an epoch sets the correct effective balance", async function () {
+            await helpers.moveAtEpoch(startEpoch, duration, 1);
+            await prepareAccount(user, amount);
 
-            const ts = await helpers.getLatestBlockTimestamp();
+            const NUM_CHECKS = 5;
+            for (let i = 0; i < NUM_CHECKS; i++) {
+                const snapshotId = await ethers.provider.send("evm_snapshot", []);
 
-            await helpers.moveAtTimestamp(ts + 30);
-            await reign.connect(user).deposit(amount);
+                const ts = Math.floor(Math.random() * duration);
 
-            expect(await reign.balanceAtTs(userAddress, ts + 15)).to.be.equal(amount);
+                await helpers.setNextBlockTimestamp(startEpoch + ts);
+                await reign.connect(user).deposit(amount);
 
-            await helpers.moveAtTimestamp(ts + 60);
-            await reign.connect(user).deposit(amount);
+                const multiplier = multiplierAtTs(1, await helpers.getLatestBlockTimestamp());
+                const expectedBalance = computeEffectiveBalance(amount, multiplier);
 
-            expect(await reign.balanceAtTs(userAddress, ts + 45)).to.be.equal(amount.mul(2));
+                expect(await reign.getEpochUserBalance(userAddress, 1)).to.equal(expectedBalance);
+                expect(await reign.getEpochUserBalance(userAddress, 2)).to.equal(amount);
+
+                await ethers.provider.send("evm_revert", [snapshotId]);
+            }
         });
     });
 
@@ -242,18 +245,9 @@ describe('Reign', function () {
             await expect(reign.connect(user).withdraw(amount)).to.be.revertedWith('Insufficient balance');
         });
 
-        it('calls registerUserAction on rewards contract', async function () {
-            await prepareAccount(user, amount);
-            await reign.connect(user).deposit(amount);
-            await reign.connect(user).withdraw(amount);
-
-            expect(await rewardsMock.calledWithUser()).to.equal(userAddress);
-        });
-
         it('updates last action checkpoint', async function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
-            await reign.connect(user).withdraw(amount);
 
             expect(await reign.userLastAction(userAddress)).to.eq(await helpers.getLatestBlockTimestamp())
         });
@@ -266,18 +260,104 @@ describe('Reign', function () {
             expect(await reign.balanceOf(userAddress)).to.be.equal(0);
         });
 
-        it('does not affect old checkpoints', async function () {
+        it("deposit epoch 1, withdraw epoch 5", async function () {
             await prepareAccount(user, amount);
+            await helpers.moveAtEpoch(startEpoch, duration, 1);
+
             await reign.connect(user).deposit(amount);
 
-            const currentTs = await helpers.getLatestBlockTimestamp();
-            await helpers.moveAtTimestamp(currentTs + 15);
+            await helpers.moveAtEpoch(startEpoch, duration, 5);
+
+            const ts = startEpoch + 24 * 60 * 60;
+            await helpers.setNextBlockTimestamp(ts);
+
+            await reign.connect(user).withdraw(amount.div(2));
+
+            expect(await reign.getEpochUserBalance(userAddress, 5)).to.equal(amount.div(2));
+        });
+
+        it("deposit epoch 1, withdraw epoch 2", async function () {
+            await prepareAccount(user, amount);
+            await helpers.moveAtEpoch(startEpoch, duration, 1);
+
+            await reign.connect(user).deposit(amount);
+
+            await helpers.moveAtEpoch(startEpoch, duration, 2);
+
+            const ts = startEpoch + 24 * 60 * 60;
+            await helpers.setNextBlockTimestamp(ts);
+
+            await reign.connect(user).withdraw(amount.div(2));
+        });
+
+        it("deposit epoch 1, deposit epoch 5, withdraw epoch 5 half amount", async function () {
+            await prepareAccount(user, amount.mul(2));
+            await helpers.moveAtEpoch(startEpoch, duration, 1);
+            await reign.connect(user).deposit(amount);
+
+            await helpers.moveAtEpoch(startEpoch, duration, 5);
+
+            const ts = startEpoch + 24 * 60 * 60;
+            await helpers.setNextBlockTimestamp(ts);
+
+            await reign.connect(user).deposit(amount);
+
+            const ts1 = startEpoch + Math.floor(duration / 2);
+            await helpers.setNextBlockTimestamp(ts1);
+
+            const balance = await reign.getEpochUserBalance(userAddress, 5);
+
+            await reign.connect(user).withdraw( amount.div(2));
+
+            const avgDepositMultiplier = BigNumber.from(balance).sub(amount)
+                .mul(BigNumber.from(1).mul(helpers.tenPow18))
+                .div(amount);
+
+            const postWithdrawMultiplier = calculateMultiplier(
+                amount,
+                BigNumber.from(1).mul(helpers.tenPow18),
+                amount.div(2),
+                avgDepositMultiplier
+            );
+
+            const expectedBalance = computeEffectiveBalance(amount.add(amount.div(2)), postWithdrawMultiplier);
+
+            expect(await reign.getEpochUserBalance(userAddress, 5)).to.equal(expectedBalance);
+            expect(await reign.getEpochUserBalance(userAddress, 6)).to.equal(amount.add(amount.div(2)));
+        });
+
+        it("deposit epoch 1, deposit epoch 5, withdraw epoch 5 more than deposited", async function () {
+            await prepareAccount(user, amount.mul(2));
+            await helpers.moveAtEpoch(startEpoch, duration, 1);
+
+            await reign.connect(user).deposit(amount);
+
+            await helpers.moveAtEpoch(startEpoch, duration, 5);
+
+            const ts = startEpoch + 24 * 60 * 60;
+            await helpers.setNextBlockTimestamp(ts);
+
+            await reign.connect(user).deposit(amount);
+
+            const ts1 = startEpoch + Math.floor(duration / 2);
+            await helpers.setNextBlockTimestamp(ts1);
+
+            await reign.connect(user).withdraw(amount.add(amount.div(2)));
+
+            expect(await reign.getEpochUserBalance(userAddress, 5)).to.equal(amount.div(2));
+            expect(await reign.getEpochUserBalance(userAddress, 6)).to.equal(amount.div(2));
+        });
+
+        it('does not affect old checkpoints', async function () {
+            await prepareAccount(user, amount);
+            await helpers.moveAtEpoch(startEpoch, duration, 1);
+            await reign.connect(user).deposit(amount);
+            
+            await helpers.moveAtEpoch(startEpoch, duration, 3);
 
             await reign.connect(user).withdraw(amount);
-
-            const ts = await helpers.getLatestBlockTimestamp();
-
-            expect(await reign.balanceAtTs(userAddress, ts - 1)).to.be.equal(amount);
+            //withdrawing in epoch 3 doesn't change epoch 2 balance
+            expect(await reign.getEpochUserBalance(userAddress, 2)).to.be.equal(amount);
         });
 
         it('transfers balance to the user', async function () {
@@ -323,27 +403,33 @@ describe('Reign', function () {
             const MAX_LOCK = (await reign.MAX_LOCK()).toNumber();
 
             await expect(
-                reign.connect(user).lock(time.futureTimestamp(5 * MAX_LOCK))
+                reign.connect(user).lock(await helpers.getCurrentUnix() + (5 * MAX_LOCK))
             ).to.be.revertedWith('Timestamp too big');
 
             await expect(
-                reign.connect(user).lock(time.futureTimestamp(180 * time.day))
+                reign.connect(user).lock(await helpers.getCurrentUnix() + (180 * time.day))
             ).to.not.be.reverted;
         });
 
         it('reverts if user does not have balance', async function () {
+
+            await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
+
             await expect(
-                reign.connect(user).lock(time.futureTimestamp(10 * time.day))
+                reign.connect(user).lock(await helpers.getCurrentUnix() + (10 * time.day))
             ).to.be.revertedWith('Sender has no balance');
         });
 
         it('reverts if user already has a lock and timestamp is lower', async function () {
             await prepareAccount(user, amount);
+
+            await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
+
             await reign.connect(user).deposit(amount);
-            await reign.connect(user).lock(time.futureTimestamp(1 * time.year));
+            await reign.connect(user).lock(await helpers.getCurrentUnix() + (1 * time.year));
 
             await expect(
-                reign.connect(user).lock(time.futureTimestamp(5 * time.day))
+                reign.connect(user).lock(await helpers.getCurrentUnix() + (5 * time.day))
             ).to.be.revertedWith('New timestamp lower than current lock timestamp');
         });
 
@@ -351,7 +437,7 @@ describe('Reign', function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
 
-            const expiryTs = time.futureTimestamp(1 * time.year);
+            const expiryTs = await helpers.getCurrentUnix() + (1 * time.year);
             await reign.connect(user).lock(expiryTs);
 
             expect(await reign.userLockedUntil(userAddress)).to.be.equal(expiryTs);
@@ -361,9 +447,11 @@ describe('Reign', function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
 
-            await reign.connect(user).lock(time.futureTimestamp(30 * time.day));
+            await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
 
-            const expiryTs = time.futureTimestamp(1 * time.year);
+            await reign.connect(user).lock(await helpers.getCurrentUnix() + (30 * time.day));
+
+            const expiryTs = await helpers.getCurrentUnix() + (1 * time.year);
             await expect(reign.connect(user).lock(expiryTs)).to.not.be.reverted;
             expect(await reign.userLockedUntil(userAddress)).to.be.equal(expiryTs);
         });
@@ -372,7 +460,7 @@ describe('Reign', function () {
             await prepareAccount(user, amount.mul(2));
             await reign.connect(user).deposit(amount);
 
-            await reign.connect(user).lock(time.futureTimestamp(30 * time.day));
+            await reign.connect(user).lock(await helpers.getCurrentUnix() + (30 * time.day));
 
             await expect(reign.connect(user).deposit(amount)).to.not.be.reverted;
             expect(await reign.balanceOf(userAddress)).to.be.equal(amount.mul(2));
@@ -382,7 +470,7 @@ describe('Reign', function () {
             await prepareAccount(user, amount.mul(2));
             await reign.connect(user).deposit(amount);
 
-            const expiryTs = time.futureTimestamp(30 * time.day);
+            const expiryTs = await helpers.getCurrentUnix() + (30 * time.day);
             await reign.connect(user).lock(expiryTs);
 
             await expect(reign.connect(user).withdraw(amount)).to.be.revertedWith('User balance is locked');
@@ -395,21 +483,77 @@ describe('Reign', function () {
         });
     });
 
-    describe('multiplierAtTs', async function () {
-        it('returns expected multiplier for over a year lock', async function () {
+
+    describe('stakingBoost', function () {
+        it('returns the current multiplier of the user', async function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
 
-            let ts: number = await helpers.getLatestBlockTimestamp();
-            await helpers.setNextBlockTimestamp(ts + 5);
 
-            const lockExpiryTs = ts + 5 + time.year;
+            let ts = await helpers.getLatestBlockTimestamp();
+            const lockExpiryTs = ts + time.year;
+            await reign.connect(user).lock(lockExpiryTs);
+             ts = await helpers.getLatestBlockTimestamp();
+
+            const expectedMultiplier = multiplierForLock(ts, lockExpiryTs);
+            const actualMultiplier = await reign.stakingBoost(userAddress);
+
+            expect(
+                actualMultiplier
+            ).to.be.equal(expectedMultiplier);
+        });
+    });
+
+    describe('stakingBoostAtEpoch', async function () {
+        it('returns expected multiplier for a two year lock', async function () {
+            await prepareAccount(user, amount);
+            await reign.connect(user).deposit(amount);
+
+            let ts = await helpers.getLatestBlockTimestamp();
+
+            //over 2 Year lockup
+            const lockExpiryTs = ts + (time.year*2);
             await reign.connect(user).lock(lockExpiryTs);
 
             ts = await helpers.getLatestBlockTimestamp();
 
-            const expectedMultiplier = multiplierAtTs(lockExpiryTs, ts);
-            const actualMultiplier = await reign.multiplierAtTs(userAddress, ts);
+            const expectedMultiplier = multiplierForLock(ts, lockExpiryTs);
+            const actualMultiplier = await reign.stakingBoostAtEpoch(userAddress, await reign.getEpoch());
+
+            expect(
+                actualMultiplier
+            ).to.be.equal(expectedMultiplier);
+        });
+
+        it('returns base multiplier if no lockup', async function () {
+            await prepareAccount(user, amount);
+            await reign.connect(user).deposit(amount);
+
+            const expectedMultiplier = BigNumber.from(1).mul(helpers.tenPow18);
+            const actualMultiplier = await reign.stakingBoostAtEpoch(userAddress, await reign.getEpoch());
+
+            expect(
+                actualMultiplier
+            ).to.be.equal(expectedMultiplier);
+        });
+
+        it('multiplier is propagated through epoch', async function () {
+            await prepareAccount(user, amount);
+            await reign.connect(user).deposit(amount);
+
+            let ts = await helpers.getLatestBlockTimestamp();
+
+            //over 2 Year lockup
+            const lockExpiryTs = ts + (time.year*2);
+            await reign.connect(user).lock(lockExpiryTs);
+
+            ts = await helpers.getLatestBlockTimestamp();
+
+            
+            await helpers.moveAtEpoch(startEpoch, duration, (await reign.getEpoch()).toNumber() + 2)
+
+            const expectedMultiplier = multiplierForLock(ts, lockExpiryTs);
+            const actualMultiplier = await reign.stakingBoostAtEpoch(userAddress, await reign.getEpoch());
 
             expect(
                 actualMultiplier
@@ -420,16 +564,45 @@ describe('Reign', function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
 
-            let ts: number = await helpers.getLatestBlockTimestamp();
-            await helpers.setNextBlockTimestamp(ts + 5);
+            let ts = await helpers.getLatestBlockTimestamp();
 
-            const lockExpiryTs = ts + 5 + 15778800;
+            //1 Year lockup
+            const lockExpiryTs = ts + time.year;
             await reign.connect(user).lock(lockExpiryTs);
-
+            
             ts = await helpers.getLatestBlockTimestamp();
 
-            const expectedMultiplier = multiplierAtTs(lockExpiryTs, ts);
-            const actualMultiplier = await reign.multiplierAtTs(userAddress, ts);
+            const expectedMultiplier = multiplierForLock(ts, lockExpiryTs);
+            const actualMultiplier = await reign.stakingBoostAtEpoch(userAddress, await reign.getEpoch());
+
+            expect(
+                actualMultiplier
+            ).to.be.equal(expectedMultiplier);
+        });
+
+        it('returns 0 after lock expired', async function () {
+            await prepareAccount(user, amount);
+            await reign.connect(user).deposit(amount);
+
+            let ts = await helpers.getLatestBlockTimestamp();
+
+            //1 Year lockup
+            const lockExpiryTs = ts + 10000;
+            await reign.connect(user).lock(lockExpiryTs);
+            
+            ts = await helpers.getLatestBlockTimestamp();
+
+            let expectedMultiplier = multiplierForLock(ts, lockExpiryTs);
+            let actualMultiplier = await reign.stakingBoostAtEpoch(userAddress, await reign.getEpoch());
+
+            expect(
+                actualMultiplier
+            ).to.be.equal(expectedMultiplier);
+
+            await helpers.moveAtTimestamp(lockExpiryTs+10)
+
+             expectedMultiplier = BigNumber.from(1).mul(helpers.tenPow18)
+             actualMultiplier = await reign.stakingBoostAtEpoch(userAddress, await reign.getEpoch());
 
             expect(
                 actualMultiplier
@@ -443,6 +616,25 @@ describe('Reign', function () {
             await reign.connect(user).deposit(amount);
 
             expect(await reign.votingPower(userAddress)).to.be.equal(amount);
+        });
+    });
+
+    describe('votingPowerAtEpoch', async function () {
+        it('returns correct balance with no lock', async function () {
+            await prepareAccount(user, amount.mul(2));
+
+            //deposit at Epoch 2
+            await helpers.moveAtEpoch(startEpoch, duration, 2);
+            await reign.connect(user).deposit(amount);
+
+            //deposit more at Epoch 3
+            await helpers.moveAtEpoch(startEpoch, duration, 3);
+            await reign.connect(user).deposit(amount);
+
+
+            expect(await reign.votingPowerAtEpoch(userAddress, 1)).to.be.equal(0);
+            expect(await reign.votingPowerAtEpoch(userAddress, 2)).to.be.equal(amount);
+            expect(await reign.votingPowerAtEpoch(userAddress, 3)).to.be.equal(amount.mul(2));
         });
     });
 
@@ -527,26 +719,31 @@ describe('Reign', function () {
             await prepareAccount(happyPirate, amount);
             await reign.connect(happyPirate).deposit(amount);
 
+            // amount is delegated in this epoch
             await reign.connect(user).delegate(flyingParrotAddress);
-            const delegate1Ts = await helpers.getLatestBlockTimestamp();
+            const delegate1Epoch = (await reign.getEpoch()).toNumber() 
 
-            await moveAtTimestamp(delegate1Ts + 100);
+            // another amount is delegated in the epoch after the first
+            await helpers.moveAtEpoch(startEpoch, duration, delegate1Epoch + 1);
             await reign.connect(happyPirate).delegate(flyingParrotAddress);
-            const delegate2Ts = await helpers.getLatestBlockTimestamp();
+            const delegate2Epoch = (await reign.getEpoch()).toNumber() 
 
-            await moveAtTimestamp(delegate2Ts + 100);
+            // amount is deposited in the third epoch after, automatically delegated
+            await helpers.moveAtEpoch(startEpoch, duration, delegate2Epoch + 1);
             await reign.connect(user).deposit(amount);
-            const delegate3Ts = await helpers.getLatestBlockTimestamp();
+            const delegate3Epoch = (await reign.getEpoch()).toNumber() 
 
-            await moveAtTimestamp(delegate3Ts+100);
+            // amount is deposited in the third epoch after, not delegated
+            await helpers.moveAtEpoch(startEpoch, duration, delegate3Epoch + 1);
             await prepareAccount(flyingParrot, amount);
             await reign.connect(flyingParrot).deposit(amount);
-            const depositTs = await helpers.getLatestBlockTimestamp();
+            const depositEpoch = (await reign.getEpoch()).toNumber() 
 
-            expect(await reign.votingPowerAtTs(flyingParrotAddress, depositTs -1)).to.be.equal(amount.mul(3));
-            expect(await reign.votingPowerAtTs(flyingParrotAddress, delegate3Ts - 1)).to.be.equal(amount.mul(2));
-            expect(await reign.votingPowerAtTs(flyingParrotAddress, delegate2Ts - 1)).to.be.equal(amount);
-            expect(await reign.votingPowerAtTs(flyingParrotAddress, delegate1Ts - 1)).to.be.equal(0);
+            expect(await reign.votingPowerAtEpoch(flyingParrotAddress, delegate1Epoch - 1)).to.be.equal(0);
+            expect(await reign.votingPowerAtEpoch(flyingParrotAddress, delegate1Epoch)).to.be.equal(amount);
+            expect(await reign.votingPowerAtEpoch(flyingParrotAddress, delegate2Epoch)).to.be.equal(amount.mul(2));
+            expect(await reign.votingPowerAtEpoch(flyingParrotAddress, delegate3Epoch)).to.be.equal(amount.mul(3));
+            expect(await reign.votingPowerAtEpoch(flyingParrotAddress, depositEpoch)).to.be.equal(amount.mul(4));
         });
 
         it('does not modify user balance', async function () {
@@ -588,14 +785,20 @@ describe('Reign', function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
             await reign.connect(user).delegate(happyPirateAddress);
-            const delegateTs = await helpers.getLatestBlockTimestamp();
+            const delegateEpoch = (await reign.getEpoch()).toNumber()
+            expect(await reign.votingPower(happyPirateAddress)).to.be.equal(amount);
+
+            await helpers.moveAtEpoch(startEpoch, duration, delegateEpoch +1)
 
             await reign.connect(user).stopDelegate();
-            const stopTs = await helpers.getLatestBlockTimestamp();
+            expect(await reign.votingPower(happyPirateAddress)).to.be.equal(0);
 
-            expect(await reign.votingPowerAtTs(happyPirateAddress, delegateTs - 1)).to.be.equal(0);
-            expect(await reign.votingPowerAtTs(happyPirateAddress, stopTs - 1)).to.be.equal(amount);
-            expect(await reign.votingPowerAtTs(happyPirateAddress, stopTs + 1)).to.be.equal(0);
+            const stopEpoch = (await reign.getEpoch()).toNumber()
+
+            expect(await reign.votingPowerAtEpoch(happyPirateAddress, delegateEpoch - 1)).to.be.equal(0);
+            expect(await reign.votingPowerAtEpoch(happyPirateAddress, stopEpoch - 1)).to.be.equal(amount);
+            expect(await reign.votingPowerAtEpoch(happyPirateAddress, stopEpoch)).to.be.equal(0);
+            expect(await reign.votingPowerAtEpoch(happyPirateAddress, stopEpoch + 1)).to.be.equal(0);
         });
 
         it('does not change any other delegated balances for the delegatee', async function () {
@@ -686,27 +889,43 @@ describe('Reign', function () {
         });
     });
 
-    describe('multiplierOf', function () {
-        it('returns the current multiplier of the user', async function () {
-            await prepareAccount(user, amount);
-            await reign.connect(user).deposit(amount);
 
-            let ts: number = await helpers.getLatestBlockTimestamp();
-            await helpers.setNextBlockTimestamp(ts + 5);
 
-            const lockExpiryTs = ts + 5 + time.year;
-            await reign.connect(user).lock(lockExpiryTs);
+    function computeEffectiveBalance(balance: BigNumber, multiplier: BigNumber) {
+        return balance.mul(multiplier).div(BigNumber.from(1).mul(helpers.tenPow18));
+    }
 
-            ts = await helpers.getLatestBlockTimestamp();
+    function multiplierAtTs(epoch: number, ts: number) {
+        const epochEnd = startEpoch + epoch * duration;
+        const timeLeft = epochEnd - ts;
 
-            const expectedMultiplier = multiplierAtTs(lockExpiryTs, ts);
-            const actualMultiplier = await reign.multiplierOf(userAddress);
+        return BigNumber.from(timeLeft).mul(BigNumber.from(1).mul(helpers.tenPow18)).div(duration);
+    }
 
-            expect(
-                actualMultiplier
-            ).to.be.equal(expectedMultiplier);
-        });
-    });
+    function scaleMultiplier(floatValue: number, currentDecimals: number) {
+        const value = floatValue * Math.pow(10, currentDecimals);
+
+        return BigNumber.from(value).mul(BigNumber.from(10).pow(18 - currentDecimals));
+    }
+
+    function calculateMultiplier(previousBalance: BigNumber, previousMultiplier: BigNumber, newDeposit: BigNumber, newMultiplier: BigNumber) {
+        const pb = BigNumber.from(previousBalance);
+        const pm = BigNumber.from(previousMultiplier);
+        const nd = BigNumber.from(newDeposit);
+        const nm = BigNumber.from(newMultiplier);
+
+        const pa = pb.mul(pm).div(BigNumber.from(1).mul(helpers.tenPow18));
+        const na = nd.mul(nm).div(BigNumber.from(1).mul(helpers.tenPow18));
+
+        return pa.add(na).mul(BigNumber.from(1).mul(helpers.tenPow18)).div(pb.add(nd));
+    }
+
+    function multiplierForLock (ts: number, expiryTs: number): BigNumber {
+        return BigNumber.from(expiryTs - ts)
+            .mul(helpers.tenPow18)
+            .div(time.year*2)
+            .add(helpers.tenPow18);
+    }
 
     async function setupSigners () {
         const accounts = await ethers.getSigners();
@@ -722,12 +941,5 @@ describe('Reign', function () {
     async function prepareAccount (account: Signer, balance: BigNumber) {
         await bond.mint(await account.getAddress(), balance);
         await bond.connect(account).approve(reign.address, balance);
-    }
-
-    function multiplierAtTs (expiryTs: number, ts: number): BigNumber {
-        return BigNumber.from(expiryTs - ts)
-            .mul(helpers.tenPow18)
-            .div(time.year)
-            .add(helpers.tenPow18);
     }
 });
