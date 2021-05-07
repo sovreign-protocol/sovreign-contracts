@@ -3,16 +3,11 @@ pragma solidity 0.7.6;
 
 contract PoolControllerMock {
     address interest;
-    uint256 adjustment;
     address balancer;
+    bool isPoolVal = true;
 
-    constructor(
-        address _int,
-        uint256 _adj,
-        address _balancer
-    ) {
+    constructor(address _int, address _balancer) {
         interest = _int;
-        adjustment = _adj;
         balancer = _balancer;
     }
 
@@ -28,7 +23,11 @@ contract PoolControllerMock {
         return balancer;
     }
 
-    function getAdjustment(address _pool) public view returns (uint256) {
-        return adjustment;
+    function isPool(address _pool) public view returns (bool) {
+        return isPoolVal;
+    }
+
+    function setIsPool(bool val) public {
+        isPoolVal = val;
     }
 }

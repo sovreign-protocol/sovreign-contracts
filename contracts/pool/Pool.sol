@@ -2,12 +2,12 @@
 pragma solidity 0.7.6;
 
 import "./PoolErc20.sol";
-import "../interfaces/IERC20.sol";
+//import "../interfaces/IERC20.sol";
 import "../interfaces/IMintBurnErc20.sol";
 import "../interfaces/IPool.sol";
 import "../interfaces/IPoolController.sol";
-import "../libraries/SafeERC20.sol";
 import "../libraries/LibRewardsDistribution.sol";
+import "../libraries/SafeERC20.sol";
 import "../interfaces/InterestStrategyInterface.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -83,13 +83,13 @@ contract Pool is IPool, PoolErc20 {
         uint256 depositFee = getDepositFeeReign(amount);
 
         if (depositFee > 0) {
-            IMintBurnErc20 reign = IMintBurnErc20(reignToken);
+            IERC20 _reignToken = IERC20(reignToken);
 
             require(
-                reign.allowance(msg.sender, address(this)) >= depositFee,
+                _reignToken.allowance(msg.sender, address(this)) >= depositFee,
                 "Insufficient allowance"
             );
-            reign.transferFrom(msg.sender, treasoury, depositFee);
+            _reignToken.safeTransferFrom(msg.sender, treasoury, depositFee);
         }
 
         uint256 _totalSupply = totalSupply; // gas savings
@@ -123,13 +123,17 @@ contract Pool is IPool, PoolErc20 {
         uint256 withdrawFee = getWithdrawFeeReign(amount);
 
         if (withdrawFee > 0) {
-            IMintBurnErc20 reign = IMintBurnErc20(reignToken);
+            IERC20 _reignToken = IERC20(reignToken);
 
             require(
-                reign.allowance(msg.sender, address(this)) >= withdrawFee,
+                _reignToken.allowance(msg.sender, address(this)) >= withdrawFee,
                 "Insufficient allowance"
             );
-            reign.transferFrom(msg.sender, liquidityBuffer, withdrawFee);
+            _reignToken.safeTransferFrom(
+                msg.sender,
+                liquidityBuffer,
+                withdrawFee
+            );
         }
 
         //burn LP tokens

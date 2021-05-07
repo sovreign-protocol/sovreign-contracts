@@ -2,13 +2,14 @@
 pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../interfaces/IStaking.sol";
 
 contract LPRewards {
     // lib
     using SafeMath for uint256;
     using SafeMath for uint128;
+    using SafeERC20 for IERC20;
 
     // constants
     uint256 public constant TOTAL_DISTRIBUTED_AMOUNT = 2000000;
@@ -20,7 +21,7 @@ contract LPRewards {
     address private _depositLP;
     address private _communityVault;
     // contracts
-    IERC20 private _bond;
+    IERC20 private _reignToken;
     IStaking private _staking;
 
     uint256[] private sizeAtEpoch = new uint256[](NR_OF_EPOCHS + 1);
@@ -49,7 +50,7 @@ contract LPRewards {
         address stakeContract,
         address communityVault
     ) {
-        _bond = IERC20(bondTokenAddress);
+        _reignToken = IERC20(bondTokenAddress);
         _depositLP = depositLP;
         _staking = IStaking(stakeContract);
         _communityVault = communityVault;
@@ -87,7 +88,7 @@ contract LPRewards {
         );
 
         if (totalDistributedValue > 0) {
-            _bond.transferFrom(
+            _reignToken.safeTransferFrom(
                 _communityVault,
                 msg.sender,
                 totalDistributedValue
@@ -110,7 +111,11 @@ contract LPRewards {
         );
         uint256 userReward = _harvest(epochId);
         if (userReward > 0) {
-            _bond.transferFrom(_communityVault, msg.sender, userReward);
+            _reignToken.safeTransferFrom(
+                _communityVault,
+                msg.sender,
+                userReward
+            );
         }
         emit Harvest(msg.sender, epochId, userReward);
         return userReward;

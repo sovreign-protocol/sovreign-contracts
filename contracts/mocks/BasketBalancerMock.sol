@@ -27,10 +27,7 @@ contract BasketBalancerMock is IBasketBalancer {
 
     function updateBasketBalance() external pure {}
 
-    function computeAllocation() public pure returns (uint256[] memory) {
-        uint256[] memory empty;
-        return empty;
-    }
+    function computeAllocation() public pure returns (uint256[] memory) {}
 
     function hasVotedInEpoch(address user, uint128 epoch)
         external
@@ -53,11 +50,7 @@ contract BasketBalancerMock is IBasketBalancer {
             uint256[] memory,
             uint256
         )
-    {
-        address[] memory empty1;
-        uint256[] memory empty2;
-        return (empty1, empty2, 0);
-    }
+    {}
 
     function getTargetAllocation(address pool)
         public

@@ -3,9 +3,9 @@ import { BigNumber, Signer } from "ethers";
 import { moveAtEpoch, tenPow18 } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
-import {RewardsVault, ERC20Mock, Staking, LPRewards, ERC20} from "../typechain";
+import {RewardsVault, ERC20Mock, Staking, LPRewards} from "../typechain";
 
-describe('YieldFarm Liquidity Pool', function () {
+describe('YieldFarm AMM Pool', function () {
     let staking: Staking;
     let reignToken: ERC20Mock;
     let uniLP: ERC20Mock;

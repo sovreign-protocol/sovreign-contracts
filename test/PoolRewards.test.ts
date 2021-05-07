@@ -5,7 +5,7 @@ import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
 import { RewardsVault, ERC20Mock, Staking, PoolRewards, PoolControllerMock,LiquidityBufferVault, InterestStrategy, BasketBalancerMock  } from "../typechain";
 
-describe("YieldFarm REIGN Pool", function () {
+describe("YieldFarm Liquidity Pool", function () {
     let staking: Staking;
     let reignToken: ERC20Mock;
     let svrToken: ERC20Mock;
@@ -21,10 +21,8 @@ describe("YieldFarm REIGN Pool", function () {
 
     const epochStart = Math.floor(Date.now() / 1000) + 1000;
     const epochDuration = 604800;
-    const numberOfEpochs = 100;
 
     const distributedAmount: BigNumber = BigNumber.from(50000000).mul(tenPow18);
-    const baseAdjustment: BigNumber = BigNumber.from(1).mul(tenPow18);
     const amount = BigNumber.from(100).mul(tenPow18) as BigNumber;
 
     let snapshotId: any;
@@ -46,7 +44,7 @@ describe("YieldFarm REIGN Pool", function () {
             'InterestStrategy',[multiplier, offset,baseDelta, reignDAO.getAddress(), epochStart])
             ) as InterestStrategy;;
 
-        controller = (await deployContract("PoolControllerMock",[interest.address,baseAdjustment, balancer.address ])) as PoolControllerMock;
+        controller = (await deployContract("PoolControllerMock",[interest.address, balancer.address ])) as PoolControllerMock;
 
         staking = (await deployContract("Staking", [epochStart])) as Staking;
 
@@ -65,7 +63,7 @@ describe("YieldFarm REIGN Pool", function () {
         await rewardsVault.connect(creator).setAllowance(yieldFarm.address, distributedAmount);
 
         await reignToken.mint(liquidityBuffer.address, distributedAmount);
-        await rewardsVault.connect(creator).setAllowance(liquidityBuffer.address, distributedAmount);
+        await liquidityBuffer.connect(creator).setAllowance(yieldFarm.address, distributedAmount);
 
 
         await setNextBlockTimestamp(await getCurrentUnix());
@@ -92,7 +90,6 @@ describe("YieldFarm REIGN Pool", function () {
 
             await interest.accrueInterest(10000,10000);
 
-
             await moveAtEpoch(epochStart, epochDuration, 1)
             await accrueAndMoveToEpoch(2)
             await moveAtEpoch(epochStart, epochDuration, 3)
@@ -105,8 +102,6 @@ describe("YieldFarm REIGN Pool", function () {
             ).to.equal(distributedAmount)
             expect(await yieldFarm.getCurrentEpoch()).to.equal(2) // epoch on yield is staking - 1
 
-            
-            // get epoch 1 rewards
             let epoch1Rewards = (await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0];
 
             let boostMultiplier = await yieldFarm.getBoost(userAddr, 1);
@@ -114,6 +109,7 @@ describe("YieldFarm REIGN Pool", function () {
             // as the user didn't vote this epoch (see balancerMock) we need to apply Boost
             let distributedRewards = (epoch1Rewards).mul(boostMultiplier).div(tenPow18);
 
+            expect(distributedRewards).to.not.eq(0)
             await yieldFarm.connect(user).harvest(1)
             expect(await reignToken.balanceOf(userAddr)).to.eq(distributedRewards)
         })
@@ -162,30 +158,59 @@ describe("YieldFarm REIGN Pool", function () {
             await depositPoolLP(amount)
             await moveAtEpoch(epochStart, epochDuration, 30)
             expect(await yieldFarm.getPoolSize(1)).to.equal(amount)
-            await yieldFarm.connect(creator).harvest(1)
-            expect(await reignToken.balanceOf(await creator.getAddress())).to.equal(0)
-            await yieldFarm.connect(creator).massHarvest()
-            expect(await reignToken.balanceOf(await creator.getAddress())).to.equal(0)
+            await yieldFarm.connect(user).harvest(1)
+            expect(await reignToken.balanceOf(await user.getAddress())).to.equal(0)
+            await yieldFarm.connect(user).massHarvest()
+            expect(await reignToken.balanceOf(await user.getAddress())).to.equal(0)
         })
         it('nothing to harvest if interest is negative', async function () {
+            await depositPoolLP(amount)
             await mineBlocks(1000); 
-            await interest.accrueInterest(10000,11000);
+            // reserves > target
+            await interest.accrueInterest(11000,10000);
             await moveAtEpoch(epochStart, epochDuration, 1)
             await mineBlocks(1000); 
-            await interest.accrueInterest(10000,11000);
+            await interest.accrueInterest(11000,10000);
             await moveAtEpoch(epochStart, epochDuration, 3)
-            await yieldFarm.connect(creator).harvest(1)
-            expect(await reignToken.balanceOf(await creator.getAddress())).to.equal(0)
+            await yieldFarm.connect(user).harvest(1)
+            expect(await reignToken.balanceOf(await user.getAddress())).to.equal(0)
         })
 
-        it('difference is sent to Liquidity Buffer', async function () {
+        it('sends the excess tokens to Liquidity Buffer', async function () {
+            await depositPoolLP(amount)
             await mineBlocks(1000); 
             await interest.accrueInterest(10000,11000);
             await moveAtEpoch(epochStart, epochDuration, 1)
             await mineBlocks(1000); 
             await interest.accrueInterest(10000,11000);
+            await moveAtEpoch(epochStart, epochDuration, 2)
+            await mineBlocks(1000); 
+            await interest.accrueInterest(10000,11000);
             await moveAtEpoch(epochStart, epochDuration, 3)
+
+            let epochRewards =(await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0];
+            let baseRewards = (await yieldFarm.getRewardsForEpoch(1, poolLP.address))[1];
+            let boostMultiplier = await yieldFarm.getBoost(userAddr, 1);
+            let distributedRewards = (epochRewards).mul(boostMultiplier).div(tenPow18);
+            let excessTokens = baseRewards.sub(distributedRewards);
+            
+            let balanceBefore = await reignToken.balanceOf(liquidityBuffer.address)
+            await yieldFarm.connect(user).harvest(1)
+            expect(await reignToken.balanceOf(liquidityBuffer.address)).to.be.eq(balanceBefore.add(excessTokens))
+        })
+
+        it('receives the missing tokens from Liquidity Buffer', async function () {
+            await depositPoolLP(amount)
+            await moveAtEpoch(epochStart, epochDuration, 1)
+            await mineBlocks(1000); 
+            await interest.accrueInterest(9000,11000);
+            await moveAtEpoch(epochStart, epochDuration, 3)
+            let epochRewards =(await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0];
+            let baseRewards = (await yieldFarm.getRewardsForEpoch(1, poolLP.address))[1];
+            let excessTokens = epochRewards.sub(baseRewards);
+            let balanceBefore = await reignToken.balanceOf(liquidityBuffer.address);
             await yieldFarm.connect(creator).harvest(1)
+            expect(await reignToken.balanceOf(liquidityBuffer.address)).to.be.eq(balanceBefore.sub(excessTokens))
         })
         it('gives epochid = 0 for previous epochs', async function () {
             await moveAtTimestamp(epochStart)

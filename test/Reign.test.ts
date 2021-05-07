@@ -443,6 +443,19 @@ describe('Reign', function () {
             expect(await reign.userLockedUntil(userAddress)).to.be.equal(expiryTs);
         });
 
+        it('sets lock correctly if called twice in epoch', async function () {
+            await prepareAccount(user, amount);
+            await reign.connect(user).deposit(amount);
+
+            const expiryTs = await helpers.getCurrentUnix() + (time.year);
+            await reign.connect(user).lock(expiryTs);
+            expect(await reign.userLockedUntil(userAddress)).to.be.equal(expiryTs);
+
+            const expiryTsNew = await helpers.getLatestBlockTimestamp() + (time.day + time.year);
+            await reign.connect(user).lock(expiryTsNew);
+            expect(await reign.userLockedUntil(userAddress)).to.be.equal(expiryTsNew);
+        });
+
         it('allows user to increase lock', async function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
@@ -608,6 +621,36 @@ describe('Reign', function () {
                 actualMultiplier
             ).to.be.equal(expectedMultiplier);
         });
+
+        it('sets multiplier correctly if called twice in epoch', async function () {
+            await prepareAccount(user, amount);
+            await reign.connect(user).deposit(amount);
+
+            let ts = await helpers.getLatestBlockTimestamp();
+
+            const lockExpiryTs = ts + time.day;
+            await reign.connect(user).lock(lockExpiryTs);
+            
+            ts = await helpers.getLatestBlockTimestamp();
+
+            let expectedMultiplier = multiplierForLock(ts, lockExpiryTs);
+            let actualMultiplier = await reign.stakingBoostAtEpoch(userAddress, await reign.getEpoch());
+            expect(
+                actualMultiplier
+            ).to.be.equal(expectedMultiplier);
+
+            // increase lock in same epoch
+            const lockExpiryTsNew = ts + (time.day*2);
+            await reign.connect(user).lock(lockExpiryTsNew);
+            
+            ts = await helpers.getLatestBlockTimestamp();
+
+            expectedMultiplier = multiplierForLock(ts, lockExpiryTsNew);
+            actualMultiplier = await reign.stakingBoostAtEpoch(userAddress, await reign.getEpoch());
+            expect(
+                actualMultiplier
+            ).to.be.equal(expectedMultiplier);
+        });
     });
 
     describe('votingPower', async function () {
@@ -763,6 +806,20 @@ describe('Reign', function () {
 
             expect(await reign.delegatedPower(userAddress)).to.equal(amount);
             expect(await reign.delegatedPower(happyPirateAddress)).to.equal(0);
+        });
+
+        it('works when delegation is updated many epochs after', async function () {
+            await prepareAccount(user, amount);
+            await reign.connect(user).deposit(amount);
+            await reign.connect(user).delegate(flyingParrotAddress);
+
+            expect(await reign.votingPower(flyingParrotAddress)).to.be.equal(amount);
+
+            helpers.moveAtEpoch(startEpoch, duration, 20)
+
+            //edit delegation
+            await reign.connect(user).delegate(happyPirateAddress);
+            expect(await reign.votingPower(happyPirateAddress)).to.be.equal(amount);
         });
     });
 

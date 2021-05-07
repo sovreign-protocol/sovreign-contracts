@@ -18,7 +18,6 @@ contract LiquidityBufferVault is Ownable {
 
     function setAllowance(address spender, uint256 amount) public onlyOwner {
         _reignToken.approve(spender, amount);
-
         emit SetAllowance(msg.sender, spender, amount);
     }
 }

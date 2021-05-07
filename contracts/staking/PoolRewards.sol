@@ -2,17 +2,19 @@
 pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IStaking.sol";
 import "../interfaces/InterestStrategyInterface.sol";
 import "../interfaces/IBasketBalancer.sol";
 import "../interfaces/IPoolController.sol";
 import "../libraries/LibRewardsDistribution.sol";
+import "../libraries/SafeERC20.sol";
+import "hardhat/console.sol";
 
 contract PoolRewards {
     // lib
     using SafeMath for uint256;
     using SafeMath for uint128;
+    using SafeERC20 for IERC20;
 
     // state variables
 
@@ -87,7 +89,7 @@ contract PoolRewards {
         );
 
         if (totalDistributedValue > 0) {
-            _reignToken.transferFrom(
+            _reignToken.safeTransferFrom(
                 _rewardsVault,
                 msg.sender,
                 totalDistributedValue
@@ -95,7 +97,7 @@ contract PoolRewards {
         }
 
         if (totalToBuffer > 0) {
-            _reignToken.transferFrom(
+            _reignToken.safeTransferFrom(
                 _rewardsVault,
                 _liquidityBuffer,
                 totalToBuffer
@@ -113,15 +115,27 @@ contract PoolRewards {
             lastEpochIdHarvested[msg.sender].add(1) == epochId,
             "Harvest in order"
         );
-        (uint256 userReward, uint256 toBuffer) = _harvest(epochId);
-        if (userReward > 0) {
-            _reignToken.transferFrom(_rewardsVault, msg.sender, userReward);
+        (uint256 userEpochReward, uint256 userBaseReward) = _harvest(epochId);
+        if (userEpochReward > 0) {
+            _reignToken.safeTransferFrom(
+                _rewardsVault,
+                msg.sender,
+                userEpochReward
+            );
         }
-        if (toBuffer > 0) {
-            _reignToken.transferFrom(_rewardsVault, _liquidityBuffer, toBuffer);
+        // If there are less token rewarded then base issuance
+        // we transfer the difference from the rewards to the liquidty buffer
+        if (userBaseReward > userEpochReward) {
+            uint256 transferToBuffer = userBaseReward.sub(userEpochReward);
+            _reignToken.safeTransferFrom(
+                _rewardsVault,
+                _liquidityBuffer,
+                transferToBuffer
+            );
         }
-        emit Harvest(msg.sender, epochId, userReward);
-        return userReward;
+
+        emit Harvest(msg.sender, epochId, userEpochReward);
+        return userEpochReward;
     }
 
     /*
@@ -135,7 +149,6 @@ contract PoolRewards {
         }
         // Set user state for last harvested
         lastEpochIdHarvested[msg.sender] = epochId;
-        // compute and return user total reward. For optimization reasons the transfer have been moved to an upper layer (i.e. massHarvest needs to do a single transfer)
 
         // exit if there is no stake on the epoch
         if (_sizeAtEpoch[epochId] == 0) {
@@ -173,8 +186,6 @@ contract PoolRewards {
         // call the staking smart contract to init the epoch
 
         //Rebalance pools
-        uint256 transferToBuffer = 0;
-        uint256 transferToRewards = 0;
 
         // we get the accumulated interest for the epoch
         (uint256 epochRewards, uint256 baseRewards) =
@@ -182,18 +193,12 @@ contract PoolRewards {
 
         // if these pools need more rewards than base issuance, then we need to transfer it
         if (epochRewards > baseRewards) {
-            transferToRewards = epochRewards - baseRewards;
-        } else if (epochRewards < baseRewards) {
-            // if this pools needs less rewards then base issuance, we remove it from the amount later
-            transferToBuffer = baseRewards - epochRewards;
-        }
+            uint256 transferToRewards = epochRewards.sub(baseRewards);
 
-        // We transfer the total difference across all pools to the buffer
-        if (transferToRewards > transferToBuffer) {
-            _reignToken.transferFrom(
+            _reignToken.safeTransferFrom(
                 _liquidityBuffer,
                 _rewardsVault,
-                transferToRewards.sub(transferToBuffer)
+                transferToRewards
             );
         }
     }
