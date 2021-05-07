@@ -3,12 +3,12 @@ import { expect } from 'chai';
 import * as deploy from './helpers/deploy';
 import { Contract, Signer } from 'ethers';
 import { diamondAsFacet, FacetCutAction, getSelectors } from './helpers/diamond';
-import { DiamondCutFacet, DiamondLoupeFacet, OwnershipFacet, Test1Facet, Test2Facet } from '../typechain';
+import { DiamondCutFacet, DiamondLoupeFacet, OwnershipFacet, EpochClockFacet, Test1Facet, Test2Facet } from '../typechain';
 import { zeroAddress } from './helpers/helpers';
 
 describe('Diamond', function () {
-    let loupeFacet: Contract, cutFacet: Contract, ownershipFacet: Contract;
-    let diamond: Contract, loupe: DiamondLoupeFacet, cut: DiamondCutFacet, ownership: OwnershipFacet;
+    let loupeFacet: Contract, cutFacet: Contract, clockFacet: Contract,ownershipFacet: Contract;
+    let diamond: Contract, loupe: DiamondLoupeFacet, clock: EpochClockFacet,  cut: DiamondCutFacet, ownership: OwnershipFacet;
     let owner: Signer, user: Signer;
 
     before(async () => {
@@ -17,17 +17,19 @@ describe('Diamond', function () {
         user = signers[1];
 
         cutFacet = await deploy.deployContract('DiamondCutFacet');
+        clockFacet = await deploy.deployContract('EpochClockFacet');
         loupeFacet = await deploy.deployContract('DiamondLoupeFacet');
         ownershipFacet = await deploy.deployContract('OwnershipFacet');
         diamond = await deploy.deployDiamond(
             'ReignDiamond',
-            [cutFacet, loupeFacet, ownershipFacet],
+            [cutFacet, loupeFacet, ownershipFacet, clockFacet],
             await owner.getAddress(),
         );
 
         loupe = (await diamondAsFacet(diamond, 'DiamondLoupeFacet')) as DiamondLoupeFacet;
         cut = (await diamondAsFacet(diamond, 'DiamondCutFacet')) as DiamondCutFacet;
         ownership = (await diamondAsFacet(diamond, 'OwnershipFacet')) as OwnershipFacet;
+        clock = (await diamondAsFacet(diamond, 'EpochClockFacet')) as EpochClockFacet;
     });
 
     describe('General tests', () => {
@@ -40,8 +42,8 @@ describe('Diamond', function () {
         it('has correct facets', async function () {
             const addresses = await loupe.facetAddresses();
 
-            expect(addresses.length).to.be.equal(3);
-            expect(addresses).to.eql([cutFacet.address, loupeFacet.address, ownershipFacet.address]);
+            expect(addresses.length).to.be.equal(4);
+            expect(addresses).to.eql([cutFacet.address, loupeFacet.address, ownershipFacet.address, clockFacet.address]);
         });
 
         it('has correct function selectors linked to facet', async function () {
@@ -53,6 +55,9 @@ describe('Diamond', function () {
 
             selectors = getSelectors(ownershipFacet);
             expect(await loupe.facetFunctionSelectors(ownershipFacet.address)).to.deep.equal(selectors);
+
+            selectors = getSelectors(clockFacet);
+            expect(await loupe.facetFunctionSelectors(clockFacet.address)).to.deep.equal(selectors);
         });
 
         it('associates selectors correctly to facets', async function () {
@@ -62,6 +67,10 @@ describe('Diamond', function () {
 
             for (const sel of getSelectors(cutFacet)) {
                 expect(await loupe.facetAddress(sel)).to.be.equal(cutFacet.address);
+            }
+
+            for (const sel of getSelectors(clockFacet)) {
+                expect(await loupe.facetAddress(sel)).to.be.equal(clockFacet.address);
             }
 
             for (const sel of getSelectors(ownershipFacet)) {
@@ -80,6 +89,9 @@ describe('Diamond', function () {
 
             expect(facets[2].facetAddress).to.equal(ownershipFacet.address);
             expect(facets[2].functionSelectors).to.eql(getSelectors(ownershipFacet));
+
+            expect(facets[3].facetAddress).to.equal(clockFacet.address);
+            expect(facets[3].functionSelectors).to.eql(getSelectors(clockFacet));
         });
     });
 
@@ -123,8 +135,8 @@ describe('Diamond', function () {
             await expect(cut.connect(owner).diamondCut(_diamondCut, zeroAddress, '0x')).to.not.be.reverted;
 
             const facets = await loupe.facets();
-            expect(facets[3].facetAddress).to.eql(test1Facet.address);
-            expect(facets[3].functionSelectors).to.eql(getSelectors(test1Facet));
+            expect(facets[4].facetAddress).to.eql(test1Facet.address);
+            expect(facets[4].functionSelectors).to.eql(getSelectors(test1Facet));
 
             const test1 = (await diamondAsFacet(diamond, 'Test1Facet')) as Test1Facet;
             await expect(test1.test1Func1()).to.not.be.reverted;
@@ -168,6 +180,30 @@ describe('Diamond', function () {
 
             const test1 = (await diamondAsFacet(diamond, 'Test1Facet')) as Test1Facet;
             await expect(test1.test1Func1()).to.be.revertedWith('Diamond: Function does not exist');
+        });
+    });
+
+    
+
+    describe('epochClockFacet',  function () {
+        it('returns start time correctly', async function () {
+            //reign is not initialised so start is 0
+            expect(await clock.getEpoch1Start()).to.equal(0);
+        });
+
+        it('returns duration correctly', async function () {
+            //reign is not initialised so duration is 0
+            expect(await clock.getEpochDuration()).to.equal(0);
+        });
+
+        it('allows owner to set duration', async function () {
+            await expect(clock.connect(owner).setEpochDuration(10000)).to.not.be.reverted;
+            expect(await clock.getEpochDuration()).to.equal(10000);
+        });
+
+        it('reverts if non-owner tries to set duration', async function () {
+            await expect(clock.connect(user).setEpochDuration(10000))
+                .to.be.revertedWith('Must be contract owner');
         });
     });
 
