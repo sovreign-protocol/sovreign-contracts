@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.7.6;
 
-import "../interfaces/IMintBurnErc20.sol";
+import "../interfaces/IERC20.sol";
 import "../interfaces/IPoolController.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract ReignToken is IMintBurnErc20 {
+contract ReignToken is IERC20 {
     using SafeMath for uint256;
 
     string public constant override name = "SoVReign Governance Token";
@@ -15,16 +15,18 @@ contract ReignToken is IMintBurnErc20 {
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
 
-    // 'controller' here means the PoolController contract
-    address public controller;
+    event Mint(address indexed to, uint256 value);
 
-    constructor(address _controller) {
-        controller = _controller;
+    address public owner;
+
+    constructor(address _owner) {
+        owner = _owner;
     }
 
-    function setController(address _controller) public {
-        require(msg.sender == controller, "Only Controller can do this");
-        controller = _controller;
+    // after the initial mint the owner will be set to 0 address
+    function setOwner(address _owner) public {
+        require(msg.sender == owner, "Only Owner can do this");
+        owner = _owner;
     }
 
     function _mint(address to, uint256 value) internal {
@@ -33,32 +35,11 @@ contract ReignToken is IMintBurnErc20 {
         emit Transfer(address(0), to, value);
     }
 
-    function _burn(address from, uint256 value) internal {
-        balanceOf[from] = balanceOf[from].sub(value);
-        totalSupply = totalSupply.sub(value);
-        emit Transfer(from, address(0), value);
-    }
-
-    function mint(address to, uint256 value) external override returns (bool) {
-        require(msg.sender == controller, "Only Controller can do this");
+    function mint(address to, uint256 value) external returns (bool) {
+        require(msg.sender == owner, "Only Owner can do this");
 
         _mint(to, value);
         emit Mint(to, value);
-        return true;
-    }
-
-    function burnFrom(address from, uint256 value)
-        external
-        override
-        returns (bool)
-    {
-        require(
-            IPoolController(controller).isPool(msg.sender),
-            "Only a Pool can do this"
-        );
-
-        _burn(from, value);
-        emit Burn(from, value);
         return true;
     }
 

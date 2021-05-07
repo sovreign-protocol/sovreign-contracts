@@ -86,7 +86,6 @@ describe('Pool', function () {
         await setupContracts()
 
         svr.connect(user).setController(poolController.address)
-        reign.connect(user).setController(poolController.address)
         
 
     })

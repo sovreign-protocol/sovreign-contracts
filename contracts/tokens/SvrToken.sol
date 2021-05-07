@@ -15,16 +15,23 @@ contract SvrToken is IMintBurnErc20 {
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
 
-    // 'controller' here means the PoolController contract
-    address public controller;
+    // 'poolController' here means the PoolController contract
+    address public poolController;
+    address public owner;
 
-    constructor(address _controller) {
-        controller = _controller;
+    constructor(address _poolController) {
+        poolController = _poolController;
+        owner = msg.sender;
     }
 
-    function setController(address _controller) public {
-        require(msg.sender == controller, "Only Controller can do this");
-        controller = _controller;
+    function setController(address _poolController) public {
+        require(msg.sender == owner, "Only Owner can do this");
+        poolController = _poolController;
+    }
+
+    function setOwner(address _owner) public {
+        require(msg.sender == owner, "Only Owner can do this");
+        owner = _owner;
     }
 
     function _mint(address to, uint256 value) internal {
@@ -41,7 +48,7 @@ contract SvrToken is IMintBurnErc20 {
 
     function mint(address to, uint256 value) external override returns (bool) {
         require(
-            IPoolController(controller).isPool(msg.sender),
+            IPoolController(poolController).isPool(msg.sender),
             "Only a Pool can do this"
         );
 
@@ -56,7 +63,7 @@ contract SvrToken is IMintBurnErc20 {
         returns (bool)
     {
         require(
-            IPoolController(controller).isPool(msg.sender),
+            IPoolController(poolController).isPool(msg.sender),
             "Only a Pool can do this"
         );
 
@@ -66,12 +73,12 @@ contract SvrToken is IMintBurnErc20 {
     }
 
     function _approve(
-        address owner,
+        address from,
         address spender,
         uint256 value
     ) private {
-        allowance[owner][spender] = value;
-        emit Approval(owner, spender, value);
+        allowance[from][spender] = value;
+        emit Approval(from, spender, value);
     }
 
     function _transfer(
