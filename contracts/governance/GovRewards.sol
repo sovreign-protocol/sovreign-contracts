@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IReign.sol";
 import "../libraries/LibRewardsDistribution.sol";
 
-contract StakingRewards {
+contract GovRewards {
     // lib
     using SafeMath for uint256;
     using SafeMath for uint128;

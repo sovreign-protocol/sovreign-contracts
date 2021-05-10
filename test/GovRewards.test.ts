@@ -5,11 +5,11 @@ import { deployContract, deployDiamond } from "./helpers/deploy";
 import {diamondAsFacet} from "./helpers/diamond";
 import * as time from './helpers/time';
 import { expect } from "chai";
-import { RewardsVault, ERC20Mock, StakingRewards, ReignFacet,ChangeRewardsFacet,EpochClockFacet} from "../typechain";
+import { RewardsVault, ERC20Mock, GovRewards, ReignFacet,ChangeRewardsFacet,EpochClockFacet} from "../typechain";
 
 describe("Rewards", function () {
     let reignToken: ERC20Mock;
-    let yieldFarm: StakingRewards;
+    let yieldFarm: GovRewards;
     let reign: ReignFacet, changeRewards: ChangeRewardsFacet;
     let rewardsVault: RewardsVault;
     let user: Signer
@@ -49,11 +49,11 @@ describe("Rewards", function () {
 
         rewardsVault = (await deployContract("RewardsVault", [reignToken.address])) as RewardsVault;
         
-        yieldFarm = (await deployContract("StakingRewards", [
+        yieldFarm = (await deployContract("GovRewards", [
             reignToken.address,
             reign.address,
             rewardsVault.address,
-        ])) as StakingRewards;
+        ])) as GovRewards;
 
         await reignToken.mint(rewardsVault.address, distributedAmount);
         await rewardsVault.connect(user).setAllowance(yieldFarm.address, distributedAmount);
