@@ -4,7 +4,8 @@ import * as helpers from './helpers/helpers';
 import {diamondAsFacet} from "./helpers/diamond";
 import { expect } from 'chai';
 import * as deploy from './helpers/deploy';
-import {BasketBalancer, ERC20Mock,ReignFacet } from '../typechain';
+import {BasketBalancer, ERC20Mock,ReignFacet, MulticallMock } from '../typechain';
+import { deployContract } from 'ethereum-waffle';
 
 const address1 = '0x0000000000000000000000000000000000000001';
 const address2 = '0x0000000000000000000000000000000000000002';
@@ -243,6 +244,21 @@ describe('BasketBalancer', function () {
             ).to.be.revertedWith('Can not vote twice in an epoch')
 
         });
+
+        it('reverts if update is called in same block as a deposit happened', async function () {
+            let multicall = await deploy.deployContract(
+                'MulticallMock', [reign.address, reignToken.address, balancer.address]
+            ) as MulticallMock;
+
+            
+            awaitUntilNextEpoch()
+
+
+            await reignToken.mint(multicall.address, 1000)
+            await expect( 
+                multicall.falshloanTest(3)
+            ).to.be.revertedWith('Can not end epoch if deposited in same block') 
+        })
 
         it('updates continuous vote correctly', async function () {
             await reign.connect(user).deposit(100);

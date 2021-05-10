@@ -114,11 +114,7 @@ contract SvrToken is IMintBurnErc20 {
         address to,
         uint256 value
     ) external override returns (bool) {
-        if (allowance[from][msg.sender] != uint256(-1)) {
-            allowance[from][msg.sender] = allowance[from][msg.sender].sub(
-                value
-            );
-        }
+        allowance[from][msg.sender] = allowance[from][msg.sender].sub(value);
         _transfer(from, to, value);
         return true;
     }

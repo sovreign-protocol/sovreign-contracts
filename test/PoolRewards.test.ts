@@ -42,7 +42,9 @@ describe("YieldFarm Liquidity Pool", function () {
         let baseDelta = 0;
         interest = (await deployContract(
             'InterestStrategy',[multiplier, offset,baseDelta, reignDAO.getAddress(), epochStart])
-            ) as InterestStrategy;;
+            ) as InterestStrategy;
+
+        interest.connect(reignDAO).setPool(userAddr);
 
         controller = (await deployContract("PoolControllerMock",[interest.address, balancer.address ])) as PoolControllerMock;
 
@@ -88,7 +90,7 @@ describe("YieldFarm Liquidity Pool", function () {
         it('Get epoch PoolSize and distribute tokens', async function () {
             await depositPoolLP(amount)
 
-            await interest.accrueInterest(10000,10000);
+            await interest.connect(user).accrueInterest(10000,10000);
 
             await moveAtEpoch(epochStart, epochDuration, 1)
             await accrueAndMoveToEpoch(2)
@@ -167,10 +169,10 @@ describe("YieldFarm Liquidity Pool", function () {
             await depositPoolLP(amount)
             await mineBlocks(1000); 
             // reserves > target
-            await interest.accrueInterest(11000,10000);
+            await interest.connect(user).accrueInterest(11000,10000);
             await moveAtEpoch(epochStart, epochDuration, 1)
             await mineBlocks(1000); 
-            await interest.accrueInterest(11000,10000);
+            await interest.connect(user).accrueInterest(11000,10000);
             await moveAtEpoch(epochStart, epochDuration, 3)
             await yieldFarm.connect(user).harvest(1)
             expect(await reignToken.balanceOf(await user.getAddress())).to.equal(0)
@@ -179,13 +181,13 @@ describe("YieldFarm Liquidity Pool", function () {
         it('sends the excess tokens to Liquidity Buffer', async function () {
             await depositPoolLP(amount)
             await mineBlocks(1000); 
-            await interest.accrueInterest(10000,11000);
+            await interest.connect(user).accrueInterest(10000,11000);
             await moveAtEpoch(epochStart, epochDuration, 1)
             await mineBlocks(1000); 
-            await interest.accrueInterest(10000,11000);
+            await interest.connect(user).accrueInterest(10000,11000);
             await moveAtEpoch(epochStart, epochDuration, 2)
             await mineBlocks(1000); 
-            await interest.accrueInterest(10000,11000);
+            await interest.connect(user).accrueInterest(10000,11000);
             await moveAtEpoch(epochStart, epochDuration, 3)
 
             let epochRewards =(await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0];
@@ -203,7 +205,7 @@ describe("YieldFarm Liquidity Pool", function () {
             await depositPoolLP(amount)
             await moveAtEpoch(epochStart, epochDuration, 1)
             await mineBlocks(1000); 
-            await interest.accrueInterest(9000,11000);
+            await interest.connect(user).accrueInterest(9000,11000);
             await moveAtEpoch(epochStart, epochDuration, 3)
             let epochRewards =(await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0];
             let baseRewards = (await yieldFarm.getRewardsForEpoch(1, poolLP.address))[1];
@@ -245,7 +247,7 @@ describe("YieldFarm Liquidity Pool", function () {
 
     async function accrueAndMoveToEpoch(n:number) {
         await mineBlocks(1000); 
-        await interest.accrueInterest(10000,10000);
+        await interest.connect(user).accrueInterest(10000,10000);
         await moveAtEpoch(epochStart, epochDuration, n)
         
     }

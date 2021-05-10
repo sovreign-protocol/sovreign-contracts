@@ -18,6 +18,7 @@ describe('PoolController', function () {
     let  balancer: BasketBalancerMock, poolController:PoolController;
     let  oracle:OracleMock
     let  interestStrategy: InterestStrategy
+    let  interestStrategy2: InterestStrategy
     let  pool:Pool;
 
     let user: Signer, userAddress: string;
@@ -43,6 +44,10 @@ describe('PoolController', function () {
         interestStrategy = (await deploy.deployContract(
             'InterestStrategy',[multiplier, offset,baseDelta,reignDAOAddress, helpers.stakingEpochStart])
             ) as InterestStrategy;
+
+            interestStrategy2 = (await deploy.deployContract(
+                'InterestStrategy',[multiplier, offset,baseDelta,reignDAOAddress, helpers.stakingEpochStart])
+                ) as InterestStrategy;
 
         balancer = (
             await deploy.deployContract('BasketBalancerMock',[[underlying1.address], [500000]])
@@ -76,7 +81,7 @@ describe('PoolController', function () {
 
 
 
-
+        interestStrategy.connect(reignDAO).setPool(poolAddress);
 
     })
 
@@ -196,6 +201,20 @@ describe('PoolController', function () {
                     underlying2.address, interestStrategy.address, oracle.address
                 )
             ).to.be.revertedWith('SoVReign: POOL_EXISTS');
+        });
+
+        it('reverts if oracle is ZeroAddress', async function () {
+
+            await expect(poolController.connect(reignDAO).createPool(
+                underlying2.address, interestStrategy.address, helpers.zeroAddress
+            )).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
+        });
+
+        it('reverts if interestStrategy is ZeroAddress', async function () {
+
+            await expect(poolController.connect(reignDAO).createPool(
+                underlying2.address,  helpers.zeroAddress, oracle.address,
+            )).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
         });
 
         it('reverts if oracle is not owned by DAO', async function () {
@@ -390,6 +409,8 @@ describe('PoolController', function () {
         let pool2_address = await deployPool2();
         let pool2 = (await deploy.deployContract('Pool')) as Pool;
         pool2 = pool2.attach(pool2_address);
+        
+        interestStrategy2.connect(reignDAO).setPool(pool2_address)
 
         await underlying1.connect(user).transfer(pool.address,BigNumber.from(1400000).mul(helpers.tenPow18));
         await pool.connect(user).mint(userAddress);
@@ -401,10 +422,13 @@ describe('PoolController', function () {
 
     async function deployPool2 () {
         await poolController.connect(reignDAO).createPool(
-            underlying2.address, interestStrategy.address, oracle.address
+            underlying2.address, interestStrategy2.address, oracle.address
         )
+
         let len = await poolController.allPoolsLength();
+
         return (await poolController.allPools(len.sub(1)));
+
     }
     
 

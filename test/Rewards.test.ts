@@ -156,8 +156,6 @@ describe("Rewards", function () {
         })
         it('has nothing to harvest if no deposits are made', async function () {
             await moveToEpoch(1)
-            //this initialises the epoch
-            await depositReign(amount)
             await moveToEpoch(2)
             let balanceBeforeHarvest = await reignToken.balanceOf(await flayingParrot.getAddress());
             await yieldFarm.connect(flayingParrot).harvest(1)

@@ -41,9 +41,15 @@ contract InterestStrategy is InterestStrategyInterface {
     mapping(uint128 => uint256) epochRewardValues;
 
     address public override reignDAO;
+    address public pool;
 
     modifier onlyDAO() {
         require(msg.sender == reignDAO, "Only the DAO can execute this");
+        _;
+    }
+
+    modifier onlyPool() {
+        require(msg.sender == pool, "Only a Pool can execute this");
         _;
     }
 
@@ -69,6 +75,7 @@ contract InterestStrategy is InterestStrategyInterface {
     function accrueInterest(uint256 reserves, uint256 target)
         external
         override
+        onlyPool
         returns (bool)
     {
         uint256 _currentBlockNumber = block.number;
@@ -141,6 +148,12 @@ contract InterestStrategy is InterestStrategyInterface {
     /*
      *   SETTERS
      */
+
+    //Sets the Pool to a new value
+    function setPool(address _pool) external override onlyDAO returns (bool) {
+        pool = _pool;
+        return true;
+    }
 
     //Sets the offset to a new value
     function setOffset(uint256 newOffsett)

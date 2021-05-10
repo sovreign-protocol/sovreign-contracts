@@ -11,6 +11,7 @@ describe('InterestStrategy', function () {
     let interest: InterestStrategy;
     let reignDAO: Signer, reignDAOAddress: string;
     let user: Signer, userAddress: string;
+    let newUser: Signer,newAddress: string;
 
     let multiplier = BigNumber.from(3).mul(10**10);
     let offset     = BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)));
@@ -23,6 +24,8 @@ describe('InterestStrategy', function () {
         interest = (await deploy.deployContract(
             'InterestStrategy',[multiplier, offset, baseDelta, reignDAOAddress, helpers.stakingEpochStart])
             ) as InterestStrategy;
+
+        await interest.connect(reignDAO).setPool(userAddress)
     });
 
     describe('formula output', function () {
@@ -123,6 +126,16 @@ describe('InterestStrategy', function () {
     })
 
     describe('setters-getter', function () {
+
+        it("sets correct pool", async () => {
+            await interest.connect(reignDAO).setPool(newAddress);
+            expect(await interest.pool()).to.be.eq(newAddress)
+        });
+        it("reverts if setPool is called by other then DAO", async () => {
+            await expect(interest.connect(user).setPool(newAddress)).to.be.revertedWith("Only the DAO can execute this")
+        });
+
+
         it("sets correct offset", async () => {
             let newValue = BigNumber.from(5);
             await interest.connect(reignDAO).setOffset(newValue);
@@ -180,7 +193,7 @@ describe('InterestStrategy', function () {
             let target   = BigNumber.from(1000000).mul(helpers.tenPow18);
 
             let blockBefore = await interest.blockNumberLast();
-            await interest.accrueInterest(reserves,target);
+            await interest.connect(user).accrueInterest(reserves,target);
             let blockAfter = await interest.blockNumberLast();
 
             // as base Delta is 0 for a Delta=0 input the normalizes value is 1
@@ -201,7 +214,7 @@ describe('InterestStrategy', function () {
             let target   = BigNumber.from(1000000).mul(helpers.tenPow18);
 
             let blockBefore = await interest.blockNumberLast();
-            await interest.accrueInterest(reserves,target);
+            await interest.connect(user).accrueInterest(reserves,target);
             let blockAfter = await interest.blockNumberLast();
 
             let blockDelta = (blockAfter.sub(blockBefore))
@@ -214,12 +227,21 @@ describe('InterestStrategy', function () {
     
            
     })
+    describe('accrueInterest Permissions', function () {
+        it('allows the set pool to accrueInterest', async function () {
+            await expect(interest.connect(user).accrueInterest(0,1)).to.not.be.reverted;
+        });
+
+        it('reverts if someone else tries to accrue interest', async function () {
+            await expect(interest.connect(newUser).accrueInterest(0,1)).to.be.revertedWith("Only a Pool can execute this")
+        });
+    })
 
     describe('accrueInterest Negative', function () {
 
         it('skips accrual if reserves is 0', async function () {
             let multiplier = await interest.withdrawFeeAccrued();
-            await interest.accrueInterest(0,1);
+            await interest.connect(user).accrueInterest(0,1);
             expect(await interest.withdrawFeeAccrued()).to.be.equal(multiplier)
         });
 
@@ -227,17 +249,17 @@ describe('InterestStrategy', function () {
 
             await helpers.setAutomine(false)
             let multiplier = await interest.withdrawFeeAccrued();
-            await interest.accrueInterest(11000,10000);
+            await interest.connect(user).accrueInterest(11000,10000);
             expect(await interest.withdrawFeeAccrued()).to.be.equal(multiplier)
             //this should not change the multiplier
-            await interest.accrueInterest(11000,10000);
+            await interest.connect(user).accrueInterest(11000,10000);
             expect(await interest.withdrawFeeAccrued()).to.be.equal(multiplier)
             await helpers.setAutomine(true)
         });
 
         it('returns correct withdraw fee multiplier', async function () {
             let blockBefore = await interest.blockNumberLast();
-            await interest.accrueInterest(11000,10000);
+            await interest.connect(user).accrueInterest(11000,10000);
             let blockAfter = await interest.blockNumberLast();
 
             let blockDelta = blockAfter.sub(blockBefore)
@@ -254,7 +276,7 @@ describe('InterestStrategy', function () {
         it('correctly accrues withdraw fee multiplier', async function () {
             let blockBefore = await interest.blockNumberLast();
             // make interest larger then target, this should set a non-zero withdraw fee
-            await interest.accrueInterest(11000,10000);
+            await interest.connect(user).accrueInterest(11000,10000);
             let blockAfter = await interest.blockNumberLast();
             let blockDelta = blockAfter.sub(blockBefore)
 
@@ -268,7 +290,7 @@ describe('InterestStrategy', function () {
             
             blockBefore = await interest.blockNumberLast();
             // increase interest further, this should increase the Withdraw fee
-            await interest.accrueInterest(12000,10000);
+            await interest.connect(user).accrueInterest(12000,10000);
             blockAfter = await interest.blockNumberLast();
             let blockDelta2 = blockAfter.sub(blockBefore)
 
@@ -284,32 +306,32 @@ describe('InterestStrategy', function () {
         });
 
         it('correctly reduces withdraw fee multiplier', async function () {
-            await interest.accrueInterest(10800,10000);
+            await interest.connect(user).accrueInterest(10800,10000);
 
             let withdrawFeeAccruedBefore = await interest.withdrawFeeAccrued()
-            await interest.accrueInterest(10700, 10000);
+            await interest.connect(user).accrueInterest(10700, 10000);
             expect(await interest.withdrawFeeAccrued()).to.be.lt(withdrawFeeAccruedBefore)
 
             withdrawFeeAccruedBefore = await interest.withdrawFeeAccrued()
-            await interest.accrueInterest(10600, 10000);
+            await interest.connect(user).accrueInterest(10600, 10000);
             expect(await interest.withdrawFeeAccrued()).to.be.lt(withdrawFeeAccruedBefore)
 
             withdrawFeeAccruedBefore = await interest.withdrawFeeAccrued()
-            await interest.accrueInterest(10500, 10000);
+            await interest.connect(user).accrueInterest(10500, 10000);
             expect(await interest.withdrawFeeAccrued()).to.be.lt(withdrawFeeAccruedBefore)
         });
 
         it('correctly sets withdraw fee to zero if interest becomes positive', async function () {
-            await interest.accrueInterest(12000, 10000);
+            await interest.connect(user).accrueInterest(12000, 10000);
 
             expect(await interest.withdrawFeeAccrued()).to.be.gt(0).and.not.be.eq(0)
 
             // first time it's not reset
-            await interest.accrueInterest(10000,15000);
+            await interest.connect(user).accrueInterest(10000,15000);
             expect(await interest.withdrawFeeAccrued()).to.be.gt(0).and.not.be.eq(0)
 
             // second interaction makes reset
-            await interest.accrueInterest(10000,15000);
+            await interest.connect(user).accrueInterest(10000,15000);
             expect(await interest.withdrawFeeAccrued()).to.be.eq(0)
         });
 
@@ -319,14 +341,14 @@ describe('InterestStrategy', function () {
 
         it('skips accrual if reserves is 0', async function () {
             let multiplier = await interest.withdrawFeeAccrued();
-            await interest.accrueInterest(0,1);
+            await interest.connect(user).accrueInterest(0,1);
             expect(await interest.withdrawFeeAccrued()).to.be.equal(multiplier)
         });
 
         it('correctly accrues rewards for an epoch', async function () {
             let blockBefore = await interest.blockNumberLast();
             // make interest larger then target, this should set a non-zero withdraw fee
-            await interest.accrueInterest(10000,11000);
+            await interest.connect(user).accrueInterest(10000,11000);
             let blockAfter = await interest.blockNumberLast();
             let blockDelta = blockAfter.sub(blockBefore)
 
@@ -338,7 +360,7 @@ describe('InterestStrategy', function () {
             expect(await interest.getEpochRewards(await helpers.getCurrentEpoch())).to.be.eq(expectedEpochRewards)
             
             blockBefore = await interest.blockNumberLast()
-            await interest.accrueInterest(10000,11000);
+            await interest.connect(user).accrueInterest(10000,11000);
             blockAfter = await interest.blockNumberLast();
             let blockDelta2 = blockAfter.sub(blockBefore)
 
@@ -357,7 +379,7 @@ describe('InterestStrategy', function () {
 
             await helpers.moveAtEpoch(helpers.stakingEpochStart, helpers.stakingEpochDuration,2);
             let blockBefore = await interest.blockNumberLast();
-            await interest.accrueInterest(10000,11000);
+            await interest.connect(user).accrueInterest(10000,11000);
             let blockAfter = await interest.blockNumberLast();
             let blockDelta = blockAfter.sub(blockBefore)
 
@@ -375,7 +397,7 @@ describe('InterestStrategy', function () {
 
 
             blockBefore = await interest.blockNumberLast()
-            await interest.accrueInterest(10000,11000);
+            await interest.connect(user).accrueInterest(10000,11000);
             blockAfter = await interest.blockNumberLast();
             let blockDelta2 = blockAfter.sub(blockBefore)
 
@@ -395,6 +417,8 @@ describe('InterestStrategy', function () {
         const accounts = await ethers.getSigners();
         user = accounts[0];
         reignDAO = accounts[1];
+        newUser = accounts[2];
+        newAddress = await newUser.getAddress();
         userAddress = await user.getAddress();
         reignDAOAddress = await reignDAO.getAddress();
     }

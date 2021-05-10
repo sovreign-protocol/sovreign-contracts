@@ -89,7 +89,7 @@ contract BasketBalancer is IBasketBalancer {
     // The new allocation value is the average of the vote outcome and the current value
     // Note: this is not the actual target value that will be used by the pools,
     // the actual target will be returned by getTargetAllocation and includes update period adjustemnts
-    function updateBasketBalance() external {
+    function updateBasketBalance() external override {
         require(lastEpochUpdate < getCurrentEpoch(), "Epoch is not over");
 
         // This is to prevent flashloan attacks to increase voting power,

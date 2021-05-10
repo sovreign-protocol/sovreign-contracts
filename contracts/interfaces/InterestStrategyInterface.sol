@@ -21,7 +21,10 @@ interface InterestStrategyInterface {
         external
         returns (bool);
 
-    //Sets the offsett to a new valuesß
+    //Sets the pool to a new values
+    function setPool(address pool) external returns (bool);
+
+    //Sets the offsett to a new values
     function setOffset(uint256 newOffset) external returns (bool);
 
     //Sets the Multiplier to a new value
@@ -30,6 +33,6 @@ interface InterestStrategyInterface {
     //Sets the Multiplier to a new value
     function setBaseDelta(int256 newBaseDelta) external returns (bool);
 
-    //Sets the Multiplier to a new value
+    //retunrs the address of the DAO
     function reignDAO() external returns (address);
 }

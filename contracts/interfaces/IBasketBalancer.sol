@@ -10,4 +10,6 @@ interface IBasketBalancer {
     function getTargetAllocation(address pool) external view returns (uint256);
 
     function FULL_ALLOCATION() external view returns (uint256);
+
+    function updateBasketBalance() external;
 }

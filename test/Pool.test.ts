@@ -14,7 +14,7 @@ describe('Pool', function () {
 
     let  svr: SvrToken, reign: ReignToken, underlying1: ERC20Mock, underlying2: ERC20Mock
     let  balancer: BasketBalancerMock, poolController:PoolController;
-    let  oracle:OracleMock, interestStrategy: InterestStrategy;
+    let  oracle:OracleMock, interestStrategy: InterestStrategy, interestStrategy2: InterestStrategy;
     let  pool:Pool, pool2:Pool;
 
     let user: Signer, userAddress: string;
@@ -23,6 +23,10 @@ describe('Pool', function () {
     let newUser: Signer, newUserAddress:string;
     let liquidityBufferAddress:string;
 
+    let multiplier = BigNumber.from(3).mul(10**10);
+    let offset = BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)));
+    let baseDelta = 0;
+
 
     before(async function () {
 
@@ -30,14 +34,6 @@ describe('Pool', function () {
         
         oracle = (await deploy.deployContract('OracleMock', [reignDAOAddress])) as OracleMock;
 
-
-        let multiplier = BigNumber.from(3).mul(10**10);
-        let offset = BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)));
-        let baseDelta = 0;
-        interestStrategy = (await deploy.deployContract(
-            'InterestStrategy',[multiplier, offset,baseDelta,reignDAOAddress, helpers.stakingEpochStart])
-            ) as InterestStrategy;
- 
 
         balancer = (
             await deploy.deployContract('BasketBalancerMock',[[], []])
@@ -53,6 +49,15 @@ describe('Pool', function () {
         
         underlying1 = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
         underlying2 = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
+
+        
+        interestStrategy = (await deploy.deployContract(
+            'InterestStrategy',[multiplier, offset,baseDelta,reignDAOAddress, helpers.stakingEpochStart])
+            ) as InterestStrategy;
+
+        interestStrategy2 = (await deploy.deployContract(
+            'InterestStrategy',[multiplier, offset,baseDelta,reignDAOAddress, helpers.stakingEpochStart])
+            ) as InterestStrategy;
 
         svr = (await deploy.deployContract('SvrToken', [userAddress])) as SvrToken;
         reign = (await deploy.deployContract('ReignToken', [userAddress])) as ReignToken;
@@ -74,7 +79,7 @@ describe('Pool', function () {
         pool = pool.attach(poolAddress);
 
         await poolController.connect(reignDAO).createPool(
-            underlying2.address, interestStrategy.address, oracle.address
+            underlying2.address, interestStrategy2.address, oracle.address
         )
 
         let pool2Address = await poolController.allPools(1);
@@ -85,9 +90,10 @@ describe('Pool', function () {
 
         await setupContracts()
 
-        svr.connect(user).setController(poolController.address)
-        
-
+        // set up access control
+        await svr.connect(user).setController(poolController.address)
+        await interestStrategy.connect(reignDAO).setPool(poolAddress)
+        await interestStrategy2.connect(reignDAO).setPool(pool2Address)
     })
 
 
@@ -221,7 +227,6 @@ describe('Pool', function () {
         it('returns correct expected withdraw Fee', async function () {
 
             await depositToPool(1,pool);
-            let blockBefore = await interestStrategy.blockNumberLast();
             await helpers.mineBlocks(100)
             await depositToPool(1000,pool);
 
@@ -341,6 +346,19 @@ describe('Pool', function () {
 
     describe('Burning', async function () {
 
+
+        it('does not require fee if Withdraw fee is 0)', async function () {
+            await depositToPool(110000,pool2) 
+            await depositToPool(100000,pool)// this makes pool 1 to small -> no withdraw fee
+            
+            let amountToBurn = BigNumber.from(10).mul(helpers.tenPow18);
+            let withdrawFee = await pool.getWithdrawFeeReign(amountToBurn);
+
+            expect(withdrawFee).to.eq(0)
+
+            await expect(pool.connect(user).burn(amountToBurn)).to.not.be.reverted;
+        });
+
         it('reverts if amount is 0', async function () {
             await depositToPool(110000,pool)
 
@@ -416,6 +434,8 @@ describe('Pool', function () {
             expect( await svr.balanceOf(userAddress)).to.eq(expectedAmountSvr)
         });
 
+       
+
     });
 
     async function depositToPool (amount:number, poolUsed:Pool) {
@@ -423,9 +443,13 @@ describe('Pool', function () {
         let depositFee = await poolUsed.getDepositFeeReign(amountBN);
 
         await reign.connect(user).approve(poolUsed.address, depositFee); 
-        await underlying1.connect(user).transfer(poolUsed.address,amountBN);
-        await underlying2.connect(user).transfer(poolUsed.address,amountBN);
-        await poolUsed.mint(userAddress);
+        if (poolUsed == pool){
+            await underlying1.connect(user).transfer(poolUsed.address,amountBN);
+            await poolUsed.mint(userAddress);
+        }else if (poolUsed == pool2){
+            await underlying2.connect(user).transfer(poolUsed.address,amountBN);
+            await poolUsed.mint(userAddress);
+        }
 
         return amountBN;
     }

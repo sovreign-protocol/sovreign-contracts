@@ -25,7 +25,7 @@ contract BasketBalancerMock is IBasketBalancer {
         uint256[] calldata allocations
     ) public {}
 
-    function updateBasketBalance() external pure {}
+    function updateBasketBalance() external override {}
 
     function computeAllocation() public pure returns (uint256[] memory) {}
 

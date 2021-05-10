@@ -117,7 +117,7 @@ describe('Reign', function () {
         });
 
         it('works with multiple deposit in same block', async function () {
-            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, bond.address])) as MulticallMock;
+            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, bond.address, helpers.zeroAddress])) as MulticallMock;
 
             await bond.mint(multicall.address, amount.mul(5));
 
@@ -450,6 +450,21 @@ describe('Reign', function () {
             const expiryTs = await helpers.getCurrentUnix() + (time.year);
             await reign.connect(user).lock(expiryTs);
             expect(await reign.userLockedUntil(userAddress)).to.be.equal(expiryTs);
+
+            const expiryTsNew = await helpers.getLatestBlockTimestamp() + (time.day + time.year);
+            await reign.connect(user).lock(expiryTsNew);
+            expect(await reign.userLockedUntil(userAddress)).to.be.equal(expiryTsNew);
+        });
+
+        it('sets lock correctly if called in epoch after with no deposits', async function () {
+            await prepareAccount(user, amount);
+            await reign.connect(user).deposit(amount);
+
+            const expiryTs = await helpers.getCurrentUnix() + (time.year);
+            await reign.connect(user).lock(expiryTs);
+            expect(await reign.userLockedUntil(userAddress)).to.be.equal(expiryTs);
+
+            helpers.moveAtEpoch(startEpoch, duration, (await reign.getEpoch()).add(1).toNumber())
 
             const expiryTsNew = await helpers.getLatestBlockTimestamp() + (time.day + time.year);
             await reign.connect(user).lock(expiryTsNew);
@@ -798,7 +813,7 @@ describe('Reign', function () {
         });
 
         it('works with multiple calls in the same block', async function () {
-            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, bond.address])) as MulticallMock;
+            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, bond.address, helpers.zeroAddress])) as MulticallMock;
 
             await bond.mint(multicall.address, amount);
 
@@ -810,6 +825,7 @@ describe('Reign', function () {
 
         it('works when delegation is updated many epochs after', async function () {
             await prepareAccount(user, amount);
+            helpers.moveAtEpoch(startEpoch, duration, 5)
             await reign.connect(user).deposit(amount);
             await reign.connect(user).delegate(flyingParrotAddress);
 

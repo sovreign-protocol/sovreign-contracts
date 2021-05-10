@@ -17,6 +17,7 @@ export const networks: NetworksUserConfig = {
     coverage: {
         url: 'http://localhost:8555',
     },
+    
 
     ganache: {
         url: 'http://localhost:7545',
