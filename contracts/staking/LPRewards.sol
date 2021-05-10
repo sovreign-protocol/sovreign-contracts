@@ -17,19 +17,22 @@ contract LPRewards {
 
     // state variables
 
-    // addreses
+    uint256 public epochDuration; // init from staking contract
+    uint256 public epochStart; // init from staking contract
+    uint128 public lastInitializedEpoch;
+
+    uint256 private _totalAmountPerEpoch;
+
+    uint256[] private _sizeAtEpoch = new uint256[](NR_OF_EPOCHS + 1);
+
     address private _depositLP;
     address private _communityVault;
+
+    mapping(address => uint128) private _lastEpochIdHarvested;
+
     // contracts
     IERC20 private _reignToken;
     IStaking private _staking;
-
-    uint256[] private sizeAtEpoch = new uint256[](NR_OF_EPOCHS + 1);
-    uint256 private _totalAmountPerEpoch;
-    uint128 public lastInitializedEpoch;
-    mapping(address => uint128) private lastEpochIdHarvested;
-    uint256 public epochDuration; // init from staking contract
-    uint256 public epochStart; // init from staking contract
 
     // events
     event MassHarvest(
@@ -43,14 +46,13 @@ contract LPRewards {
         uint256 amount
     );
 
-    // constructor
     constructor(
-        address bondTokenAddress,
+        address reignTokenAddress,
         address depositLP,
         address stakeContract,
         address communityVault
     ) {
-        _reignToken = IERC20(bondTokenAddress);
+        _reignToken = IERC20(reignTokenAddress);
         _depositLP = depositLP;
         _staking = IStaking(stakeContract);
         _communityVault = communityVault;
@@ -62,17 +64,17 @@ contract LPRewards {
     }
 
     // public methods
-    // public method to harvest all the unharvested sizeAtEpoch until current epoch - 1
+    // public method to harvest all the unharvested epochs until current epoch - 1
     function massHarvest() external returns (uint256) {
         uint256 totalDistributedValue;
-        uint256 epochId = _getEpochId().sub(1); // fails in epoch 0
-        // force max number of sizeAtEpoch
+        uint256 epochId = getCurrentEpoch().sub(1); // fails in epoch 0
+        // force max number of epochs
         if (epochId > NR_OF_EPOCHS) {
             epochId = NR_OF_EPOCHS;
         }
 
         for (
-            uint128 i = lastEpochIdHarvested[msg.sender] + 1;
+            uint128 i = _lastEpochIdHarvested[msg.sender] + 1;
             i <= epochId;
             i++
         ) {
@@ -83,7 +85,7 @@ contract LPRewards {
 
         emit MassHarvest(
             msg.sender,
-            epochId - lastEpochIdHarvested[msg.sender],
+            epochId - _lastEpochIdHarvested[msg.sender],
             totalDistributedValue
         );
 
@@ -100,15 +102,16 @@ contract LPRewards {
 
     function harvest(uint128 epochId) external returns (uint256) {
         // checks for requested epoch
-        require(_getEpochId() > epochId, "This epoch is in the future");
+        require(getCurrentEpoch() > epochId, "This epoch is in the future");
         require(
             epochId <= NR_OF_EPOCHS,
             "Maximum number of sizeAtEpoch is 100"
         );
         require(
-            lastEpochIdHarvested[msg.sender].add(1) == epochId,
-            "Harvest in order"
+            _lastEpochIdHarvested[msg.sender].add(1) == epochId,
+            "Can only harvest in order"
         );
+        // init epoch if necessary and get rewards amount
         uint256 userReward = _harvest(epochId);
         if (userReward > 0) {
             _reignToken.safeTransferFrom(
@@ -122,13 +125,20 @@ contract LPRewards {
     }
 
     // views
-    // calls to the staking smart contract to retrieve the epoch total pool size
-    function getPoolSize(uint128 epochId) external view returns (uint256) {
-        return _getPoolSize(epochId);
+
+    // compute epoch id from blocktimestamp and date
+    function getCurrentEpoch() public view returns (uint128 epochId) {
+        if (block.timestamp < epochStart) {
+            return 0;
+        }
+        epochId = uint128(
+            block.timestamp.sub(epochStart).div(epochDuration).add(1)
+        );
     }
 
-    function getCurrentEpoch() external view returns (uint256) {
-        return _getEpochId();
+    // calls to the staking smart contract to retrieve the epoch's total pool size
+    function getPoolSize(uint128 epochId) external view returns (uint256) {
+        return _getPoolSize(epochId);
     }
 
     // calls to the staking smart contract to retrieve user balance for an epoch
@@ -140,69 +150,57 @@ contract LPRewards {
         return _getUserBalancePerEpoch(userAddress, epochId);
     }
 
+    // returns when epoch in which user last harvested
     function userLastEpochIdHarvested() external view returns (uint256) {
-        return lastEpochIdHarvested[msg.sender];
+        return _lastEpochIdHarvested[msg.sender];
     }
 
     // internal methods
-
     function _initEpoch(uint128 epochId) internal {
-        require(
-            lastInitializedEpoch.add(1) == epochId,
-            "Epoch can be init only in order"
-        );
+        //epochs can only be harvested in order, therfore they can also only be initialised in order
+        // i.e it's impossible that we init epoch 5 after 3 as to harvest 5 user needs to first harvets 4
         lastInitializedEpoch = epochId;
         // call the staking smart contract to init the epoch
-        sizeAtEpoch[epochId] = _getPoolSize(epochId);
+        _sizeAtEpoch[epochId] = _getPoolSize(epochId);
     }
 
     function _harvest(uint128 epochId) internal returns (uint256) {
-        // try to initialize an epoch. if it can't it fails
-        // if it fails either user either a BarnBridge account will init not init sizeAtEpoch
+        // initialize the epoch
         if (lastInitializedEpoch < epochId) {
             _initEpoch(epochId);
         }
         // Set user state for last harvested
-        lastEpochIdHarvested[msg.sender] = epochId;
-        // compute and return user total reward. For optimization reasons the transfer have been moved to an upper layer (i.e. massHarvest needs to do a single transfer)
+        _lastEpochIdHarvested[msg.sender] = epochId;
 
         // exit if there is no stake on the epoch
-        if (sizeAtEpoch[epochId] == 0) {
+        if (_sizeAtEpoch[epochId] == 0) {
             return 0;
         }
+        // compute and return user total reward.
+        // For optimization reasons the transfer have been moved to an upper layer (i.e. massHarvest needs to do a single transfer)
         return
             _totalAmountPerEpoch
                 .mul(_getUserBalancePerEpoch(msg.sender, epochId))
-                .div(sizeAtEpoch[epochId]);
+                .div(_sizeAtEpoch[epochId]);
     }
 
+    // retrieve pool size at epoch
     function _getPoolSize(uint128 epochId) internal view returns (uint256) {
-        // retrieve unilp token balance
         return _staking.getEpochPoolSize(_depositLP, _stakingEpochId(epochId));
     }
 
+    // retrieve token balance per user per epoch
     function _getUserBalancePerEpoch(address userAddress, uint128 epochId)
         internal
         view
         returns (uint256)
     {
-        // retrieve unilp token balance per user per epoch
         return
             _staking.getEpochUserBalance(
                 userAddress,
                 _depositLP,
                 _stakingEpochId(epochId)
             );
-    }
-
-    // compute epoch id from blocktimestamp and sizeAtEpochtart date
-    function _getEpochId() internal view returns (uint128 epochId) {
-        if (block.timestamp < epochStart) {
-            return 0;
-        }
-        epochId = uint128(
-            block.timestamp.sub(epochStart).div(epochDuration).add(1)
-        );
     }
 
     // get the staking epoch which is 1 epoch more

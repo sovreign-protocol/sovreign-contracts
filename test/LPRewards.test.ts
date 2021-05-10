@@ -59,7 +59,7 @@ describe('YieldFarm AMM Pool', function () {
         })
 
         it('Get epoch PoolSize and distribute tokens', async function () {
-            await depositUniLP(amount)
+            await depositLP(amount)
             await moveAtEpoch(epochStart, epochDuration, 3)
             const totalAmount = amount
 
@@ -75,7 +75,7 @@ describe('YieldFarm AMM Pool', function () {
 
     describe('Contract Tests', function () {
         it('User harvest and mass Harvest', async function () {
-            await depositUniLP(amount)
+            await depositLP(amount)
             const totalAmount = amount
             // initialize epochs meanwhile
             await moveAtEpoch(epochStart, epochDuration, 9)
@@ -83,7 +83,7 @@ describe('YieldFarm AMM Pool', function () {
 
             expect(await yieldFarm.lastInitializedEpoch()).to.equal(0) // no epoch initialized
             await expect(yieldFarm.harvest(10)).to.be.revertedWith('This epoch is in the future')
-            await expect(yieldFarm.harvest(3)).to.be.revertedWith('Harvest in order')
+            await expect(yieldFarm.harvest(3)).to.be.revertedWith('Can only harvest in order')
             await (await yieldFarm.connect(user).harvest(1)).wait()
 
             expect(await reignToken.balanceOf(userAddr)).to.equal(
@@ -98,17 +98,20 @@ describe('YieldFarm AMM Pool', function () {
             expect(await yieldFarm.connect(user).userLastEpochIdHarvested()).to.equal(7)
             expect(await yieldFarm.lastInitializedEpoch()).to.equal(7) // epoch 7 have been initialized
         })
-        it('Have nothing to harvest', async function () {
-            await depositUniLP(amount)
+        it('lets only users with deposit harvest', async function () {
+            //user account deposits
+            await depositLP(amount)
             await moveAtEpoch(epochStart, epochDuration, 30)
             expect(await yieldFarm.getPoolSize(1)).to.equal(amount)
+
+            //creator account harvests
             await yieldFarm.connect(creator).harvest(1)
             expect(await reignToken.balanceOf(await creator.getAddress())).to.equal(0)
             await yieldFarm.connect(creator).massHarvest()
             expect(await reignToken.balanceOf(await creator.getAddress())).to.equal(0)
         })
-        it('harvest maximum 100 epochs', async function () {
-            await depositUniLP(amount)
+        it('massHarvests maximum 100 epochs', async function () {
+            await depositLP(amount)
             const totalAmount = amount
             await moveAtEpoch(epochStart, epochDuration, 300)
 
@@ -116,21 +119,58 @@ describe('YieldFarm AMM Pool', function () {
             await (await yieldFarm.connect(user).massHarvest()).wait()
             expect(await yieldFarm.lastInitializedEpoch()).to.equal(numberOfEpochs)
         })
-
-        it('gives epochid = 0 for previous epochs', async function () {
+        it('reverts if harvest is above 100', async function () {
+            await depositLP(amount)
+            await moveAtEpoch(epochStart, epochDuration, 103)
+            await expect(yieldFarm.connect(user).harvest(101)).to.be.revertedWith("Maximum number of sizeAtEpoch is 100")
+        })
+        it('reverts if harvest init is not in order', async function () {
+            await depositLP(amount)
+            await depositLP(amount, creator)
+            await moveAtEpoch(epochStart, epochDuration, 10)
+            await expect(yieldFarm.connect(creator).harvest(5)).to.be.revertedWith("Can only harvest in order")
+        })
+        it('gives epochid = 0 for epochs before start', async function () {
             await moveAtEpoch(epochStart, epochDuration, -2)
             expect(await yieldFarm.getCurrentEpoch()).to.equal(0)
         })
-        it('it should return 0 if no deposit in an epoch', async function () {
+        it('harvests 0 if no deposit are made in an epoch', async function () {
             await moveAtEpoch(epochStart, epochDuration, 3)
             await yieldFarm.connect(user).harvest(1)
             expect(await reignToken.balanceOf(await user.getAddress())).to.equal(0)
+        })
+        it('harvests rewards for user only once', async function () {
+            await depositLP(amount)
+            await moveAtEpoch(epochStart, epochDuration, 3)
+            await yieldFarm.connect(user).harvest(1)
+            await expect(yieldFarm.connect(user).harvest(1)).to.be.revertedWith("Can only harvest in order")
+
+            expect(await reignToken.balanceOf(await user.getAddress())).to.equal(
+                distributedAmount.div(numberOfEpochs)
+            )
+        })
+
+        it('inits an epoch only once', async function () {
+            await depositLP(amount)
+            await depositLP(amount, creator)
+            await moveAtEpoch(epochStart, epochDuration, 3)
+
+            await yieldFarm.connect(user).harvest(1)
+
+            expect(await yieldFarm.lastInitializedEpoch()).to.equal(
+                1
+            )
+            await yieldFarm.connect(creator).harvest(1)
+
+            expect(await yieldFarm.lastInitializedEpoch()).to.equal(
+                1
+            )
         })
     })
 
     describe('Events', function () {
         it('Harvest emits Harvest', async function () {
-            await depositUniLP(amount)
+            await depositLP(amount)
             await moveAtEpoch(epochStart, epochDuration, 9)
 
             await expect(yieldFarm.connect(user).harvest(1))
@@ -138,7 +178,7 @@ describe('YieldFarm AMM Pool', function () {
         })
 
         it('MassHarvest emits MassHarvest', async function () {
-            await depositUniLP(amount)
+            await depositLP(amount)
             await moveAtEpoch(epochStart, epochDuration, 9)
 
             await expect(yieldFarm.connect(user).massHarvest())
@@ -146,7 +186,7 @@ describe('YieldFarm AMM Pool', function () {
         })
     })
 
-    async function depositUniLP (x:BigNumber, u = user) {
+    async function depositLP (x:BigNumber, u = user) {
         const ua = await u.getAddress()
         await uniLP.mint(ua, x)
         await uniLP.connect(u).approve(staking.address, x)
