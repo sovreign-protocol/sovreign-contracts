@@ -135,7 +135,7 @@ describe("YieldFarm Liquidity Pool", function () {
 
             expect(await yieldFarm.lastInitializedEpoch()).to.equal(0) // no epoch initialized
             await expect(yieldFarm.harvest(10)).to.be.revertedWith('This epoch is in the future')
-            await expect(yieldFarm.harvest(3)).to.be.revertedWith('Harvest in order')
+            await expect(yieldFarm.harvest(3)).to.be.revertedWith('Can only harvest in order')
             await yieldFarm.connect(user).harvest(1)
             let epoch1Rewards = 
                 (await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0]
@@ -178,7 +178,7 @@ describe("YieldFarm Liquidity Pool", function () {
             expect(await reignToken.balanceOf(await user.getAddress())).to.equal(0)
         })
 
-        it('sends the excess tokens to Liquidity Buffer', async function () {
+        it('sends the excess tokens to Liquidity Buffer at harvest', async function () {
             await depositPoolLP(amount)
             await mineBlocks(1000); 
             await interest.connect(user).accrueInterest(10000,11000);
@@ -195,10 +195,50 @@ describe("YieldFarm Liquidity Pool", function () {
             let boostMultiplier = await yieldFarm.getBoost(userAddr, 1);
             let distributedRewards = (epochRewards).mul(boostMultiplier).div(tenPow18);
             let excessTokens = baseRewards.sub(distributedRewards);
+            expect(excessTokens).to.not.be.eq(0)
             
             let balanceBefore = await reignToken.balanceOf(liquidityBuffer.address)
             await yieldFarm.connect(user).harvest(1)
             expect(await reignToken.balanceOf(liquidityBuffer.address)).to.be.eq(balanceBefore.add(excessTokens))
+        })
+
+        it('sends the excess tokens to Liquidity Buffer at mass harvest', async function () {
+            await depositPoolLP(amount)
+            await mineBlocks(1000); 
+            await interest.connect(user).accrueInterest(10000,11000);
+            await moveAtEpoch(epochStart, epochDuration, 1)
+            await mineBlocks(1000); 
+            await interest.connect(user).accrueInterest(10000,11000);
+            await moveAtEpoch(epochStart, epochDuration, 2)
+            await mineBlocks(1000); 
+            await interest.connect(user).accrueInterest(10000,11000);
+            await moveAtEpoch(epochStart, epochDuration, 3)
+
+            let epochRewards =(await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0];
+            let baseRewards = (await yieldFarm.getRewardsForEpoch(1, poolLP.address))[1];
+            let boostMultiplier = await yieldFarm.getBoost(userAddr, 1);
+            let distributedRewards = (epochRewards).mul(boostMultiplier).div(tenPow18);
+            let excessTokens = baseRewards.sub(distributedRewards);
+            expect(excessTokens).to.not.be.eq(0)
+            
+            let balanceBefore = await reignToken.balanceOf(liquidityBuffer.address)
+            await yieldFarm.connect(user).massHarvest()
+            expect(await reignToken.balanceOf(liquidityBuffer.address)).to.be.eq(balanceBefore.add(excessTokens))
+        })
+
+        it('does not send tokens to Liquidity Buffer if rewards are above average in mass harvest', async function () {
+            await depositPoolLP(amount)
+            await depositPoolLP(amount, creator)
+            await mineBlocks(20000); //<- I hope this doesn't fry your pc, didn't find another way to get above base rewards
+            await interest.connect(user).accrueInterest(10000,20000);
+            await moveAtEpoch(epochStart, epochDuration, 3)
+
+            //initialise epoch to transfer missing tokens into rewards
+            await yieldFarm.connect(creator).harvest(1)
+            
+            let balanceBefore = await reignToken.balanceOf(liquidityBuffer.address)
+            await yieldFarm.connect(user).massHarvest()
+            expect(await reignToken.balanceOf(liquidityBuffer.address)).to.be.eq(balanceBefore)
         })
 
         it('receives the missing tokens from Liquidity Buffer', async function () {
@@ -225,6 +265,33 @@ describe("YieldFarm Liquidity Pool", function () {
             await yieldFarm.connect(user).harvest(1)
             expect(await reignToken.balanceOf(await user.getAddress())).to.equal(0)
         })
+        it('harvests rewards for user only once', async function () {
+            await depositPoolLP(amount)
+            await moveAtEpoch(epochStart, epochDuration, 3)
+            await yieldFarm.connect(user).harvest(1)
+            await expect(yieldFarm.connect(user).harvest(1)).to.be.revertedWith("Can only harvest in order")
+
+            expect(await reignToken.balanceOf(await user.getAddress())).to.equal(
+                await totalAccruedUntilEpoch(1)
+            )
+        })
+
+        it('inits an epoch only once', async function () {
+            await depositPoolLP(amount)
+            await depositPoolLP(amount, creator)
+            await moveAtEpoch(epochStart, epochDuration, 3)
+
+            await yieldFarm.connect(user).harvest(1)
+
+            expect(await yieldFarm.lastInitializedEpoch()).to.equal(
+                1
+            )
+            await yieldFarm.connect(creator).harvest(1)
+
+            expect(await yieldFarm.lastInitializedEpoch()).to.equal(
+                1
+            )
+        })
     })
 
     describe('Events', function () {
@@ -247,7 +314,7 @@ describe("YieldFarm Liquidity Pool", function () {
 
     async function accrueAndMoveToEpoch(n:number) {
         await mineBlocks(1000); 
-        await interest.connect(user).accrueInterest(10000,10000);
+        await interest.connect(user).accrueInterest(10000,11000);
         await moveAtEpoch(epochStart, epochDuration, n)
         
     }

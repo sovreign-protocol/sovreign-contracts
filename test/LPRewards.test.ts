@@ -124,7 +124,7 @@ describe('YieldFarm AMM Pool', function () {
             await moveAtEpoch(epochStart, epochDuration, 103)
             await expect(yieldFarm.connect(user).harvest(101)).to.be.revertedWith("Maximum number of sizeAtEpoch is 100")
         })
-        it('reverts if harvest init is not in order', async function () {
+        it('reverts if harvest is not in order', async function () {
             await depositLP(amount)
             await depositLP(amount, creator)
             await moveAtEpoch(epochStart, epochDuration, 10)

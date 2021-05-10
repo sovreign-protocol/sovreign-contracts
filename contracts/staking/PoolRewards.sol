@@ -29,7 +29,7 @@ contract PoolRewards {
 
     mapping(uint128 => uint256) private _sizeAtEpoch;
     uint128 public lastInitializedEpoch;
-    mapping(address => uint128) private lastEpochIdHarvested;
+    mapping(address => uint128) private _lastEpochIdHarvested;
     uint256 public epochDuration; // init from staking contract
     uint256 public epochStart; // init from staking contract
 
@@ -66,45 +66,48 @@ contract PoolRewards {
 
     // public method to harvest all the unharvested epochs until current epoch - 1
     function massHarvest() external returns (uint256) {
-        uint256 totalDistributedValue;
-        uint256 totalToBuffer;
+        uint256 totalUserRewards;
+        uint256 totalBaseRewards;
         uint256 epochId = _getEpochId().sub(1); // fails in epoch 0
 
         for (
-            uint128 i = lastEpochIdHarvested[msg.sender] + 1;
+            uint128 i = _lastEpochIdHarvested[msg.sender] + 1;
             i <= epochId;
             i++
         ) {
             // i = epochId
             // compute distributed Value and do one single transfer at the end
-            (uint256 userRewards, uint256 toBuffer) = _harvest(i);
-            totalDistributedValue += userRewards;
-            totalToBuffer += toBuffer;
+            (uint256 userEpochReward, uint256 userBaseReward) = _harvest(i);
+            totalUserRewards += userEpochReward;
+            totalBaseRewards += userBaseReward;
         }
 
         emit MassHarvest(
             msg.sender,
-            epochId - lastEpochIdHarvested[msg.sender],
-            totalDistributedValue
+            epochId - _lastEpochIdHarvested[msg.sender],
+            totalUserRewards
         );
 
-        if (totalDistributedValue > 0) {
+        if (totalUserRewards > 0) {
             _reignToken.safeTransferFrom(
                 _rewardsVault,
                 msg.sender,
-                totalDistributedValue
+                totalUserRewards
             );
         }
 
-        if (totalToBuffer > 0) {
+        // If there are less token rewarded then base issuance
+        // we transfer the difference from the rewards to the liquidty buffer
+        if (totalBaseRewards > totalUserRewards) {
+            uint256 transferToBuffer = totalBaseRewards.sub(totalUserRewards);
             _reignToken.safeTransferFrom(
                 _rewardsVault,
                 _liquidityBuffer,
-                totalToBuffer
+                transferToBuffer
             );
         }
 
-        return totalDistributedValue;
+        return totalUserRewards;
     }
 
     //gets the rewards for a single epoch
@@ -112,8 +115,8 @@ contract PoolRewards {
         // checks for requested epoch
         require(_getEpochId() > epochId, "This epoch is in the future");
         require(
-            lastEpochIdHarvested[msg.sender].add(1) == epochId,
-            "Harvest in order"
+            _lastEpochIdHarvested[msg.sender].add(1) == epochId,
+            "Can only harvest in order"
         );
         (uint256 userEpochReward, uint256 userBaseReward) = _harvest(epochId);
         if (userEpochReward > 0) {
@@ -148,7 +151,7 @@ contract PoolRewards {
             _initEpoch(epochId);
         }
         // Set user state for last harvested
-        lastEpochIdHarvested[msg.sender] = epochId;
+        _lastEpochIdHarvested[msg.sender] = epochId;
 
         // exit if there is no stake on the epoch
         if (_sizeAtEpoch[epochId] == 0) {
@@ -176,11 +179,8 @@ contract PoolRewards {
     }
 
     function _initEpoch(uint128 epochId) internal {
-        // fails if a previous epoch has not been initialised
-        require(
-            lastInitializedEpoch.add(1) == epochId,
-            "Epoch can be init only in order"
-        );
+        //epochs can only be harvested in order, therfore they can also only be initialised in order
+        // i.e it's impossible that we init epoch 5 after 3 as to harvest 5 user needs to first harvets 4
         _sizeAtEpoch[epochId] = _getPoolSize(epochId);
         lastInitializedEpoch = epochId;
         // call the staking smart contract to init the epoch
@@ -250,7 +250,7 @@ contract PoolRewards {
     }
 
     function userLastEpochIdHarvested() external view returns (uint256) {
-        return lastEpochIdHarvested[msg.sender];
+        return _lastEpochIdHarvested[msg.sender];
     }
 
     // calls to the staking smart contract to retrieve the epoch total poolLP size
