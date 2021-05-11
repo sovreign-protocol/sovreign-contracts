@@ -452,6 +452,7 @@ describe('Reign', function () {
 
 
         it("deposit epoch 1, deposit epoch 4, deposit epoch 5, withdraw epoch 5", async function () {
+            await prepareAccount(user, amount.mul(10))
             await helpers.moveAtEpoch(startEpoch, duration, 1);
 
             await reign.connect(user).deposit(amount);
@@ -467,7 +468,7 @@ describe('Reign', function () {
             expect(await getEpochUserBalance(userAddress, 3)).to.be.equal(amount.toString());
             expect(await getEpochUserBalance(userAddress, 6)).to.be.equal(amount.mul(3).toString());
 
-            
+
             await reign.connect(user).withdraw( amount.mul(3));
             expect(await getEpochUserBalance(userAddress, 7)).to.be.equal("0");
         });
