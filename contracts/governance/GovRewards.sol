@@ -186,7 +186,7 @@ contract GovRewards {
 
     function _getPoolSize(uint256 timestamp) internal view returns (uint256) {
         // retrieve unilp token balance
-        return _reign.bondStakedAtTs(timestamp);
+        return _reign.reignStakedAtTs(timestamp);
     }
 
     function _getUserBalancePerEpoch(address userAddress, uint128 epochId)

@@ -265,6 +265,11 @@ describe('BasketBalancer', function () {
             await reign.connect(flyingParrot).deposit(200);
             await reign.connect(happyPirate).deposit(300);
 
+            // voting power reflects after epoch is over
+            await awaitUntilNextEpoch()
+            await balancer.updateBasketBalance();
+
+
             await balancer.connect(user).updateAllocationVote(pools, [480000000,520000000]);
 
             // (480000000 * 100 + 500000000 * 500)/600 = 496666666
@@ -288,12 +293,14 @@ describe('BasketBalancer', function () {
             await reign.connect(happyPirate).deposit(300);
 
             // voting power reflects after epoch is over
-            awaitUntilNextEpoch()
+            await awaitUntilNextEpoch();
+            await balancer.updateBasketBalance();
 
             await balancer.connect(user).updateAllocationVote(pools, [480000000,520000000]);
             await balancer.connect(flyingParrot).updateAllocationVote(pools, [450000000,550000000]);
 
             
+            await awaitUntilNextEpoch();
             await balancer.updateBasketBalance();
             await awaitUpdatePeriod();
             
@@ -312,11 +319,14 @@ describe('BasketBalancer', function () {
 
 
             // voting power reflects after epoch is over
-            awaitUntilNextEpoch()
+            await awaitUntilNextEpoch();
+            await balancer.getCurrentEpoch()
+            await balancer.updateBasketBalance();
 
             await balancer.connect(user).updateAllocationVote(pools, [480000000,520000000]);
-            await balancer.connect(flyingParrot).updateAllocationVote(pools, [450000000,550000000]);
-
+            await balancer.connect(flyingParrot).updateAllocationVote(pools, [450000000,550000000])      
+            await awaitUntilNextEpoch();
+            await balancer.getCurrentEpoch()
             await balancer.updateBasketBalance();
 
             //let half of the period elapse, allocation should be half-way updated
@@ -435,6 +445,7 @@ describe('BasketBalancer', function () {
     async function awaitUntilNextEpoch() {
         //wait until the update periods is over
         helpers.moveAtEpoch(epochStart, epochDuration, ( await balancer.getCurrentEpoch()).add(1).toNumber())
+        await balancer.getCurrentEpoch()
     }
 
     async function setupContracts () {

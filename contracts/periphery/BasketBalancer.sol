@@ -132,11 +132,10 @@ contract BasketBalancer is IBasketBalancer {
             "Can not vote twice in an epoch"
         );
 
-        uint256 _totalPower = reign.bondStaked();
+        uint256 _totalPower = reign.reignStaked();
         // we take the voting power as it was at the end of the last epoch to avoid flashloan attacks
         // or users sending their stake to new wallets and vote again
-        uint256 _votingPower =
-            reign.votingPowerAtEpoch(msg.sender, lastEpochUpdate);
+        uint256 _votingPower = reign.votingPowerAtTs(msg.sender, lastEpochEnd);
         uint256 _remainingPower = _totalPower.sub(_votingPower);
 
         uint256 amountAllocated = 0;

@@ -16,6 +16,7 @@ contract ReignFacet {
     uint128 private constant BASE_BALANCE_MULTIPLIER = uint128(1 * 10**18);
 
     mapping(uint128 => bool) isInitialized;
+    mapping(uint128 => uint256) initialisedAt;
     // holds the current balance of the user for each token
     mapping(address => uint256) balances;
 
@@ -42,11 +43,11 @@ contract ReignFacet {
     event InitEpoch(address indexed caller, uint128 indexed epochId);
 
     function initReign(
-        address _bond,
+        address _reign,
         uint256 _start,
         uint256 _duration
     ) public {
-        require(_bond != address(0), "BOND address must not be 0x0");
+        require(_reign != address(0), "BOND address must not be 0x0");
 
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
@@ -55,23 +56,24 @@ contract ReignFacet {
 
         ds.initialized = true;
 
-        ds.bond = IERC20(_bond);
+        ds.reign = IERC20(_reign);
         ds.epoch1Start = _start;
         ds.epochDuration = _duration;
     }
 
-    // deposit allows a user to add more bond to his staked balance
+    // deposit allows a user to add more reign to his staked balance
     function deposit(uint256 amount) public {
         require(amount > 0, "Amount must be greater than 0");
 
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
-        uint256 allowance = ds.bond.allowance(msg.sender, address(this));
+        uint256 allowance = ds.reign.allowance(msg.sender, address(this));
         require(allowance >= amount, "Token allowance too small");
 
         balances[msg.sender] = balances[msg.sender].add(amount);
 
-        _increaseUserBalance(ds.userStakeHistory[msg.sender], amount);
-        _updateLockedBond(bondStaked().add(amount));
+        _updateStake(ds.userStakeHistory[msg.sender], balances[msg.sender]);
+        _increaseEpochBalance(ds.userBalanceHistory[msg.sender], amount);
+        _updateLockedBond(reignStaked().add(amount));
 
         address delegatedTo = userDelegatedTo(msg.sender);
         if (delegatedTo != address(0)) {
@@ -89,7 +91,7 @@ contract ReignFacet {
             );
         }
 
-        ds.bond.transferFrom(msg.sender, address(this), amount);
+        ds.reign.transferFrom(msg.sender, address(this), amount);
 
         emit Deposit(msg.sender, amount, balances[msg.sender]);
     }
@@ -105,12 +107,13 @@ contract ReignFacet {
         uint256 balance = balanceOf(msg.sender);
         require(balance >= amount, "Insufficient balance");
 
-        balances[msg.sender] = balances[msg.sender].sub(amount);
+        balances[msg.sender] = balance.sub(amount);
 
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
-        _decreaseUserBalance(ds.userStakeHistory[msg.sender], amount);
-        _updateLockedBond(bondStaked().sub(amount));
+        _updateStake(ds.userStakeHistory[msg.sender], balances[msg.sender]);
+        _decreaseEpochBalance(ds.userBalanceHistory[msg.sender], amount);
+        _updateLockedBond(reignStaked().sub(amount));
 
         address delegatedTo = userDelegatedTo(msg.sender);
         if (delegatedTo != address(0)) {
@@ -128,7 +131,7 @@ contract ReignFacet {
             );
         }
 
-        ds.bond.transfer(msg.sender, amount);
+        ds.reign.transfer(msg.sender, amount);
 
         emit Withdraw(msg.sender, amount, balance.sub(amount));
     }
@@ -215,6 +218,7 @@ contract ReignFacet {
         require(epochId <= getEpoch(), "can't init a future epoch");
 
         isInitialized[epochId] = true;
+        initialisedAt[epochId] = block.timestamp;
 
         emit InitEpoch(msg.sender, epochId);
     }
@@ -229,100 +233,79 @@ contract ReignFacet {
     }
 
     // balanceAtTs returns the amount of BOND that the user currently staked (bonus NOT included)
+    function balanceAtTs(address user, uint256 timestamp)
+        public
+        view
+        returns (uint256)
+    {
+        LibReignStorage.Stake memory stake = stakeAtTs(user, timestamp);
+
+        return stake.amount;
+    }
+
+    // balanceAtTs returns the amount of BOND that the user currently staked (bonus NOT included)
     function getEpochUserBalance(address user, uint128 epochId)
         public
         view
         returns (uint256)
     {
-        LibReignStorage.Stake memory stake = stakeAtEpoch(user, epochId);
+        LibReignStorage.EpochBalance memory epochBalance =
+            balanceCheckAtEpoch(user, epochId);
 
-        return getCheckpointEffectiveBalance(stake);
+        return getEpochEffectiveBalance(epochBalance);
     }
 
     // this returns the effective balance accounting for user entering the pool after epoch start
-    function getCheckpointEffectiveBalance(LibReignStorage.Stake memory c)
+    function getEpochEffectiveBalance(LibReignStorage.EpochBalance memory c)
         internal
         pure
         returns (uint256)
     {
         return
-            _getCheckpointBalance(c).mul(c.multiplier).div(
-                BASE_BALANCE_MULTIPLIER
-            );
+            _getEpochBalance(c).mul(c.multiplier).div(BASE_BALANCE_MULTIPLIER);
     }
 
-    // stakeAtEpoch returns the Stake object of the user that was valid at `timestamp`
-    function lastStake(address user)
+    // balanceCheckAtEpoch returns the EpochBalance checkpoint object of the user that was valid at epoch
+    function balanceCheckAtEpoch(address user, uint128 epochId)
         public
         view
-        returns (LibReignStorage.Stake memory)
+        returns (LibReignStorage.EpochBalance memory)
     {
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
-        LibReignStorage.Stake[] storage stakeHistory =
-            ds.userStakeHistory[user];
+        LibReignStorage.EpochBalance[] storage balanceHistory =
+            ds.userBalanceHistory[user];
 
-        if (stakeHistory.length == 0) {
+        if (balanceHistory.length == 0 || epochId < balanceHistory[0].epochId) {
             return
-                LibReignStorage.Stake(
-                    getEpoch(),
-                    block.timestamp,
-                    BASE_BALANCE_MULTIPLIER,
-                    block.timestamp,
-                    address(0),
-                    0,
-                    0,
-                    BASE_STAKE_MULTIPLIER
-                );
-        }
-
-        return stakeHistory[stakeHistory.length - 1];
-    }
-
-    // stakeAtEpoch returns the Stake object of the user that was valid at `timestamp`
-    function stakeAtEpoch(address user, uint128 epochId)
-        public
-        view
-        returns (LibReignStorage.Stake memory)
-    {
-        LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
-        LibReignStorage.Stake[] storage stakeHistory =
-            ds.userStakeHistory[user];
-
-        if (stakeHistory.length == 0 || epochId < stakeHistory[0].epochId) {
-            return
-                LibReignStorage.Stake(
+                LibReignStorage.EpochBalance(
                     epochId,
-                    block.timestamp,
                     BASE_BALANCE_MULTIPLIER,
-                    block.timestamp,
-                    address(0),
                     0,
-                    0,
-                    BASE_STAKE_MULTIPLIER
+                    0
                 );
         }
 
         uint256 min = 0;
-        uint256 max = stakeHistory.length - 1;
+        uint256 max = balanceHistory.length - 1;
 
-        if (epochId >= stakeHistory[max].epochId) {
-            return stakeHistory[max];
+        if (epochId >= balanceHistory[max].epochId) {
+            return balanceHistory[max];
         }
 
         // binary search of the value in the array
         while (max > min) {
             uint256 mid = (max + min + 1) / 2;
-            if (stakeHistory[mid].epochId <= epochId) {
+            if (balanceHistory[mid].epochId <= epochId) {
                 min = mid;
             } else {
                 max = mid - 1;
             }
         }
 
-        return stakeHistory[min];
+        return balanceHistory[min];
     }
 
-    // stakeAtEpoch returns the Stake object of the user that was valid at `timestamp`
+    // balanceCheckAtEpoch returns the Stake object of the user that was valid at `timestamp`
     function stakeAtTs(address user, uint256 timestamp)
         public
         view
@@ -335,13 +318,10 @@ contract ReignFacet {
         if (stakeHistory.length == 0 || timestamp < stakeHistory[0].timestamp) {
             return
                 LibReignStorage.Stake(
-                    getEpoch(),
                     block.timestamp,
-                    BASE_BALANCE_MULTIPLIER,
+                    0,
                     block.timestamp,
                     address(0),
-                    0,
-                    0,
                     BASE_STAKE_MULTIPLIER
                 );
         }
@@ -368,29 +348,7 @@ contract ReignFacet {
 
     // votingPower returns the voting power (bonus included) + delegated voting power for a user at the current block
     function votingPower(address user) public view returns (uint256) {
-        return votingPowerAtEpoch(user, lastStake(user).epochId);
-    }
-
-    // votingPowerAtEpoch returns the voting power (bonus included) + delegated voting power for a user at a point in time
-    function votingPowerAtEpoch(address user, uint128 epochId)
-        public
-        view
-        returns (uint256)
-    {
-        LibReignStorage.Stake memory stake = stakeAtEpoch(user, epochId);
-
-        uint256 ownVotingPower;
-
-        // if the user delegated his voting power to another user, then he doesn't have any voting power left
-        if (stake.delegatedTo != address(0)) {
-            ownVotingPower = 0;
-        } else {
-            uint256 balance = _getCheckpointBalance(stake);
-            ownVotingPower = balance;
-        }
-
-        uint256 delegatedVotingPower = delegatedPowerAtEpoch(user, epochId);
-        return ownVotingPower.add(delegatedVotingPower);
+        return votingPowerAtTs(user, block.timestamp);
     }
 
     // votingPowerAtEpoch returns the voting power (bonus included) + delegated voting power for a user at a point in time
@@ -407,45 +365,43 @@ contract ReignFacet {
         if (stake.delegatedTo != address(0)) {
             ownVotingPower = 0;
         } else {
-            uint256 balance = _getCheckpointBalance(stake);
-            ownVotingPower = balance;
+            ownVotingPower = stake.amount;
         }
 
-        uint256 delegatedVotingPower =
-            delegatedPowerAtEpoch(user, stake.epochId);
+        uint256 delegatedVotingPower = delegatedPowerAtTs(user, timestamp);
         return ownVotingPower.add(delegatedVotingPower);
     }
 
-    // bondStaked returns the total raw amount of BOND staked at the current block
-    function bondStaked() public view returns (uint256) {
-        return bondStakedAtTs(block.timestamp);
+    // reignStaked returns the total raw amount of BOND staked at the current block
+    function reignStaked() public view returns (uint256) {
+        return reignStakedAtTs(block.timestamp);
     }
 
-    // bondStakedAtEpoch returns the total raw amount of BOND users have deposited into the contract
+    // reignStakedAtEpoch returns the total raw amount of BOND users have deposited into the contract
     // it does not include any bonus
-    function bondStakedAtTs(uint256 timestamp) public view returns (uint256) {
+    function reignStakedAtTs(uint256 timestamp) public view returns (uint256) {
         return
-            _checkpointsBinarySearch(
-                LibReignStorage.reignStorage().bondStakedHistory,
+            _checkpointSearch(
+                LibReignStorage.reignStorage().reignStakedHistory,
                 timestamp
             );
     }
 
     // delegatedPower returns the total voting power that a user received from other users
     function delegatedPower(address user) public view returns (uint256) {
-        return delegatedPowerAtEpoch(user, getEpoch());
+        return delegatedPowerAtTs(user, block.timestamp);
     }
 
-    // delegatedPowerAtEpoch returns the total voting power that a user received from other users at a point in time
-    function delegatedPowerAtEpoch(address user, uint128 epoch)
+    // delegatedPowerAtTs returns the total voting power that a user received from other users at a point in time
+    function delegatedPowerAtTs(address user, uint256 timestamp)
         public
         view
         returns (uint256)
     {
         return
-            _epochCheckpointsBinarySearch(
+            _checkpointSearch(
                 LibReignStorage.reignStorage().delegatedPowerHistory[user],
-                epoch
+                timestamp
             );
     }
 
@@ -454,14 +410,20 @@ contract ReignFacet {
         return stakingBoostAtEpoch(user, getEpoch());
     }
 
-    // stakingBoostAtEpoch calculates the multiplier at a given epoch based on the user's stake a the given timestamp
-    // it includes the decay mechanism
+    // stakingBoostAtEpoch calculates the multiplier at a given epoch based on the user's stake a the
+    // given timestamp at which the epoch was initialised
     function stakingBoostAtEpoch(address user, uint128 epochId)
         public
         view
         returns (uint256)
     {
-        LibReignStorage.Stake memory stake = stakeAtEpoch(user, epochId);
+        uint256 epochTime;
+        if (epochId == getEpoch()) {
+            epochTime = block.timestamp;
+        } else {
+            epochTime = initialisedAt[epochId];
+        }
+        LibReignStorage.Stake memory stake = stakeAtTs(user, epochTime);
         if (block.timestamp > stake.expiryTimestamp) {
             return BASE_STAKE_MULTIPLIER;
         }
@@ -471,21 +433,21 @@ contract ReignFacet {
 
     // userLockedUntil returns the timestamp until the user's balance is locked
     function userLockedUntil(address user) public view returns (uint256) {
-        LibReignStorage.Stake memory stake = lastStake(user);
+        LibReignStorage.Stake memory stake = stakeAtTs(user, block.timestamp);
 
         return stake.expiryTimestamp;
     }
 
     // userDelegatedTo returns the address to which a user delegated their voting power; address(0) if not delegated
     function userDelegatedTo(address user) public view returns (address) {
-        LibReignStorage.Stake memory stake = lastStake(user);
+        LibReignStorage.Stake memory stake = stakeAtTs(user, block.timestamp);
 
         return stake.delegatedTo;
     }
 
     // returns the last time a user interacted with the contract by deposit or withdraw
     function userLastAction(address user) public view returns (uint256) {
-        LibReignStorage.Stake memory stake = lastStake(user);
+        LibReignStorage.Stake memory stake = stakeAtTs(user, block.timestamp);
 
         return stake.timestamp;
     }
@@ -547,96 +509,48 @@ contract ReignFacet {
      *   INTERNAL
      */
 
-    // _stakeMultiplier calculates the multiplier for the given lockup
-    function _lockingBoost(uint256 from, uint256 to)
-        internal
-        pure
-        returns (uint256)
-    {
-        uint256 diff = to.sub(from); // underflow is checked for in lock()
-        if (diff >= MAX_LOCK) {
-            return BASE_STAKE_MULTIPLIER.mul(2);
-        }
-
-        return
-            BASE_STAKE_MULTIPLIER.add(
-                diff.mul(BASE_STAKE_MULTIPLIER).div(MAX_LOCK)
-            );
-    }
-
-    function _getCheckpointBalance(LibReignStorage.Stake memory c)
-        internal
-        pure
-        returns (uint256)
-    {
-        return c.startBalance.add(c.newDeposits);
-    }
-
-    // _checkpointsBinarySearch executes a binary search on a list of checkpoints that's sorted chronologically
-    // looking for the closest checkpoint that matches the specified timestamp
-    function _checkpointsBinarySearch(
-        LibReignStorage.Checkpoint[] storage checkpoints,
-        uint256 timestamp
-    ) internal view returns (uint256) {
-        if (checkpoints.length == 0 || timestamp < checkpoints[0].timestamp) {
-            return 0;
-        }
-
-        uint256 min = 0;
-        uint256 max = checkpoints.length - 1;
-
-        if (timestamp >= checkpoints[max].timestamp) {
-            return checkpoints[max].amount;
-        }
-
-        // binary search of the value in the array
-        while (max > min) {
-            uint256 mid = (max + min + 1) / 2;
-            if (checkpoints[mid].timestamp <= timestamp) {
-                min = mid;
-            } else {
-                max = mid - 1;
-            }
-        }
-
-        return checkpoints[min].amount;
-    }
-
-    // _checkpointsBinarySearch executes a binary search on a list of checkpoints that's sorted chronologically
-    // looking for the closest checkpoint that matches the specified timestamp
-    function _epochCheckpointsBinarySearch(
-        LibReignStorage.EpochCheckpoint[] storage checkpoints,
-        uint256 epochId
-    ) internal view returns (uint256) {
-        if (checkpoints.length == 0 || epochId < checkpoints[0].epochId) {
-            return 0;
-        }
-
-        uint256 min = 0;
-        uint256 max = checkpoints.length - 1;
-
-        if (epochId >= checkpoints[max].epochId) {
-            return checkpoints[max].amount;
-        }
-
-        // binary search of the value in the array
-        while (max > min) {
-            uint256 mid = (max + min + 1) / 2;
-            if (checkpoints[mid].epochId <= epochId) {
-                min = mid;
-            } else {
-                max = mid - 1;
-            }
-        }
-
-        return checkpoints[min].amount;
-    }
-
-    // _increaseUserBalance manages an array of checkpoints
+    // _updateStake manages an array of stake checkpoints
     // if there's already a checkpoint for the same timestamp, the amount is updated
     // otherwise, a new checkpoint is inserted
-    function _increaseUserBalance(
-        LibReignStorage.Stake[] storage stakeCheckpoints,
+    function _updateStake(
+        LibReignStorage.Stake[] storage checkpoints,
+        uint256 amount
+    ) internal {
+        if (checkpoints.length == 0) {
+            checkpoints.push(
+                LibReignStorage.Stake(
+                    block.timestamp,
+                    amount,
+                    block.timestamp,
+                    address(0),
+                    BASE_STAKE_MULTIPLIER
+                )
+            );
+        } else {
+            LibReignStorage.Stake storage old =
+                checkpoints[checkpoints.length - 1];
+
+            if (old.timestamp == block.timestamp) {
+                old.amount = amount;
+            } else {
+                checkpoints.push(
+                    LibReignStorage.Stake(
+                        block.timestamp,
+                        amount,
+                        old.expiryTimestamp,
+                        old.delegatedTo,
+                        old.stakingBoost
+                    )
+                );
+            }
+        }
+    }
+
+    // _increaseEpochBalance manages an array of checkpoints
+    // if there's already a checkpoint for the same timestamp, the amount is updated
+    // otherwise, a new checkpoint is inserted
+    function _increaseEpochBalance(
+        LibReignStorage.EpochBalance[] storage epochBalances,
         uint256 amount
     ) internal {
         uint128 currentEpoch = getEpoch();
@@ -650,72 +564,56 @@ contract ReignFacet {
         // we want to store checkpoints both for the current epoch and next epoch because
         // if a user does a withdraw, the current epoch can also be modified and
         // we don't want to insert another checkpoint in the middle of the array as that could be expensive
-        if (stakeCheckpoints.length == 0) {
-            stakeCheckpoints.push(
-                LibReignStorage.Stake(
+        if (epochBalances.length == 0) {
+            epochBalances.push(
+                LibReignStorage.EpochBalance(
                     currentEpoch,
-                    block.timestamp,
                     currentMultiplier,
-                    block.timestamp,
-                    address(0),
                     0,
-                    amount,
-                    BASE_STAKE_MULTIPLIER
+                    amount
                 )
             );
 
-            stakeCheckpoints.push(
-                LibReignStorage.Stake(
+            epochBalances.push(
+                LibReignStorage.EpochBalance(
                     currentEpoch + 1, //for next epoch
-                    block.timestamp,
                     BASE_BALANCE_MULTIPLIER,
-                    block.timestamp,
-                    address(0),
                     amount, //start balance is amount
-                    0, // new deposit of amount is made
-                    BASE_STAKE_MULTIPLIER
+                    0 // new deposit of amount is made
                 )
             );
         } else {
-            LibReignStorage.Stake storage old =
-                stakeCheckpoints[stakeCheckpoints.length - 1];
-            uint256 lastIndex = stakeCheckpoints.length - 1;
+            LibReignStorage.EpochBalance storage old =
+                epochBalances[epochBalances.length - 1];
+            uint256 lastIndex = epochBalances.length - 1;
 
             // the last action happened in an older epoch (e.g. a deposit in epoch 3, current epoch is >=5)
             // add a checkpoint for the previous epoch and the current one
             if (old.epochId < currentEpoch) {
                 uint128 multiplier =
                     computeNewMultiplier(
-                        _getCheckpointBalance(old),
+                        _getEpochBalance(old),
                         BASE_BALANCE_MULTIPLIER,
                         amount,
                         currentMultiplier
                     );
                 //update the stake with new multiplier and amount
-                stakeCheckpoints.push(
-                    LibReignStorage.Stake(
+                epochBalances.push(
+                    LibReignStorage.EpochBalance(
                         currentEpoch,
-                        block.timestamp,
                         multiplier,
-                        old.expiryTimestamp,
-                        old.delegatedTo,
-                        _getCheckpointBalance(old),
-                        amount,
-                        old.stakingBoost
+                        _getEpochBalance(old),
+                        amount
                     )
                 );
 
                 //add a fresh checkpoint for next epoch
-                stakeCheckpoints.push(
-                    LibReignStorage.Stake(
+                epochBalances.push(
+                    LibReignStorage.EpochBalance(
                         currentEpoch + 1,
-                        block.timestamp,
                         BASE_BALANCE_MULTIPLIER,
-                        old.expiryTimestamp,
-                        old.delegatedTo,
                         balances[msg.sender],
-                        0,
-                        old.stakingBoost
+                        0
                     )
                 );
             }
@@ -723,24 +621,19 @@ contract ReignFacet {
             // for the current epoch
             else if (old.epochId == currentEpoch) {
                 old.multiplier = computeNewMultiplier(
-                    _getCheckpointBalance(old),
+                    _getEpochBalance(old),
                     old.multiplier,
                     amount,
                     currentMultiplier
                 );
                 old.newDeposits = old.newDeposits.add(amount);
-                old.timestamp = block.timestamp;
 
-                stakeCheckpoints.push(
-                    LibReignStorage.Stake(
+                epochBalances.push(
+                    LibReignStorage.EpochBalance(
                         currentEpoch + 1,
-                        block.timestamp,
                         BASE_BALANCE_MULTIPLIER,
-                        old.expiryTimestamp,
-                        old.delegatedTo,
                         balances[msg.sender],
-                        0,
-                        old.stakingBoost
+                        0
                     )
                 );
             }
@@ -748,33 +641,32 @@ contract ReignFacet {
             else {
                 if (
                     lastIndex >= 1 &&
-                    stakeCheckpoints[lastIndex - 1].epochId == currentEpoch
+                    epochBalances[lastIndex - 1].epochId == currentEpoch
                 ) {
-                    stakeCheckpoints[lastIndex - 1]
+                    epochBalances[lastIndex - 1]
                         .multiplier = computeNewMultiplier(
-                        _getCheckpointBalance(stakeCheckpoints[lastIndex - 1]),
-                        stakeCheckpoints[lastIndex - 1].multiplier,
+                        _getEpochBalance(epochBalances[lastIndex - 1]),
+                        epochBalances[lastIndex - 1].multiplier,
                         amount,
                         currentMultiplier
                     );
-                    stakeCheckpoints[lastIndex - 1]
-                        .newDeposits = stakeCheckpoints[lastIndex - 1]
+                    epochBalances[lastIndex - 1].newDeposits = epochBalances[
+                        lastIndex - 1
+                    ]
                         .newDeposits
                         .add(amount);
-
-                    stakeCheckpoints[lastIndex - 1].timestamp = block.timestamp;
                 }
 
-                stakeCheckpoints[lastIndex].startBalance = balances[msg.sender];
+                epochBalances[lastIndex].startBalance = balances[msg.sender];
             }
         }
     }
 
-    // _decreaseUserBalance manages an array of checkpoints
+    // _decreaseEpochBalance manages an array of checkpoints
     // if there's already a checkpoint for the same timestamp, the amount is updated
     // otherwise, a new checkpoint is inserted
-    function _decreaseUserBalance(
-        LibReignStorage.Stake[] storage stakeCheckpoints,
+    function _decreaseEpochBalance(
+        LibReignStorage.EpochBalance[] storage epochBalances,
         uint256 amount
     ) internal {
         uint128 currentEpoch = getEpoch();
@@ -785,24 +677,20 @@ contract ReignFacet {
 
         // we can't have a situation in which there is a withdraw with no checkpoint
 
-        LibReignStorage.Stake storage old =
-            stakeCheckpoints[stakeCheckpoints.length - 1];
-        uint256 lastIndex = stakeCheckpoints.length - 1;
+        LibReignStorage.EpochBalance storage old =
+            epochBalances[epochBalances.length - 1];
+        uint256 lastIndex = epochBalances.length - 1;
 
         // the last action happened in an older epoch (e.g. a deposit in epoch 3, current epoch is >=5)
         // add a checkpoint for the previous epoch and the current one
         if (old.epochId < currentEpoch) {
             //update the stake with new multiplier and amount
-            stakeCheckpoints.push(
-                LibReignStorage.Stake(
+            epochBalances.push(
+                LibReignStorage.EpochBalance(
                     currentEpoch,
-                    block.timestamp,
                     BASE_BALANCE_MULTIPLIER,
-                    old.expiryTimestamp,
-                    old.delegatedTo,
                     balances[msg.sender],
-                    0,
-                    old.stakingBoost
+                    0
                 )
             );
         }
@@ -811,15 +699,14 @@ contract ReignFacet {
             old.multiplier = BASE_BALANCE_MULTIPLIER;
             old.startBalance = balances[msg.sender];
             old.newDeposits = 0;
-            old.timestamp = block.timestamp;
         }
         // there was a deposit in the current epoch
         else {
-            LibReignStorage.Stake storage currentEpochCheckpoint =
-                stakeCheckpoints[lastIndex - 1];
+            LibReignStorage.EpochBalance storage currentEpochCheckpoint =
+                epochBalances[lastIndex - 1];
 
             uint256 balanceBefore =
-                getCheckpointEffectiveBalance(currentEpochCheckpoint);
+                getEpochEffectiveBalance(currentEpochCheckpoint);
             // in case of withdraw, we have 2 branches:
             // 1. the user withdraws less than he added in the current epoch
             // 2. the user withdraws more than he added in the current epoch (including 0)
@@ -850,7 +737,7 @@ contract ReignFacet {
                 currentEpochCheckpoint.multiplier = BASE_BALANCE_MULTIPLIER;
             }
 
-            stakeCheckpoints[lastIndex].startBalance = balances[msg.sender];
+            epochBalances[lastIndex].startBalance = balances[msg.sender];
         }
     }
 
@@ -861,41 +748,21 @@ contract ReignFacet {
         LibReignStorage.Stake[] storage checkpoints,
         uint256 expiryTimestamp
     ) internal {
-        uint128 epochId = getEpoch();
         LibReignStorage.Stake storage old = checkpoints[checkpoints.length - 1];
 
-        //if there is no checkpoint this epoch make a new one with updated lock
-        if (old.epochId < epochId) {
+        if (old.timestamp < block.timestamp) {
             checkpoints.push(
                 LibReignStorage.Stake(
-                    epochId,
                     block.timestamp,
-                    BASE_BALANCE_MULTIPLIER,
+                    old.amount,
                     expiryTimestamp,
                     old.delegatedTo,
-                    _getCheckpointBalance(old),
-                    0,
                     _lockingBoost(block.timestamp, expiryTimestamp)
                 )
             );
-            //else if the last one is the current checkpoint update its
-        } else if (old.epochId == epochId) {
+        } else {
             old.expiryTimestamp = expiryTimestamp;
             old.stakingBoost = _lockingBoost(block.timestamp, expiryTimestamp);
-        }
-        //else we had a deposit that created a checkpoint for next epoch, so we update both
-        else {
-            old.expiryTimestamp = expiryTimestamp;
-            old.stakingBoost = _lockingBoost(block.timestamp, expiryTimestamp);
-
-            LibReignStorage.Stake storage previous =
-                checkpoints[checkpoints.length - 2];
-
-            previous.expiryTimestamp = expiryTimestamp;
-            previous.stakingBoost = _lockingBoost(
-                block.timestamp,
-                expiryTimestamp
-            );
         }
     }
 
@@ -906,51 +773,37 @@ contract ReignFacet {
         LibReignStorage.Stake[] storage checkpoints,
         address to
     ) internal {
-        uint128 epochId = getEpoch();
         LibReignStorage.Stake storage old = checkpoints[checkpoints.length - 1];
 
-        //if there is no checkpoint this epoch make a new one with updated delegation
-        if (old.epochId < epochId) {
+        if (old.timestamp < block.timestamp) {
             checkpoints.push(
                 LibReignStorage.Stake(
-                    epochId,
                     block.timestamp,
-                    old.multiplier,
+                    old.amount,
                     old.expiryTimestamp,
                     to,
-                    _getCheckpointBalance(old),
-                    0,
                     old.stakingBoost
                 )
             );
-            //else if the last one is the current checkpoint update its
-        } else if (old.epochId == epochId) {
+        } else {
             old.delegatedTo = to;
-        }
-        //else we had a deposit that created a checkpoint for next epoch, so we update both
-        else {
-            old.delegatedTo = to;
-
-            LibReignStorage.Stake storage previous =
-                checkpoints[checkpoints.length - 2];
-            previous.delegatedTo = to;
         }
     }
 
     // _updateDelegatedPower updates the power delegated TO the user in the checkpoints history
     function _updateDelegatedPower(
-        LibReignStorage.EpochCheckpoint[] storage checkpoints,
+        LibReignStorage.Checkpoint[] storage checkpoints,
         uint256 amount
     ) internal {
         if (
             checkpoints.length == 0 ||
-            checkpoints[checkpoints.length - 1].epochId < getEpoch()
+            checkpoints[checkpoints.length - 1].timestamp < block.timestamp
         ) {
             checkpoints.push(
-                LibReignStorage.EpochCheckpoint(getEpoch(), amount)
+                LibReignStorage.Checkpoint(block.timestamp, amount)
             );
         } else {
-            LibReignStorage.EpochCheckpoint storage old =
+            LibReignStorage.Checkpoint storage old =
                 checkpoints[checkpoints.length - 1];
             old.amount = amount;
         }
@@ -961,17 +814,76 @@ contract ReignFacet {
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
         if (
-            ds.bondStakedHistory.length == 0 ||
-            ds.bondStakedHistory[ds.bondStakedHistory.length - 1].timestamp <
+            ds.reignStakedHistory.length == 0 ||
+            ds.reignStakedHistory[ds.reignStakedHistory.length - 1].timestamp <
             block.timestamp
         ) {
-            ds.bondStakedHistory.push(
+            ds.reignStakedHistory.push(
                 LibReignStorage.Checkpoint(block.timestamp, amount)
             );
         } else {
             LibReignStorage.Checkpoint storage old =
-                ds.bondStakedHistory[ds.bondStakedHistory.length - 1];
+                ds.reignStakedHistory[ds.reignStakedHistory.length - 1];
             old.amount = amount;
         }
+    }
+
+    /*
+     *   INTERNAL READ
+     */
+
+    // _stakeMultiplier calculates the multiplier for the given lockup
+    function _lockingBoost(uint256 from, uint256 to)
+        internal
+        pure
+        returns (uint256)
+    {
+        uint256 diff = to.sub(from); // underflow is checked for in lock()
+        if (diff >= MAX_LOCK) {
+            return BASE_STAKE_MULTIPLIER.mul(2);
+        }
+
+        return
+            BASE_STAKE_MULTIPLIER.add(
+                diff.mul(BASE_STAKE_MULTIPLIER).div(MAX_LOCK)
+            );
+    }
+
+    function _getEpochBalance(LibReignStorage.EpochBalance memory c)
+        internal
+        pure
+        returns (uint256)
+    {
+        return c.startBalance.add(c.newDeposits);
+    }
+
+    // _checkpointSearch executes a binary search on a list of checkpoints that's sorted chronologically
+    // looking for the closest checkpoint that matches the specified timestamp
+    function _checkpointSearch(
+        LibReignStorage.Checkpoint[] storage checkpoints,
+        uint256 timestamp
+    ) internal view returns (uint256) {
+        if (checkpoints.length == 0 || timestamp < checkpoints[0].timestamp) {
+            return 0;
+        }
+
+        uint256 min = 0;
+        uint256 max = checkpoints.length - 1;
+
+        if (timestamp >= checkpoints[max].timestamp) {
+            return checkpoints[max].amount;
+        }
+
+        // binary search of the value in the array
+        while (max > min) {
+            uint256 mid = (max + min + 1) / 2;
+            if (checkpoints[mid].timestamp <= timestamp) {
+                min = mid;
+            } else {
+                max = mid - 1;
+            }
+        }
+
+        return checkpoints[min].amount;
     }
 }

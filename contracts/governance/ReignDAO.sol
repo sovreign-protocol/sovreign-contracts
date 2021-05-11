@@ -8,7 +8,6 @@ import "./Bridge.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract ReignDAO is Bridge {
-
     using SafeMath for uint256;
 
     enum ProposalState {
@@ -37,10 +36,8 @@ contract ReignDAO is Bridge {
         address creator;
         uint256 createTime;
         string description;
-
         uint256 forVotes;
         uint256 againstVotes;
-
         mapping(address => Receipt) receipts;
     }
 
@@ -62,7 +59,6 @@ contract ReignDAO is Bridge {
         // proposal description
         string description;
         string title;
-
         // proposal technical details
         // ordered list of target addresses to be made
         address[] targets;
@@ -72,10 +68,8 @@ contract ReignDAO is Bridge {
         string[] signatures;
         // The ordered list of calldata to be passed to each call
         bytes[] calldatas;
-
         // proposal creation time - 1
         uint256 createTime;
-
         // votes status
         // The timestamp that the proposal will be available for execution, set once the vote succeeds
         uint256 eta;
@@ -83,13 +77,10 @@ contract ReignDAO is Bridge {
         uint256 forVotes;
         // Current number of votes in opposition to this proposal
         uint256 againstVotes;
-
         bool canceled;
         bool executed;
-
         // Receipts of ballots for the entire set of voters
         mapping(address => Receipt) receipts;
-
         ProposalParameters parameters;
     }
 
@@ -102,15 +93,35 @@ contract ReignDAO is Bridge {
     bool public isActive;
 
     event ProposalCreated(uint256 indexed proposalId);
-    event Vote(uint256 indexed proposalId, address indexed user, bool support, uint256 power);
+    event Vote(
+        uint256 indexed proposalId,
+        address indexed user,
+        bool support,
+        uint256 power
+    );
     event VoteCanceled(uint256 indexed proposalId, address indexed user);
-    event ProposalQueued(uint256 indexed proposalId, address caller, uint256 eta);
+    event ProposalQueued(
+        uint256 indexed proposalId,
+        address caller,
+        uint256 eta
+    );
     event ProposalExecuted(uint256 indexed proposalId, address caller);
     event ProposalCanceled(uint256 indexed proposalId, address caller);
     event AbrogationProposalStarted(uint256 indexed proposalId, address caller);
-    event AbrogationProposalExecuted(uint256 indexed proposalId, address caller);
-    event AbrogationProposalVote(uint256 indexed proposalId, address indexed user, bool support, uint256 power);
-    event AbrogationProposalVoteCancelled(uint256 indexed proposalId, address indexed user);
+    event AbrogationProposalExecuted(
+        uint256 indexed proposalId,
+        address caller
+    );
+    event AbrogationProposalVote(
+        uint256 indexed proposalId,
+        address indexed user,
+        bool support,
+        uint256 power
+    );
+    event AbrogationProposalVoteCancelled(
+        uint256 indexed proposalId,
+        address indexed user
+    );
 
     receive() external payable {}
 
@@ -125,7 +136,10 @@ contract ReignDAO is Bridge {
 
     function activate() public {
         require(!isActive, "DAO already active");
-        require(reign.bondStaked() >= ACTIVATION_THRESHOLD, "Threshold not met yet");
+        require(
+            reign.reignStaked() >= ACTIVATION_THRESHOLD,
+            "Threshold not met yet"
+        );
 
         isActive = true;
     }
@@ -137,31 +151,41 @@ contract ReignDAO is Bridge {
         bytes[] memory calldatas,
         string memory description,
         string memory title
-    )
-    public returns (uint256)
-    {
+    ) public returns (uint256) {
         if (!isActive) {
-            require(reign.bondStaked() >= ACTIVATION_THRESHOLD, "DAO not yet active");
+            require(
+                reign.reignStaked() >= ACTIVATION_THRESHOLD,
+                "DAO not yet active"
+            );
             isActive = true;
         }
 
         require(
-            reign.votingPowerAtTs(msg.sender, block.timestamp - 1) >= _getCreationThreshold(),
+            reign.votingPowerAtTs(msg.sender, block.timestamp - 1) >=
+                _getCreationThreshold(),
             "Creation threshold not met"
         );
         require(
-            targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length,
+            targets.length == values.length &&
+                targets.length == signatures.length &&
+                targets.length == calldatas.length,
             "Proposal function information arity mismatch"
         );
         require(targets.length != 0, "Must provide actions");
-        require(targets.length <= PROPOSAL_MAX_ACTIONS, "Too many actions on a vote");
+        require(
+            targets.length <= PROPOSAL_MAX_ACTIONS,
+            "Too many actions on a vote"
+        );
         require(bytes(title).length > 0, "title can't be empty");
         require(bytes(description).length > 0, "description can't be empty");
 
         // check if user has another running vote
         uint256 previousProposalId = latestProposalIds[msg.sender];
         if (previousProposalId != 0) {
-            require(_isLiveState(previousProposalId) == false, "One live proposal per proposer");
+            require(
+                _isLiveState(previousProposalId) == false,
+                "One live proposal per proposer"
+            );
         }
 
         uint256 newProposalId = lastProposalId + 1;
@@ -191,19 +215,40 @@ contract ReignDAO is Bridge {
     }
 
     function queue(uint256 proposalId) public {
-        require(state(proposalId) == ProposalState.Accepted, "Proposal can only be queued if it is succeeded");
+        require(
+            state(proposalId) == ProposalState.Accepted,
+            "Proposal can only be queued if it is succeeded"
+        );
 
         Proposal storage proposal = proposals[proposalId];
-        uint256 eta = proposal.createTime + proposal.parameters.warmUpDuration + proposal.parameters.activeDuration + proposal.parameters.queueDuration;
+        uint256 eta =
+            proposal.createTime +
+                proposal.parameters.warmUpDuration +
+                proposal.parameters.activeDuration +
+                proposal.parameters.queueDuration;
         proposal.eta = eta;
 
         for (uint256 i = 0; i < proposal.targets.length; i++) {
             require(
-                !queuedTransactions[_getTxHash(proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], eta)],
+                !queuedTransactions[
+                    _getTxHash(
+                        proposal.targets[i],
+                        proposal.values[i],
+                        proposal.signatures[i],
+                        proposal.calldatas[i],
+                        eta
+                    )
+                ],
                 "proposal action already queued at eta"
             );
 
-            queueTransaction(proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], eta);
+            queueTransaction(
+                proposal.targets[i],
+                proposal.values[i],
+                proposal.signatures[i],
+                proposal.calldatas[i],
+                eta
+            );
         }
 
         emit ProposalQueued(proposalId, msg.sender, eta);
@@ -216,21 +261,39 @@ contract ReignDAO is Bridge {
         proposal.executed = true;
 
         for (uint256 i = 0; i < proposal.targets.length; i++) {
-            executeTransaction(proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], proposal.eta);
+            executeTransaction(
+                proposal.targets[i],
+                proposal.values[i],
+                proposal.signatures[i],
+                proposal.calldatas[i],
+                proposal.eta
+            );
         }
 
         emit ProposalExecuted(proposalId, msg.sender);
     }
 
     function cancelProposal(uint256 proposalId) public {
-        require(_isCancellableState(proposalId), "Proposal in state that does not allow cancellation");
-        require(_canCancelProposal(proposalId), "Cancellation requirements not met");
+        require(
+            _isCancellableState(proposalId),
+            "Proposal in state that does not allow cancellation"
+        );
+        require(
+            _canCancelProposal(proposalId),
+            "Cancellation requirements not met"
+        );
 
         Proposal storage proposal = proposals[proposalId];
         proposal.canceled = true;
 
         for (uint256 i = 0; i < proposal.targets.length; i++) {
-            cancelTransaction(proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], proposal.eta);
+            cancelTransaction(
+                proposal.targets[i],
+                proposal.values[i],
+                proposal.signatures[i],
+                proposal.calldatas[i],
+                proposal.eta
+            );
         }
 
         emit ProposalCanceled(proposalId, msg.sender);
@@ -243,9 +306,14 @@ contract ReignDAO is Bridge {
         Receipt storage receipt = proposal.receipts[msg.sender];
 
         // exit if user already voted
-        require(receipt.hasVoted == false || receipt.hasVoted && receipt.support != support, "Already voted this option");
+        require(
+            receipt.hasVoted == false ||
+                (receipt.hasVoted && receipt.support != support),
+            "Already voted this option"
+        );
 
-        uint256 votes = reign.votingPowerAtTs(msg.sender, _getSnapshotTimestamp(proposal));
+        uint256 votes =
+            reign.votingPowerAtTs(msg.sender, _getSnapshotTimestamp(proposal));
         require(votes > 0, "no voting power");
 
         // means it changed its vote
@@ -253,7 +321,9 @@ contract ReignDAO is Bridge {
             if (receipt.support) {
                 proposal.forVotes = proposal.forVotes.sub(receipt.votes);
             } else {
-                proposal.againstVotes = proposal.againstVotes.sub(receipt.votes);
+                proposal.againstVotes = proposal.againstVotes.sub(
+                    receipt.votes
+                );
             }
         }
 
@@ -276,7 +346,8 @@ contract ReignDAO is Bridge {
         Proposal storage proposal = proposals[proposalId];
         Receipt storage receipt = proposal.receipts[msg.sender];
 
-        uint256 votes = reign.votingPowerAtTs(msg.sender, _getSnapshotTimestamp(proposal));
+        uint256 votes =
+            reign.votingPowerAtTs(msg.sender, _getSnapshotTimestamp(proposal));
 
         require(receipt.hasVoted, "Cannot cancel if not voted yet");
 
@@ -300,10 +371,17 @@ contract ReignDAO is Bridge {
     // the Abrogation Proposal is a mechanism for the DAO participants to veto the execution of a proposal that was already
     // accepted and it is currently queued. For the Abrogation Proposal to pass, 50% + 1 of the vBOND holders
     // must vote FOR the Abrogation Proposal
-    function startAbrogationProposal(uint256 proposalId, string memory description) public {
-        require(state(proposalId) == ProposalState.Queued, "Proposal must be in queue");
+    function startAbrogationProposal(
+        uint256 proposalId,
+        string memory description
+    ) public {
         require(
-            reign.votingPowerAtTs(msg.sender, block.timestamp - 1) >= _getCreationThreshold(),
+            state(proposalId) == ProposalState.Queued,
+            "Proposal must be in queue"
+        );
+        require(
+            reign.votingPowerAtTs(msg.sender, block.timestamp - 1) >=
+                _getCreationThreshold(),
             "Creation threshold not met"
         );
 
@@ -321,7 +399,10 @@ contract ReignDAO is Bridge {
 
     // abrogateProposal cancels a proposal if there's an Abrogation Proposal that passed
     function abrogateProposal(uint256 proposalId) public {
-        require(state(proposalId) == ProposalState.Abrogated, "Cannot be abrogated");
+        require(
+            state(proposalId) == ProposalState.Abrogated,
+            "Cannot be abrogated"
+        );
 
         Proposal storage proposal = proposals[proposalId];
 
@@ -330,43 +411,69 @@ contract ReignDAO is Bridge {
         proposal.canceled = true;
 
         for (uint256 i = 0; i < proposal.targets.length; i++) {
-            cancelTransaction(proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], proposal.eta);
+            cancelTransaction(
+                proposal.targets[i],
+                proposal.values[i],
+                proposal.signatures[i],
+                proposal.calldatas[i],
+                proposal.eta
+            );
         }
 
         emit AbrogationProposalExecuted(proposalId, msg.sender);
     }
 
-    function abrogationProposal_castVote(uint256 proposalId, bool support) public {
-        require(0 < proposalId && proposalId <= lastProposalId, "invalid proposal id");
-
-        AbrogationProposal storage abrogationProposal = abrogationProposals[proposalId];
+    function abrogationProposal_castVote(uint256 proposalId, bool support)
+        public
+    {
         require(
-            state(proposalId) == ProposalState.Queued && abrogationProposal.createTime != 0,
+            0 < proposalId && proposalId <= lastProposalId,
+            "invalid proposal id"
+        );
+
+        AbrogationProposal storage abrogationProposal =
+            abrogationProposals[proposalId];
+        require(
+            state(proposalId) == ProposalState.Queued &&
+                abrogationProposal.createTime != 0,
             "Abrogation Proposal not active"
         );
 
         Receipt storage receipt = abrogationProposal.receipts[msg.sender];
         require(
-            receipt.hasVoted == false || receipt.hasVoted && receipt.support != support,
+            receipt.hasVoted == false ||
+                (receipt.hasVoted && receipt.support != support),
             "Already voted this option"
         );
 
-        uint256 votes = reign.votingPowerAtTs(msg.sender, abrogationProposal.createTime - 1);
+        uint256 votes =
+            reign.votingPowerAtTs(
+                msg.sender,
+                abrogationProposal.createTime - 1
+            );
         require(votes > 0, "no voting power");
 
         // means it changed its vote
         if (receipt.hasVoted) {
             if (receipt.support) {
-                abrogationProposal.forVotes = abrogationProposal.forVotes.sub(receipt.votes);
+                abrogationProposal.forVotes = abrogationProposal.forVotes.sub(
+                    receipt.votes
+                );
             } else {
-                abrogationProposal.againstVotes = abrogationProposal.againstVotes.sub(receipt.votes);
+                abrogationProposal.againstVotes = abrogationProposal
+                    .againstVotes
+                    .sub(receipt.votes);
             }
         }
 
         if (support) {
-            abrogationProposal.forVotes = abrogationProposal.forVotes.add(votes);
+            abrogationProposal.forVotes = abrogationProposal.forVotes.add(
+                votes
+            );
         } else {
-            abrogationProposal.againstVotes = abrogationProposal.againstVotes.add(votes);
+            abrogationProposal.againstVotes = abrogationProposal
+                .againstVotes
+                .add(votes);
         }
 
         receipt.hasVoted = true;
@@ -377,24 +484,37 @@ contract ReignDAO is Bridge {
     }
 
     function abrogationProposal_cancelVote(uint256 proposalId) public {
-        require(0 < proposalId && proposalId <= lastProposalId, "invalid proposal id");
+        require(
+            0 < proposalId && proposalId <= lastProposalId,
+            "invalid proposal id"
+        );
 
-        AbrogationProposal storage abrogationProposal = abrogationProposals[proposalId];
+        AbrogationProposal storage abrogationProposal =
+            abrogationProposals[proposalId];
         Receipt storage receipt = abrogationProposal.receipts[msg.sender];
 
         require(
-            state(proposalId) == ProposalState.Queued && abrogationProposal.createTime != 0,
+            state(proposalId) == ProposalState.Queued &&
+                abrogationProposal.createTime != 0,
             "Abrogation Proposal not active"
         );
 
-        uint256 votes = reign.votingPowerAtTs(msg.sender, abrogationProposal.createTime - 1);
+        uint256 votes =
+            reign.votingPowerAtTs(
+                msg.sender,
+                abrogationProposal.createTime - 1
+            );
 
         require(receipt.hasVoted, "Cannot cancel if not voted yet");
 
         if (receipt.support) {
-            abrogationProposal.forVotes = abrogationProposal.forVotes.sub(votes);
+            abrogationProposal.forVotes = abrogationProposal.forVotes.sub(
+                votes
+            );
         } else {
-            abrogationProposal.againstVotes = abrogationProposal.againstVotes.sub(votes);
+            abrogationProposal.againstVotes = abrogationProposal
+                .againstVotes
+                .sub(votes);
         }
 
         receipt.hasVoted = false;
@@ -409,7 +529,10 @@ contract ReignDAO is Bridge {
     // ======================================================================================================
 
     function state(uint256 proposalId) public view returns (ProposalState) {
-        require(0 < proposalId && proposalId <= lastProposalId, "invalid proposal id");
+        require(
+            0 < proposalId && proposalId <= lastProposalId,
+            "invalid proposal id"
+        );
 
         Proposal storage proposal = proposals[proposalId];
 
@@ -421,16 +544,27 @@ contract ReignDAO is Bridge {
             return ProposalState.Executed;
         }
 
-        if (block.timestamp <= proposal.createTime + proposal.parameters.warmUpDuration) {
+        if (
+            block.timestamp <=
+            proposal.createTime + proposal.parameters.warmUpDuration
+        ) {
             return ProposalState.WarmUp;
         }
 
-        if (block.timestamp <= proposal.createTime + proposal.parameters.warmUpDuration + proposal.parameters.activeDuration) {
+        if (
+            block.timestamp <=
+            proposal.createTime +
+                proposal.parameters.warmUpDuration +
+                proposal.parameters.activeDuration
+        ) {
             return ProposalState.Active;
         }
 
-        if ((proposal.forVotes + proposal.againstVotes) < _getQuorum(proposal) ||
-            (proposal.forVotes < _getMinForVotes(proposal))) {
+        if (
+            (proposal.forVotes + proposal.againstVotes) <
+            _getQuorum(proposal) ||
+            (proposal.forVotes < _getMinForVotes(proposal))
+        ) {
             return ProposalState.Failed;
         }
 
@@ -446,37 +580,63 @@ contract ReignDAO is Bridge {
             return ProposalState.Abrogated;
         }
 
-        if (block.timestamp <= proposal.eta + proposal.parameters.gracePeriodDuration) {
+        if (
+            block.timestamp <=
+            proposal.eta + proposal.parameters.gracePeriodDuration
+        ) {
             return ProposalState.Grace;
         }
 
         return ProposalState.Expired;
     }
 
-    function getReceipt(uint256 proposalId, address voter) public view returns (Receipt memory) {
+    function getReceipt(uint256 proposalId, address voter)
+        public
+        view
+        returns (Receipt memory)
+    {
         return proposals[proposalId].receipts[voter];
     }
 
-    function getProposalParameters(uint256 proposalId) public view returns (ProposalParameters memory) {
+    function getProposalParameters(uint256 proposalId)
+        public
+        view
+        returns (ProposalParameters memory)
+    {
         return proposals[proposalId].parameters;
     }
 
-    function getAbrogationProposalReceipt(uint256 proposalId, address voter) public view returns (Receipt memory) {
+    function getAbrogationProposalReceipt(uint256 proposalId, address voter)
+        public
+        view
+        returns (Receipt memory)
+    {
         return abrogationProposals[proposalId].receipts[voter];
     }
 
-    function getActions(uint256 proposalId) public view returns (
-        address[] memory targets,
-        uint256[] memory values,
-        string[] memory signatures,
-        bytes[] memory calldatas
-    ) {
+    function getActions(uint256 proposalId)
+        public
+        view
+        returns (
+            address[] memory targets,
+            uint256[] memory values,
+            string[] memory signatures,
+            bytes[] memory calldatas
+        )
+    {
         Proposal storage p = proposals[proposalId];
         return (p.targets, p.values, p.signatures, p.calldatas);
     }
 
-    function getProposalQuorum(uint256 proposalId) public view returns (uint256) {
-        require(0 < proposalId && proposalId <= lastProposalId, "invalid proposal id");
+    function getProposalQuorum(uint256 proposalId)
+        public
+        view
+        returns (uint256)
+    {
+        require(
+            0 < proposalId && proposalId <= lastProposalId,
+            "invalid proposal id"
+        );
 
         return _getQuorum(proposals[proposalId]);
     }
@@ -485,10 +645,15 @@ contract ReignDAO is Bridge {
     // internal methods
     // ======================================================================================================
 
-    function _canCancelProposal(uint256 proposalId) internal view returns (bool){
+    function _canCancelProposal(uint256 proposalId)
+        internal
+        view
+        returns (bool)
+    {
         Proposal storage proposal = proposals[proposalId];
 
-        if (msg.sender == proposal.proposer ||
+        if (
+            msg.sender == proposal.proposer ||
             reign.votingPower(proposal.proposer) < _getCreationThreshold()
         ) {
             return true;
@@ -497,7 +662,11 @@ contract ReignDAO is Bridge {
         return false;
     }
 
-    function _isCancellableState(uint256 proposalId) internal view returns (bool) {
+    function _isCancellableState(uint256 proposalId)
+        internal
+        view
+        returns (bool)
+    {
         ProposalState s = state(proposalId);
 
         return s == ProposalState.WarmUp || s == ProposalState.Active;
@@ -506,37 +675,61 @@ contract ReignDAO is Bridge {
     function _isLiveState(uint256 proposalId) internal view returns (bool) {
         ProposalState s = state(proposalId);
 
-        return s == ProposalState.WarmUp ||
-        s == ProposalState.Active ||
-        s == ProposalState.Accepted ||
-        s == ProposalState.Queued ||
-        s == ProposalState.Grace;
+        return
+            s == ProposalState.WarmUp ||
+            s == ProposalState.Active ||
+            s == ProposalState.Accepted ||
+            s == ProposalState.Queued ||
+            s == ProposalState.Grace;
     }
 
     function _canBeExecuted(uint256 proposalId) internal view returns (bool) {
         return state(proposalId) == ProposalState.Grace;
     }
 
-    function _getMinForVotes(Proposal storage proposal) internal view returns (uint256) {
-        return (proposal.forVotes + proposal.againstVotes).mul(proposal.parameters.acceptanceThreshold).div(100);
+    function _getMinForVotes(Proposal storage proposal)
+        internal
+        view
+        returns (uint256)
+    {
+        return
+            (proposal.forVotes + proposal.againstVotes)
+                .mul(proposal.parameters.acceptanceThreshold)
+                .div(100);
     }
 
     function _getCreationThreshold() internal view returns (uint256) {
-        return reign.bondStaked().div(100);
+        return reign.reignStaked().div(100);
     }
 
     // Returns the timestamp of the snapshot for a given proposal
     // If the current block's timestamp is equal to `proposal.createTime + warmUpDuration` then the state function
     // will return WarmUp as state which will prevent any vote to be cast which will gracefully avoid any flashloan attack
-    function _getSnapshotTimestamp(Proposal storage proposal) internal view returns (uint256) {
+    function _getSnapshotTimestamp(Proposal storage proposal)
+        internal
+        view
+        returns (uint256)
+    {
         return proposal.createTime + proposal.parameters.warmUpDuration;
     }
 
-    function _getQuorum(Proposal storage proposal) internal view returns (uint256) {
-        return reign.bondStakedAtTs(_getSnapshotTimestamp(proposal)).mul(proposal.parameters.minQuorum).div(100);
+    function _getQuorum(Proposal storage proposal)
+        internal
+        view
+        returns (uint256)
+    {
+        return
+            reign
+                .reignStakedAtTs(_getSnapshotTimestamp(proposal))
+                .mul(proposal.parameters.minQuorum)
+                .div(100);
     }
 
-    function _proposalAbrogated(uint256 proposalId) internal view returns (bool) {
+    function _proposalAbrogated(uint256 proposalId)
+        internal
+        view
+        returns (bool)
+    {
         Proposal storage p = proposals[proposalId];
         AbrogationProposal storage cp = abrogationProposals[proposalId];
 
@@ -544,6 +737,6 @@ contract ReignDAO is Bridge {
             return false;
         }
 
-        return cp.forVotes >= reign.bondStakedAtTs(cp.createTime - 1).div(2);
+        return cp.forVotes >= reign.reignStakedAtTs(cp.createTime - 1).div(2);
     }
 }

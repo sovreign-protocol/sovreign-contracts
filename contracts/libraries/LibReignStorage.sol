@@ -7,24 +7,23 @@ import "../interfaces/IRewards.sol";
 
 library LibReignStorage {
     bytes32 constant STORAGE_POSITION = keccak256("ch.dialectic.reign.storage");
-    struct EpochCheckpoint {
-        uint128 epochId;
-        uint256 amount;
-    }
-
     struct Checkpoint {
         uint256 timestamp;
         uint256 amount;
     }
 
-    struct Stake {
+    struct EpochBalance {
         uint128 epochId;
-        uint256 timestamp;
         uint128 multiplier;
-        uint256 expiryTimestamp;
-        address delegatedTo;
         uint256 startBalance;
         uint256 newDeposits;
+    }
+
+    struct Stake {
+        uint256 timestamp;
+        uint256 amount;
+        uint256 expiryTimestamp;
+        address delegatedTo;
         uint256 stakingBoost;
     }
 
@@ -33,14 +32,15 @@ library LibReignStorage {
         // mapping of user address to history of Stake objects
         // every user action creates a new object in the history
         mapping(address => Stake[]) userStakeHistory;
+        mapping(address => EpochBalance[]) userBalanceHistory;
         mapping(address => uint128) lastWithdrawEpochId;
-        // array of bond staked Checkpoint
+        // array of reign staked Checkpoint
         // deposits/withdrawals create a new object in the history (max one per block)
-        Checkpoint[] bondStakedHistory;
+        Checkpoint[] reignStakedHistory;
         // mapping of user address to history of delegated power
         // every delegate/stopDelegate call create a new checkpoint (max one per block)
-        mapping(address => EpochCheckpoint[]) delegatedPowerHistory;
-        IERC20 bond;
+        mapping(address => Checkpoint[]) delegatedPowerHistory;
+        IERC20 reign;
         IRewards rewards;
         uint256 epoch1Start;
         uint256 epochDuration;

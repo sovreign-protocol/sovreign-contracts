@@ -49,22 +49,12 @@ interface IReign {
         view
         returns (uint256);
 
-    // votingPowerAtTs returns the voting power (bonus included) + delegated voting power for a user at a point in time
-    function votingPowerAtEpoch(address user, uint128 epochId)
-        external
-        view
-        returns (uint256);
-
     // bondStaked returns the total raw amount of BOND staked at the current block
-    function bondStaked() external view returns (uint256);
+    function reignStaked() external view returns (uint256);
 
-    // bondStakedAtEpoch returns the total raw amount of BOND users have deposited into the contract
+    // reignStakedAtTs returns the total raw amount of BOND users have deposited into the contract
     // it does not include any bonus
-    function bondStakedAtEpoch(uint128 epochId) external view returns (uint256);
-
-    // bondStakedAtTs returns the total raw amount of BOND users have deposited into the contract
-    // it does not include any bonus
-    function bondStakedAtTs(uint256 timestamp) external view returns (uint256);
+    function reignStakedAtTs(uint256 timestamp) external view returns (uint256);
 
     // delegatedPower returns the total voting power that a user received from other users
     function delegatedPower(address user) external view returns (uint256);
@@ -75,13 +65,11 @@ interface IReign {
         view
         returns (uint256);
 
-    // multiplierOf calculates the multiplier on the user's stake at the current timestamp
-    // it includes the decay mechanism
-    function multiplierOf(address user) external view returns (uint256);
+    // stakingBoost calculates the multiplier on the user's stake at the current timestamp
+    function stakingBoost(address user) external view returns (uint256);
 
-    // multiplierAtTs calculates the multiplier at a given timestamp based on the user's stake a the given timestamp
-    // it includes the decay mechanism
-    function multiplierAtTs(address user, uint256 timestamp)
+    // stackingBoostAtTs calculates the multiplier at a given timestamp based on the user's stake a the given timestamp
+    function stackingBoostAtTs(address user, uint256 timestamp)
         external
         view
         returns (uint256);
@@ -95,8 +83,8 @@ interface IReign {
     // returns the last timestamp in which the user intercated with the staking contarct
     function userLastAction(address user) external view returns (uint256);
 
-    // bondCirculatingSupply returns the current circulating supply of BOND
-    function bondCirculatingSupply() external view returns (uint256);
+    // reignCirculatingSupply returns the current circulating supply of BOND
+    function reignCirculatingSupply() external view returns (uint256);
 
     function getEpochDuration() external view returns (uint256);
 

@@ -16,7 +16,7 @@ describe('Reign', function () {
     const duration = 604800;
 
 
-    let reign: ReignFacet, bond: ERC20Mock, changeRewards: ChangeRewardsFacet;
+    let reign: ReignFacet, reignToken: ERC20Mock, changeRewards: ChangeRewardsFacet;
 
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
@@ -26,7 +26,7 @@ describe('Reign', function () {
 
     before(async function () {
         await setupSigners();
-        bond = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
+        reignToken = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
 
         const cutFacet = await deploy.deployContract('DiamondCutFacet');
         const loupeFacet = await deploy.deployContract('DiamondLoupeFacet');
@@ -42,7 +42,7 @@ describe('Reign', function () {
 
         changeRewards = (await diamondAsFacet(diamond, 'ChangeRewardsFacet')) as ChangeRewardsFacet;
         reign = (await diamondAsFacet(diamond, 'ReignFacet')) as ReignFacet;
-        await reign.initReign(bond.address, startEpoch, duration);
+        await reign.initReign(reignToken.address, startEpoch, duration);
 
 
         await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
@@ -93,15 +93,15 @@ describe('Reign', function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
 
-            expect(await bond.transferFromCalled()).to.be.true;
-            expect(await bond.balanceOf(reign.address)).to.be.equal(amount);
+            expect(await reignToken.transferFromCalled()).to.be.true;
+            expect(await reignToken.balanceOf(reign.address)).to.be.equal(amount);
         });
 
-        it('updates the total of bond locked', async function () {
+        it('updates the total of reignToken locked', async function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
 
-            expect(await reign.bondStaked()).to.be.equal(amount);
+            expect(await reign.reignStaked()).to.be.equal(amount);
         });
 
         it('updates the delegated user\'s voting power if user delegated his balance', async function () {
@@ -117,9 +117,9 @@ describe('Reign', function () {
         });
 
         it('works with multiple deposit in same block', async function () {
-            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, bond.address, helpers.zeroAddress])) as MulticallMock;
+            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, reignToken.address, helpers.zeroAddress])) as MulticallMock;
 
-            await bond.mint(multicall.address, amount.mul(5));
+            await reignToken.mint(multicall.address, amount.mul(5));
 
             await multicall.multiDeposit(amount);
 
@@ -194,10 +194,10 @@ describe('Reign', function () {
         });
     });
 
-    describe('bondStakedAtTs', function () {
+    describe('reignStakedAtTs', function () {
         it('returns 0 if no checkpoint', async function () {
             const ts = await helpers.getLatestBlockTimestamp();
-            expect(await reign.bondStakedAtTs(ts)).to.be.equal(0);
+            expect(await reign.reignStakedAtTs(ts)).to.be.equal(0);
         });
 
         it('returns 0 if timestamp older than first checkpoint', async function () {
@@ -206,7 +206,7 @@ describe('Reign', function () {
 
             const ts = await helpers.getLatestBlockTimestamp();
 
-            expect(await reign.bondStakedAtTs(ts - 1)).to.be.equal(0);
+            expect(await reign.reignStakedAtTs(ts - 1)).to.be.equal(0);
         });
 
         it('returns correct balance if timestamp newer than latest checkpoint', async function () {
@@ -215,7 +215,7 @@ describe('Reign', function () {
 
             const ts = await helpers.getLatestBlockTimestamp();
 
-            expect(await reign.bondStakedAtTs(ts + 1)).to.be.equal(amount);
+            expect(await reign.reignStakedAtTs(ts + 1)).to.be.equal(amount);
         });
 
         it('returns correct balance if timestamp between checkpoints', async function () {
@@ -227,12 +227,12 @@ describe('Reign', function () {
             await helpers.moveAtTimestamp(ts + 30);
             await reign.connect(user).deposit(amount);
 
-            expect(await reign.bondStakedAtTs(ts + 15)).to.be.equal(amount);
+            expect(await reign.reignStakedAtTs(ts + 15)).to.be.equal(amount);
 
             await helpers.moveAtTimestamp(ts + 60);
             await reign.connect(user).deposit(amount);
 
-            expect(await reign.bondStakedAtTs(ts + 45)).to.be.equal(amount.mul(2));
+            expect(await reign.reignStakedAtTs(ts + 45)).to.be.equal(amount.mul(2));
         });
     });
 
@@ -364,22 +364,22 @@ describe('Reign', function () {
             await prepareAccount(user, amount.mul(2));
             await reign.connect(user).deposit(amount.mul(2));
 
-            expect(await bond.balanceOf(reign.address)).to.be.equal(amount.mul(2));
+            expect(await reignToken.balanceOf(reign.address)).to.be.equal(amount.mul(2));
 
             await reign.connect(user).withdraw(amount);
 
-            expect(await bond.transferCalled()).to.be.true;
-            expect(await bond.balanceOf(userAddress)).to.be.equal(amount);
-            expect(await bond.balanceOf(reign.address)).to.be.equal(amount);
+            expect(await reignToken.transferCalled()).to.be.true;
+            expect(await reignToken.balanceOf(userAddress)).to.be.equal(amount);
+            expect(await reignToken.balanceOf(reign.address)).to.be.equal(amount);
         });
 
-        it('updates the total of bond locked', async function () {
+        it('updates the total of reignToken locked', async function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
-            expect(await reign.bondStaked()).to.be.equal(amount);
+            expect(await reign.reignStaked()).to.be.equal(amount);
 
             await reign.connect(user).withdraw(amount);
-            expect(await reign.bondStaked()).to.be.equal(0);
+            expect(await reign.reignStaked()).to.be.equal(0);
         });
 
         it('updates the delegated user\'s voting power if user delegated his balance', async function () {
@@ -472,16 +472,18 @@ describe('Reign', function () {
         });
 
         it('allows user to increase lock', async function () {
-            await prepareAccount(user, amount);
-            await reign.connect(user).deposit(amount);
+            await prepareAccount(happyPirate, amount);
+            await reign.connect(happyPirate).deposit(amount);
 
-            await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
+            let expiryTs = await helpers.getCurrentUnix() + (30 * time.day);
+            await reign.connect(happyPirate).lock(expiryTs);
 
-            await reign.connect(user).lock(await helpers.getCurrentUnix() + (30 * time.day));
+            expect(await reign.userLockedUntil(happyPirateAddress)).to.be.equal(expiryTs);
 
-            const expiryTs = await helpers.getCurrentUnix() + (1 * time.year);
-            await expect(reign.connect(user).lock(expiryTs)).to.not.be.reverted;
-            expect(await reign.userLockedUntil(userAddress)).to.be.equal(expiryTs);
+            expiryTs = await helpers.getCurrentUnix() + (1 * time.year);
+            await reign.connect(happyPirate).lock(expiryTs);
+
+            expect(await reign.userLockedUntil(happyPirateAddress)).to.be.equal(expiryTs);
         });
 
         it('does not block deposits for user', async function () {
@@ -677,33 +679,15 @@ describe('Reign', function () {
         });
     });
 
-    describe('votingPowerAtEpoch', async function () {
-        it('returns correct balance with no lock', async function () {
-            await prepareAccount(user, amount.mul(2));
-
-            //deposit at Epoch 2
-            await helpers.moveAtEpoch(startEpoch, duration, 2);
-            await reign.connect(user).deposit(amount);
-
-            //deposit more at Epoch 3
-            await helpers.moveAtEpoch(startEpoch, duration, 3);
-            await reign.connect(user).deposit(amount);
-
-
-            expect(await reign.votingPowerAtEpoch(userAddress, 1)).to.be.equal(0);
-            expect(await reign.votingPowerAtEpoch(userAddress, 2)).to.be.equal(amount);
-            expect(await reign.votingPowerAtEpoch(userAddress, 3)).to.be.equal(amount.mul(2));
-        });
-    });
 
     describe('votingPowerAtTs', async function () {
-        it('returns correct balance with no lock', async function () {
+        it('returns correct balance with no delegation', async function () {
             await prepareAccount(user, amount.mul(2));
             await reign.connect(user).deposit(amount);
 
             const firstDepositTs = await helpers.getLatestBlockTimestamp();
 
-            await helpers.setNextBlockTimestamp(firstDepositTs + 30 * time.day);
+            await helpers.setNextBlockTimestamp(firstDepositTs + 300);
             await reign.connect(user).deposit(amount);
 
             const secondDepositTs = await helpers.getLatestBlockTimestamp();
@@ -713,6 +697,29 @@ describe('Reign', function () {
             expect(await reign.votingPowerAtTs(userAddress, secondDepositTs - 10)).to.be.equal(amount);
             expect(await reign.votingPowerAtTs(userAddress, secondDepositTs + 10)).to.be.equal(amount.mul(2));
         });
+
+        it('returns correct balance with delegation', async function () {
+            
+            await prepareAccount(user, amount.mul(2));
+            await reign.connect(user).deposit(amount);
+
+            const depositTs = await helpers.getLatestBlockTimestamp();
+
+            await helpers.setNextBlockTimestamp(depositTs + 50);
+            await reign.connect(user).delegate(happyPirateAddress);
+
+            const delegateTs = await helpers.getLatestBlockTimestamp();
+
+            expect(await reign.votingPowerAtTs(userAddress, depositTs - 10)).to.be.equal(0);
+            expect(await reign.votingPowerAtTs(happyPirateAddress, depositTs - 10)).to.be.equal(0);
+            expect(await reign.votingPowerAtTs(userAddress, depositTs + 10)).to.be.equal(amount);
+            expect(await reign.votingPowerAtTs(happyPirateAddress, depositTs + 10)).to.be.equal(0);
+
+            expect(await reign.votingPowerAtTs(userAddress, delegateTs - 10)).to.be.equal(amount);
+            expect(await reign.votingPowerAtTs(happyPirateAddress, delegateTs - 10)).to.be.equal(0);
+            expect(await reign.votingPowerAtTs(userAddress, delegateTs + 10)).to.be.equal(0);
+            expect(await reign.votingPowerAtTs(happyPirateAddress, delegateTs + 10)).to.be.equal(amount);
+           });
     });
 
     describe('delegate', async function () {
@@ -777,31 +784,26 @@ describe('Reign', function () {
             await prepareAccount(happyPirate, amount);
             await reign.connect(happyPirate).deposit(amount);
 
-            // amount is delegated in this epoch
             await reign.connect(user).delegate(flyingParrotAddress);
-            const delegate1Epoch = (await reign.getEpoch()).toNumber() 
+            const delegate1Ts = await helpers.getLatestBlockTimestamp();
 
-            // another amount is delegated in the epoch after the first
-            await helpers.moveAtEpoch(startEpoch, duration, delegate1Epoch + 1);
+            await moveAtTimestamp(delegate1Ts + 100);
             await reign.connect(happyPirate).delegate(flyingParrotAddress);
-            const delegate2Epoch = (await reign.getEpoch()).toNumber() 
+            const delegate2Ts = await helpers.getLatestBlockTimestamp();
 
-            // amount is deposited in the third epoch after, automatically delegated
-            await helpers.moveAtEpoch(startEpoch, duration, delegate2Epoch + 1);
+            await moveAtTimestamp(delegate2Ts + 100);
             await reign.connect(user).deposit(amount);
-            const delegate3Epoch = (await reign.getEpoch()).toNumber() 
+            const delegate3Ts = await helpers.getLatestBlockTimestamp();
 
-            // amount is deposited in the third epoch after, not delegated
-            await helpers.moveAtEpoch(startEpoch, duration, delegate3Epoch + 1);
+            await moveAtTimestamp(delegate3Ts+100);
             await prepareAccount(flyingParrot, amount);
             await reign.connect(flyingParrot).deposit(amount);
-            const depositEpoch = (await reign.getEpoch()).toNumber() 
+            const depositTs = await helpers.getLatestBlockTimestamp();
 
-            expect(await reign.votingPowerAtEpoch(flyingParrotAddress, delegate1Epoch - 1)).to.be.equal(0);
-            expect(await reign.votingPowerAtEpoch(flyingParrotAddress, delegate1Epoch)).to.be.equal(amount);
-            expect(await reign.votingPowerAtEpoch(flyingParrotAddress, delegate2Epoch)).to.be.equal(amount.mul(2));
-            expect(await reign.votingPowerAtEpoch(flyingParrotAddress, delegate3Epoch)).to.be.equal(amount.mul(3));
-            expect(await reign.votingPowerAtEpoch(flyingParrotAddress, depositEpoch)).to.be.equal(amount.mul(4));
+            expect(await reign.votingPowerAtTs(flyingParrotAddress, depositTs -1)).to.be.equal(amount.mul(3));
+            expect(await reign.votingPowerAtTs(flyingParrotAddress, delegate3Ts - 1)).to.be.equal(amount.mul(2));
+            expect(await reign.votingPowerAtTs(flyingParrotAddress, delegate2Ts - 1)).to.be.equal(amount);
+            expect(await reign.votingPowerAtTs(flyingParrotAddress, delegate1Ts - 1)).to.be.equal(0);
         });
 
         it('does not modify user balance', async function () {
@@ -813,9 +815,9 @@ describe('Reign', function () {
         });
 
         it('works with multiple calls in the same block', async function () {
-            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, bond.address, helpers.zeroAddress])) as MulticallMock;
+            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, reignToken.address, helpers.zeroAddress])) as MulticallMock;
 
-            await bond.mint(multicall.address, amount);
+            await reignToken.mint(multicall.address, amount);
 
             await multicall.multiDelegate(amount, userAddress, happyPirateAddress);
 
@@ -858,20 +860,14 @@ describe('Reign', function () {
             await prepareAccount(user, amount);
             await reign.connect(user).deposit(amount);
             await reign.connect(user).delegate(happyPirateAddress);
-            const delegateEpoch = (await reign.getEpoch()).toNumber()
-            expect(await reign.votingPower(happyPirateAddress)).to.be.equal(amount);
-
-            await helpers.moveAtEpoch(startEpoch, duration, delegateEpoch +1)
+            const delegateTs = await helpers.getLatestBlockTimestamp();
 
             await reign.connect(user).stopDelegate();
-            expect(await reign.votingPower(happyPirateAddress)).to.be.equal(0);
+            const stopTs = await helpers.getLatestBlockTimestamp();
 
-            const stopEpoch = (await reign.getEpoch()).toNumber()
-
-            expect(await reign.votingPowerAtEpoch(happyPirateAddress, delegateEpoch - 1)).to.be.equal(0);
-            expect(await reign.votingPowerAtEpoch(happyPirateAddress, stopEpoch - 1)).to.be.equal(amount);
-            expect(await reign.votingPowerAtEpoch(happyPirateAddress, stopEpoch)).to.be.equal(0);
-            expect(await reign.votingPowerAtEpoch(happyPirateAddress, stopEpoch + 1)).to.be.equal(0);
+            expect(await reign.votingPowerAtTs(happyPirateAddress, delegateTs - 1)).to.be.equal(0);
+            expect(await reign.votingPowerAtTs(happyPirateAddress, stopTs - 1)).to.be.equal(amount);
+            expect(await reign.votingPowerAtTs(happyPirateAddress, stopTs + 1)).to.be.equal(0);
         });
 
         it('does not change any other delegated balances for the delegatee', async function () {
@@ -1012,7 +1008,7 @@ describe('Reign', function () {
     }
 
     async function prepareAccount (account: Signer, balance: BigNumber) {
-        await bond.mint(await account.getAddress(), balance);
-        await bond.connect(account).approve(reign.address, balance);
+        await reignToken.mint(await account.getAddress(), balance);
+        await reignToken.connect(account).approve(reign.address, balance);
     }
 });
