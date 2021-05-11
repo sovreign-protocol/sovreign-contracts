@@ -29,7 +29,7 @@ contract Pool is IPool, PoolErc20 {
     address public override token;
     address public override svrToken;
     address public override reignToken;
-    address public override treasoury;
+    address public override treasury;
     address public override liquidityBuffer;
 
     uint256 private reserve;
@@ -61,7 +61,7 @@ contract Pool is IPool, PoolErc20 {
         ); // sufficient check, poolController will initialize once after deployment
         controller = IPoolController(msg.sender);
         token = _token;
-        treasoury = controller.treasoury();
+        treasury = controller.treasury();
         svrToken = controller.svrToken();
         reignToken = controller.reignToken();
         liquidityBuffer = controller.liquidityBuffer();
@@ -89,7 +89,7 @@ contract Pool is IPool, PoolErc20 {
                 _reignToken.allowance(msg.sender, address(this)) >= depositFee,
                 "Insufficient allowance"
             );
-            _reignToken.safeTransferFrom(msg.sender, treasoury, depositFee);
+            _reignToken.safeTransferFrom(msg.sender, treasury, depositFee);
         }
 
         uint256 _totalSupply = totalSupply; // gas savings
