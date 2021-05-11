@@ -22,7 +22,7 @@ describe('PoolController', function () {
     let  pool:Pool;
 
     let user: Signer, userAddress: string;
-    let treasoury: Signer, treasouryAddress: string;
+    let treasury: Signer, treasuryAddress: string;
     let liquidityBufferAddress: string;
     let reignDAO: Signer, reignDAOAddress: string;
     let newAddress:string;
@@ -63,7 +63,7 @@ describe('PoolController', function () {
         
         poolController = (
             await deploy.deployContract('PoolController', [
-                balancer.address, svr.address, reign.address, reignDAOAddress, treasouryAddress, liquidityBufferAddress
+                balancer.address, svr.address, reign.address, reignDAOAddress, treasuryAddress, liquidityBufferAddress
             ])
         ) as PoolController; 
 
@@ -247,7 +247,7 @@ describe('PoolController', function () {
            expect(await poolController.svrToken()).to.be.eq(svr.address)
            expect(await poolController.reignToken()).to.be.eq(reign.address)
            expect(await poolController.reignDAO()).to.be.eq(reignDAOAddress)
-           expect(await poolController.treasoury()).to.be.eq(treasouryAddress)
+           expect(await poolController.treasury()).to.be.eq(treasuryAddress)
         });
 
         describe('updates BasketBalancer address correctly', async function () {
@@ -343,22 +343,22 @@ describe('PoolController', function () {
             });
         });
 
-        describe('updates Treasoury address correctly', async function () {
+        describe('updates Treasury address correctly', async function () {
             it('reverts if not called by DAO', async function () {
                 await expect(
-                    poolController.connect(user).setTreasoury(newAddress)
+                    poolController.connect(user).setTreasury(newAddress)
                 ).to.be.revertedWith('SoVReign: FORBIDDEN');
             });
 
             it('reverts if called with Zero Address', async function () {
                 await expect(
-                    poolController.connect(reignDAO).setTreasoury(helpers.zeroAddress)
+                    poolController.connect(reignDAO).setTreasury(helpers.zeroAddress)
                 ).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
             });
 
             it('sets correct address otherwise', async function () {
-                await expect(poolController.connect(reignDAO).setTreasoury(newAddress)).to.not.be.reverted;
-                expect(await poolController.treasoury()).to.be.eq(newAddress)
+                await expect(poolController.connect(reignDAO).setTreasury(newAddress)).to.not.be.reverted;
+                expect(await poolController.treasury()).to.be.eq(newAddress)
             });
         });
 
@@ -443,11 +443,11 @@ describe('PoolController', function () {
     async function setupSigners () {
         const accounts = await ethers.getSigners();
         user = accounts[0];
-        treasoury = accounts[1];
+        treasury = accounts[1];
         reignDAO = accounts[2];
 
         userAddress = await user.getAddress();
-        treasouryAddress = await treasoury.getAddress();
+        treasuryAddress = await treasury.getAddress();
         reignDAOAddress = await reignDAO.getAddress();
         newAddress = await accounts[3].getAddress();
         liquidityBufferAddress = await accounts[4].getAddress();
