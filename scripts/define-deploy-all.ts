@@ -2,13 +2,12 @@ import {DeployConfig} from "./config";
 import * as deploy from "../test/helpers/deploy";
 import {
     BasketBalancer,
-    ReignDAO,
-    InterestStrategy,
+    GovRewards,
     PoolController,
+    ReignDAO,
     ReignDiamond,
     ReignFacet,
     ReignToken,
-    Rewards,
     RewardsVault,
     SvrToken
 } from "../typechain";
@@ -16,8 +15,7 @@ import {diamondAsFacet} from "../test/helpers/diamond";
 import {BigNumber} from "ethers";
 import * as helpers from "../test/helpers/governance-helpers";
 import {day} from "../test/helpers/time";
-import {moveAtTimestamp} from "../test/helpers/helpers";
-import {stakingEpochStart}  from "../test/helpers/helpers";
+import {moveAtTimestamp, stakingEpochStart} from "../test/helpers/helpers";
 
 export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
 
@@ -33,8 +31,11 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     const ownershipFacet = await deploy.deployContract('OwnershipFacet');
     console.log(`OwnershipFacet deployed to: ${ownershipFacet.address.toLowerCase()}`);
 
-    const crf = await deploy.deployContract('ChangeRewardsFacet');
-    console.log(`ChangeRewardsFacet deployed to: ${crf.address.toLowerCase()}`);
+    const changeRewardsFacet = await deploy.deployContract('ChangeRewardsFacet');
+    console.log(`ChangeRewardsFacet deployed to: ${changeRewardsFacet.address}`);
+
+    const epochClockFacet = await deploy.deployContract('EpochClockFacet');
+    console.log(`EpochClockFacet deployed to: ${epochClockFacet.address}`);
 
     const reignFacet = await deploy.deployContract('ReignFacet');
     console.log(`ReignFacet deployed at: ${reignFacet.address.toLowerCase()}`);
@@ -44,7 +45,7 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     const reignDiamond = await deploy.deployDiamond(
         'ReignDiamond',
-        [cutFacet, loupeFacet, ownershipFacet, crf, reignFacet],
+        [cutFacet, loupeFacet, ownershipFacet, changeRewardsFacet, reignFacet, epochClockFacet],
         c.sovReignOwnerAddr,
     );
     c.reignDiamond = reignDiamond;
@@ -91,38 +92,24 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     console.log(`ReignDAO deployed at: ${reignDAO.address.toLowerCase()}`);
 
     ///////////////////////////
-    // Deploy "Rewards" contract:
+    // Init "Reign":
     ///////////////////////////
-    const rewards = (await deploy.deployContract(
-        'Rewards', [c.sovReignOwnerAddr, reignToken.address, reignDiamond.address])) as Rewards;
-    c.rewards = rewards;
-    console.log(`Rewards deployed at: ${rewards.address.toLowerCase()}`);
+    const reignDiamondFacet = (await diamondAsFacet(reignDiamond, 'ReignFacet')) as ReignFacet;
+    console.log(`Calling initReign() at '${reignDiamondFacet.address.toLowerCase()}' (ReignDiamond contract)`);
+    await reignDiamondFacet.connect(c.sovReignOwnerAcct).initReign(reignToken.address, c.epoch1stStartTs, c.epochDuration);
 
     ///////////////////////////
-    // Init "Rewards":
+    // Deploy "GovRewards" contract:
     ///////////////////////////
-    console.log(`Calling setupPullToken() at '${rewards.address.toLowerCase()}' (Rewards contract)`);
-    await rewards.connect(c.sovReignOwnerAcct).setupPullToken(rewardsVault.address, c.rewardsStartTs, c.rewardsEndTs, c.rewardsAmount);
+    const govRewards = (await deploy.deployContract('GovRewards', [reignToken.address, reignDiamond.address, rewardsVault.address])) as GovRewards;
+    console.log(`GovRewards deployed at: ${govRewards.address}`);
 
     ///////////////////////////
     // Set Allowance in "RewardsVault"
     // giving permission to "Rewards" contract:
     ///////////////////////////
     console.log(`Calling setAllowance() at '${rewardsVault.address.toLowerCase()}' (RewardsVault contract)`);
-    await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(rewards.address, c.amountReignTokenToRewardsVault)
-
-    ///////////////////////////
-    // Transfer ownership of "Rewards":
-    ///////////////////////////
-    console.log(`Calling transferOwnership() at '${rewards.address.toLowerCase()}' (Rewards contract) to addr '${reignDAO.address.toLowerCase()}'`);
-    await rewards.connect(c.sovReignOwnerAcct).transferOwnership(reignDAO.address.toLowerCase());
-
-    ///////////////////////////
-    // Init "Reign":
-    ///////////////////////////
-    console.log(`Calling initReign() at '${rewards.address.toLowerCase()}' (ReignDiamond contract)`);
-    const reignDiamondFacet = (await diamondAsFacet(reignDiamond, 'ReignFacet')) as ReignFacet;
-    await reignDiamondFacet.connect(c.sovReignOwnerAcct).initReign(reignToken.address, rewards.address);
+    await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(govRewards.address, c.amountReignTokenToRewardsVault)
 
     ///////////////////////////
     // Init "ReignDAO":
@@ -149,23 +136,6 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     ) as BasketBalancer;
     c.basketBalancer = basketBalancer1;
     console.log(`BasketBalancer deployed at: ${basketBalancer1.address.toLowerCase()}`);
-
-    ///////////////////////////
-    // Deploy "InterestStrategy" contract:
-    ///////////////////////////
-    const interestStrategy1 = await deploy.deployContract(
-        'InterestStrategy',
-        [
-            // both params were taken from the InterestStrategy.test.ts
-            BigNumber.from(3).mul(10 ** 10),
-            BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
-            BigNumber.from(0),
-            reignDiamond.address,
-            stakingEpochStart
-        ]
-    ) as InterestStrategy;
-    c.interestStrategy = interestStrategy1;
-    console.log(`InterestStrategy deployed at: ${interestStrategy1.address.toLowerCase()}`);
 
     ///////////////////////////
     // Deploy "PoolController" contract:
