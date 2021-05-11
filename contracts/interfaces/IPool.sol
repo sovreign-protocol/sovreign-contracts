@@ -13,7 +13,7 @@ interface IPool {
 
     function token() external view returns (address);
 
-    function treasoury() external view returns (address);
+    function treasury() external view returns (address);
 
     function liquidityBuffer() external view returns (address);
 

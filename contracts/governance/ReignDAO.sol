@@ -698,6 +698,7 @@ contract ReignDAO is Bridge {
                 .div(100);
     }
 
+    // TODO: can we set this as parameter?
     function _getCreationThreshold() internal view returns (uint256) {
         return reign.reignStaked().div(100);
     }
