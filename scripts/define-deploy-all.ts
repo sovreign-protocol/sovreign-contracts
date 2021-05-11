@@ -2,7 +2,7 @@ import {DeployConfig} from "./config";
 import * as deploy from "../test/helpers/deploy";
 import {
     BasketBalancer,
-    GovRewards,
+    GovRewards, LiquidityBufferVault,
     PoolController,
     ReignDAO,
     ReignDiamond,
@@ -64,6 +64,13 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     const rewardsVault = await deploy.deployContract('RewardsVault', [reignToken.address]) as RewardsVault;
     c.rewardsVault = rewardsVault;
     console.log(`RewardsVault deployed at: ${rewardsVault.address.toLowerCase()}`);
+
+    ///////////////////////////
+    // Deploy "LiquidityBufferVault" contract:
+    ///////////////////////////
+    const liquidityBufferVault = await deploy.deployContract('LiquidityBufferVault', [reignToken.address]) as LiquidityBufferVault;
+    c.liquidityBufferVault = liquidityBufferVault;
+    console.log(`LiquidityBufferVault deployed at: ${liquidityBufferVault.address.toLowerCase()}`);
 
     ///////////////////////////
     // Mint coins "ReignToken" contract:
@@ -148,7 +155,8 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
             reignToken.address,
             reignDAO.address,
             // we're using the reignDAO as "treasury"
-            reignDAO.address
+            reignDAO.address,
+            liquidityBufferVault.address
         ]
     ) as PoolController;
     c.poolController = poolController;
@@ -165,7 +173,7 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     // Set Controller in "ReignToken"
     ///////////////////////////
     // set controller to ReignDiamond:
-    await reignToken.connect(c.sovReignOwnerAcct).setController(poolController.address)
+    await reignToken.connect(c.sovReignOwnerAcct).setOwner(poolController.address)
     console.log(`ReignToken controller set: '${poolController.address.toLowerCase()}' (PoolController contract)`);
 
     ///////////////////////////

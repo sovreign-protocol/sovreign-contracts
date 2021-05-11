@@ -3,7 +3,16 @@ import {BigNumber, Contract} from "ethers";
 import {getAccount} from "../test/helpers/accounts";
 import * as helpers from "../test/helpers/helpers";
 import {addMinutes} from "../test/helpers/helpers";
-import {BasketBalancer, GovRewards, PoolController, ReignDAO, ReignToken, RewardsVault, SvrToken} from "../typechain";
+import {
+    BasketBalancer,
+    GovRewards,
+    LiquidityBufferVault,
+    PoolController,
+    ReignDAO,
+    ReignToken,
+    RewardsVault,
+    SvrToken
+} from "../typechain";
 
 export async function deployConfig(): Promise<DeployConfig> {
     const sovReignOwnerAddr: string = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
@@ -54,6 +63,7 @@ export class DeployConfig {
     // base contracts:
     public reignDiamond?: Contract;
     public rewardsVault?: RewardsVault;
+    public liquidityBufferVault?: LiquidityBufferVault;
     public reignToken?: ReignToken;
     public svrToken?: SvrToken;
     public govRewards?: GovRewards;
@@ -78,16 +88,7 @@ export class DeployConfig {
         amountReignTokenToUser2: BigNumber,
         epoch1stStartTs: number,
         epochDuration: number,
-        rewardsAmount: BigNumber,
-        reignDiamond?: Contract,
-        rewardsVault?: RewardsVault,
-        reignToken?: ReignToken,
-        svrToken?: SvrToken,
-        govRewards?: GovRewards,
-        reignDAO?: ReignDAO,
-        basketBalancer?: BasketBalancer,
-        poolController?: PoolController,
-        scenario1?: any
+        rewardsAmount: BigNumber
     ) {
 
         this.sovReignOwnerAddr = sovReignOwnerAddr;
@@ -104,15 +105,6 @@ export class DeployConfig {
         this.epoch1stStartTs = epoch1stStartTs;
         this.epochDuration = epochDuration;
         this.rewardsAmount = rewardsAmount;
-        this.reignDiamond = reignDiamond;
-        this.rewardsVault = rewardsVault;
-        this.reignToken = reignToken;
-        this.svrToken = svrToken;
-        this.govRewards = govRewards;
-        this.reignDAO = reignDAO;
-        this.basketBalancer = basketBalancer;
-        this.poolController = poolController;
-        this.scenario1 = scenario1;
     }
 
 }
