@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 
 abstract contract Parameters {
 
+    // TODO: set these params to 1hr?
     uint256 public warmUpDuration = 4 days;
     uint256 public activeDuration = 4 days;
     uint256 public queueDuration = 4 days;
