@@ -36,6 +36,14 @@ describe('Diamond', function () {
         it('should be deployed', async function () {
             expect(diamond.address).to.not.equal(0);
         });
+
+        it('can not be deployed with zeroAddress as owner', async function () {
+            await expect (deploy.deployDiamond(
+                'ReignDiamond',
+                [cutFacet, loupeFacet, ownershipFacet, clockFacet],
+                zeroAddress,
+            )).to.be.revertedWith("owner must not be 0x0")
+        });
     });
 
     describe('DiamondLoupe', () => {

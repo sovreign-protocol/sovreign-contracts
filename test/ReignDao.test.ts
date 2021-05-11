@@ -76,6 +76,17 @@ describe('ReignDAO', function () {
             expect(await reignDAO.isActive()).to.be.true;
         });
 
+        it('activates through proposal when threshold is met', async function () {
+            await reign.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
+            
+            await reign.setVotingPower(userAddress, amount.div(5));
+            await reign.setVotingPower(await voter1.getAddress(), amount.div(20));
+            await reign.setVotingPower(await voter2.getAddress(), amount.div(5));
+            await reign.setVotingPower(await voter3.getAddress(), amount.div(5));   
+            await createTestProposal();
+            expect(await reignDAO.isActive()).to.be.true;
+        });
+
         it('reverts if already activated', async function () {
             await reign.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
             await reignDAO.activate();
@@ -86,6 +97,9 @@ describe('ReignDAO', function () {
 
     describe('propose', function () {
         before(async function () {
+            await expect(
+                createTestProposal()
+            ).to.be.revertedWith("DAO not yet active");
             await reign.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
             await reignDAO.activate();
             await reign.setBondStaked(0);
@@ -201,14 +215,34 @@ describe('ReignDAO', function () {
             await helpers.moveAtTimestamp(ts + warmUpDuration);
             expect(await reignDAO.state(1)).to.be.equal(ProposalState.Active);
 
+            //vote for 
             await reignDAO.connect(user).castVote(1, true);
             let proposal = await reignDAO.proposals(1);
             expect(proposal.forVotes).to.be.equal(amount.div(10));
             expect(proposal.againstVotes).to.be.equal(0);
+            let reciept = await reignDAO.getReceipt(proposal[0], userAddress);
+            expect(reciept.hasVoted).to.be.true;
 
+
+            let actions = await reignDAO.getActions(proposal[0]);
+            expect(actions.signatures[0]).to.be.eq('withdraw(uint256)');
+
+
+            // cancel vote for
             await reignDAO.connect(user).cancelVote(1);
             proposal = await reignDAO.proposals(1);
             expect(proposal.forVotes).to.be.equal(0);
+
+            //vote against 
+            await reignDAO.connect(user).castVote(1, false);
+            proposal = await reignDAO.proposals(1);
+            expect(proposal.forVotes).to.be.equal(0);
+            expect(proposal.againstVotes).to.be.equal(amount.div(10));
+            
+            // cancel vote against
+            await reignDAO.connect(user).cancelVote(1);
+            proposal = await reignDAO.proposals(1);
+            expect(proposal.againstVotes).to.be.equal(0);
 
             await reignDAO.connect(user).castVote(1, false);
             proposal = await reignDAO.proposals(1);
@@ -216,10 +250,17 @@ describe('ReignDAO', function () {
             await expect(reignDAO.connect(user).castVote(1, false))
                 .to.be.revertedWith('Already voted this option');
 
+            //change vote from true to false
             await reignDAO.connect(user).castVote(1, true);
             proposal = await reignDAO.proposals(1);
             expect(proposal.forVotes).to.be.equal(amount.div(10));
             expect(proposal.againstVotes).to.be.equal(0);
+
+             //change vote from true to false
+             await reignDAO.connect(user).castVote(1, false);
+             proposal = await reignDAO.proposals(1);
+             expect(proposal.forVotes).to.be.equal(0);
+             expect(proposal.againstVotes).to.be.equal(amount.div(10));
         });
 
         it('castVote fails if user does not have voting power', async () => {
@@ -314,7 +355,6 @@ describe('ReignDAO', function () {
             expect(await reignDAO.state(1)).to.be.equal(ProposalState.WarmUp);
             await expect(reignDAO.execute(1)).to.be.revertedWith('Cannot be executed');
         });
-
         it('test proposal execution in queued mode', async function () {
             await setupEnv();
             await createTestProposal();
@@ -807,7 +847,7 @@ describe('ReignDAO', function () {
                 expect((await reignDAO.abrogationProposals(1)).againstVotes).to.equal(amount.div(5));
             });
 
-            it('allows user to change vote', async function () {
+            it('allows user to change vote to false', async function () {
                 await prepareProposalForAbrogation();
                 await reignDAO.connect(user).startAbrogationProposal(1, 'description');
 
@@ -820,6 +860,24 @@ describe('ReignDAO', function () {
                 expect((await reignDAO.abrogationProposals(1)).forVotes).to.equal(0);
                 expect((await reignDAO.abrogationProposals(1)).againstVotes).to.equal(amount.div(20));
             });
+
+            it('allows user to change vote to true', async function () {
+                await prepareProposalForAbrogation();
+                await reignDAO.connect(user).startAbrogationProposal(1, 'description');
+
+                await reignDAO.connect(voter1).abrogationProposal_castVote(1, false);
+                expect((await reignDAO.abrogationProposals(1)).forVotes).to.equal(0);
+                expect((await reignDAO.abrogationProposals(1)).againstVotes).to.equal(amount.div(20));
+                let reciept = await reignDAO.getAbrogationProposalReceipt(1, await voter1.getAddress());
+                expect(reciept.hasVoted).to.be.true;
+                expect(reciept.support).to.be.false;
+
+                await expect(reignDAO.connect(voter1).abrogationProposal_castVote(1, true))
+                    .to.not.be.reverted;
+                expect((await reignDAO.abrogationProposals(1)).forVotes).to.equal(amount.div(20));
+                expect((await reignDAO.abrogationProposals(1)).againstVotes).to.equal(0);
+            });
+
 
             it('changes initial proposal state to cancelled if accepted', async function () {
                 const createTs = await prepareProposalForAbrogation();
@@ -891,7 +949,10 @@ describe('ReignDAO', function () {
                 expect(cp.forVotes).to.equal(0);
                 expect(cp.againstVotes).to.equal(0);
 
-                await expect(reignDAO.connect(voter1).abrogationProposal_castVote(1, true))
+                await expect(reignDAO.connect(voter1).abrogationProposal_castVote(1, false))
+                    .to.not.be.reverted;
+
+                await expect(reignDAO.connect(voter1).abrogationProposal_cancelVote(1))
                     .to.not.be.reverted;
             });
         });

@@ -153,7 +153,7 @@ contract Staking is ReentrancyGuard {
                     )
                 );
             }
-            // the last action happened in the previous epoch
+            // the last action happened in the current epoch
             else if (checkpoints[last].epochId == currentEpoch) {
                 checkpoints[last].multiplier = computeNewMultiplier(
                     getCheckpointBalance(checkpoints[last]),
@@ -174,7 +174,7 @@ contract Staking is ReentrancyGuard {
                     )
                 );
             }
-            // the last action happened in the current epoch
+            // the last action happened in the previous epoch
             else {
                 if (
                     last >= 1 && checkpoints[last - 1].epochId == currentEpoch

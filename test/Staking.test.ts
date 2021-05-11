@@ -622,6 +622,21 @@ describe("Staking", function () {
             expect(await getEpochPoolSize(7)).to.be.equal("0");
             expect(await getEpochUserBalance(userAddr, 7)).to.be.equal("0");
         });
+
+        it("reverts if future epoch is init", async function () {
+            await moveAtEpoch(epoch1Start, epochDuration, 2);
+            await expect(staking.initEpochForTokens([erc20Mock.address], 4)).to.be.revertedWith("can't init a future epoch")
+
+        })
+
+        it("reverts if epoch is already init", async function () {
+            await moveAtEpoch(epoch1Start, epochDuration, 2);
+            await staking.initEpochForTokens([erc20Mock.address], 0)
+            await staking.initEpochForTokens([erc20Mock.address], 1)
+            await staking.initEpochForTokens([erc20Mock.address], 2)
+            await expect(staking.initEpochForTokens([erc20Mock.address], 2)).to.be.revertedWith("Staking: epoch already initialized")
+
+        })
     });
 
     describe("getEpochPoolSize", function () {

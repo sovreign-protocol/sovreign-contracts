@@ -325,7 +325,8 @@ describe('BasketBalancer', function () {
             // Half way during update period 
             // 500000000 - (500000000 - 490555555) / 2 = 495277778
             // 500000000 + (509444444 - 500000000) / 2 = 504722222
-            expect(await balancer.getTargetAllocation(pools[0])).to.equal(BigNumber.from(495277778));
+            //this sometimes fails if there is a 1 block discrepancy, due to 'moveAtTimestamp' mining
+            expect(await balancer.getTargetAllocation(pools[0])).to.equal(BigNumber.from(495277778)); 
             expect(await balancer.getTargetAllocation(pools[1])).to.equal(BigNumber.from(504722222));
 
         });

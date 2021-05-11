@@ -88,24 +88,7 @@ contract PoolRewards {
             totalUserRewards
         );
 
-        if (totalUserRewards > 0) {
-            _reignToken.safeTransferFrom(
-                _rewardsVault,
-                msg.sender,
-                totalUserRewards
-            );
-        }
-
-        // If there are less token rewarded then base issuance
-        // we transfer the difference from the rewards to the liquidty buffer
-        if (totalBaseRewards > totalUserRewards) {
-            uint256 transferToBuffer = totalBaseRewards.sub(totalUserRewards);
-            _reignToken.safeTransferFrom(
-                _rewardsVault,
-                _liquidityBuffer,
-                transferToBuffer
-            );
-        }
+        _distributeTokens(totalUserRewards, totalBaseRewards);
 
         return totalUserRewards;
     }
@@ -119,23 +102,8 @@ contract PoolRewards {
             "Can only harvest in order"
         );
         (uint256 userEpochReward, uint256 userBaseReward) = _harvest(epochId);
-        if (userEpochReward > 0) {
-            _reignToken.safeTransferFrom(
-                _rewardsVault,
-                msg.sender,
-                userEpochReward
-            );
-        }
-        // If there are less token rewarded then base issuance
-        // we transfer the difference from the rewards to the liquidty buffer
-        if (userBaseReward > userEpochReward) {
-            uint256 transferToBuffer = userBaseReward.sub(userEpochReward);
-            _reignToken.safeTransferFrom(
-                _rewardsVault,
-                _liquidityBuffer,
-                transferToBuffer
-            );
-        }
+
+        _distributeTokens(userEpochReward, userBaseReward);
 
         emit Harvest(msg.sender, epochId, userEpochReward);
         return userEpochReward;
@@ -199,6 +167,28 @@ contract PoolRewards {
                 _liquidityBuffer,
                 _rewardsVault,
                 transferToRewards
+            );
+        }
+    }
+
+    function _distributeTokens(uint256 userRewards, uint256 baseRewards)
+        internal
+    {
+        if (userRewards > 0) {
+            _reignToken.safeTransferFrom(
+                _rewardsVault,
+                msg.sender,
+                userRewards
+            );
+        }
+        // If there are less token rewarded then base issuance
+        // we transfer the difference from the rewards to the liquidty buffer
+        if (baseRewards > userRewards) {
+            uint256 transferToBuffer = baseRewards.sub(userRewards);
+            _reignToken.safeTransferFrom(
+                _rewardsVault,
+                _liquidityBuffer,
+                transferToBuffer
             );
         }
     }
