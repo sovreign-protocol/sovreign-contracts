@@ -850,9 +850,7 @@ describe("Staking", function () {
         return pa.add(na).mul(BASE_MULTIPLIER).div(pb.add(nd));
     }
 
-    function getEpochStart(epoch: number) {
-        return epoch1Start + (epoch - 1) * epochDuration;
-    }
+    
 
     async function deposit(u: Signer, x: BigNumber) {
         return await staking.connect(u).deposit(erc20Mock.address, x);
@@ -864,6 +862,10 @@ describe("Staking", function () {
 
     async function getEpochPoolSize(epochId: number) {
         return (await staking.getEpochPoolSize(erc20Mock.address, epochId)).toString();
+    }
+
+    function getEpochStart(epoch: number) {
+        return epoch1Start + (epoch - 1) * epochDuration;
     }
 
     async function getEpochUserBalance(addr: string, epochId: number) {

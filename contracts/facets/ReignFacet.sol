@@ -43,11 +43,14 @@ contract ReignFacet {
     event InitEpoch(address indexed caller, uint128 indexed epochId);
 
     function initReign(
-        address _reign,
+        address _reignToken,
         uint256 _start,
         uint256 _duration
     ) public {
-        require(_reign != address(0), "BOND address must not be 0x0");
+        require(
+            _reignToken != address(0),
+            "Reign Token address must not be 0x0"
+        );
 
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
@@ -56,7 +59,7 @@ contract ReignFacet {
 
         ds.initialized = true;
 
-        ds.reign = IERC20(_reign);
+        ds.reign = IERC20(_reignToken);
         ds.epoch1Start = _start;
         ds.epochDuration = _duration;
     }
@@ -212,15 +215,6 @@ contract ReignFacet {
     // stopDelegate allows a user to take back the delegated voting power
     function stopDelegate() public {
         return delegate(address(0));
-    }
-
-    function initEpoch(uint128 epochId) public {
-        require(epochId <= getEpoch(), "can't init a future epoch");
-
-        isInitialized[epochId] = true;
-        initialisedAt[epochId] = block.timestamp;
-
-        emit InitEpoch(msg.sender, epochId);
     }
 
     /*
@@ -557,7 +551,7 @@ contract ReignFacet {
         uint128 currentMultiplier = currentEpochMultiplier();
 
         if (!epochIsInitialized(currentEpoch)) {
-            initEpoch(currentEpoch);
+            _initEpoch(currentEpoch);
         }
 
         // if there's no checkpoint yet, it means the user didn't have any activity
@@ -672,7 +666,7 @@ contract ReignFacet {
         uint128 currentEpoch = getEpoch();
 
         if (!epochIsInitialized(currentEpoch)) {
-            initEpoch(currentEpoch);
+            _initEpoch(currentEpoch);
         }
 
         // we can't have a situation in which there is a withdraw with no checkpoint
@@ -839,14 +833,19 @@ contract ReignFacet {
         returns (uint256)
     {
         uint256 diff = to.sub(from); // underflow is checked for in lock()
-        if (diff >= MAX_LOCK) {
-            return BASE_STAKE_MULTIPLIER.mul(2);
-        }
 
         return
             BASE_STAKE_MULTIPLIER.add(
                 diff.mul(BASE_STAKE_MULTIPLIER).div(MAX_LOCK)
             );
+    }
+
+    //initialises and epoch, and stores the init time
+    function _initEpoch(uint128 epochId) internal {
+        isInitialized[epochId] = true;
+        initialisedAt[epochId] = block.timestamp;
+
+        emit InitEpoch(msg.sender, epochId);
     }
 
     function _getEpochBalance(LibReignStorage.EpochBalance memory c)
