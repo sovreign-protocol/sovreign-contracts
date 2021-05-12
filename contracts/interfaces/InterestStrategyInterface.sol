@@ -35,4 +35,14 @@ interface InterestStrategyInterface {
 
     //retunrs the address of the DAO
     function reignDAO() external returns (address);
+
+    //initializes the strategy
+    function initialize(
+        address,
+        address,
+        uint256
+    ) external;
+
+    //returns the stores epoch1Start
+    function epoch1Start() external view returns (uint256);
 }

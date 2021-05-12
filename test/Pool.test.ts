@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import * as helpers from './helpers/helpers';
 
 import { 
-    ERC20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy,
+    ERC20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy, EpochClockMock
 } from '../typechain';
 import * as deploy from './helpers/deploy';
 import { prependOnceListener } from 'process';
@@ -16,6 +16,7 @@ describe('Pool', function () {
     let  balancer: BasketBalancerMock, poolController:PoolController;
     let  oracle:OracleMock, interestStrategy: InterestStrategy, interestStrategy2: InterestStrategy;
     let  pool:Pool, pool2:Pool;
+    let  epochClock: EpochClockMock
 
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
@@ -35,6 +36,9 @@ describe('Pool', function () {
         oracle = (await deploy.deployContract('OracleMock', [reignDAOAddress])) as OracleMock;
 
 
+        epochClock = (await deploy.deployContract('EpochClockMock', [helpers.stakingEpochStart])) as EpochClockMock;
+
+
         balancer = (
             await deploy.deployContract('BasketBalancerMock',[[], []])
         ) as BasketBalancerMock;
@@ -52,11 +56,11 @@ describe('Pool', function () {
 
         
         interestStrategy = (await deploy.deployContract(
-            'InterestStrategy',[multiplier, offset,baseDelta,reignDAOAddress, helpers.stakingEpochStart])
+            'InterestStrategy',[multiplier, offset,baseDelta])
             ) as InterestStrategy;
 
         interestStrategy2 = (await deploy.deployContract(
-            'InterestStrategy',[multiplier, offset,baseDelta,reignDAOAddress, helpers.stakingEpochStart])
+            'InterestStrategy',[multiplier, offset,baseDelta])
             ) as InterestStrategy;
 
         svr = (await deploy.deployContract('SvrToken', [userAddress])) as SvrToken;
@@ -64,7 +68,7 @@ describe('Pool', function () {
 
         poolController = (
             await deploy.deployContract('PoolController', [
-                balancer.address, svr.address, reign.address, reignDAOAddress, liquidityBufferAddress
+                balancer.address, svr.address, reign.address, reignDAOAddress, epochClock.address, liquidityBufferAddress
             ])
         ) as PoolController; 
 
@@ -92,8 +96,6 @@ describe('Pool', function () {
 
         // set up access control
         await svr.connect(user).setController(poolController.address)
-        await interestStrategy.connect(reignDAO).setPool(poolAddress)
-        await interestStrategy2.connect(reignDAO).setPool(pool2Address)
     })
 
 

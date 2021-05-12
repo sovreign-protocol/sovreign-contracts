@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IReign.sol";
 import "../libraries/LibRewardsDistribution.sol";
 
+import "hardhat/console.sol";
+
 contract GovRewards {
     // lib
     using SafeMath for uint256;
@@ -118,10 +120,9 @@ contract GovRewards {
             return 0;
         }
 
-        uint256 epochRewards = getRewardsForEpoch(epochId);
+        uint256 epochRewards = getRewardsForEpoch();
 
         uint256 boostMultiplier = getBoost(msg.sender, epochId);
-
         uint256 userEpochRewards =
             epochRewards
                 .mul(_getUserBalancePerEpoch(msg.sender, epochId))
@@ -153,8 +154,8 @@ contract GovRewards {
     }
 
     // gets the total amount of rewards accrued to a pool during an epoch
-    function getRewardsForEpoch(uint128 epochId) public view returns (uint256) {
-        return LibRewardsDistribution.rewardsPerEpochStaking();
+    function getRewardsForEpoch() public view returns (uint256) {
+        return LibRewardsDistribution.rewardsPerEpochStaking(epochStart);
     }
 
     // calls to the staking smart contract to retrieve user balance for an epoch

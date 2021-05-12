@@ -8,6 +8,8 @@ import "../libraries/LibOwnership.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "hardhat/console.sol";
+
 contract ReignFacet {
     using SafeMath for uint256;
 
@@ -44,8 +46,8 @@ contract ReignFacet {
 
     function initReign(
         address _reignToken,
-        uint256 _start,
-        uint256 _duration
+        uint256 _epoch1Start,
+        uint256 _epochDuration
     ) public {
         require(
             _reignToken != address(0),
@@ -60,8 +62,8 @@ contract ReignFacet {
         ds.initialized = true;
 
         ds.reign = IERC20(_reignToken);
-        ds.epoch1Start = _start;
-        ds.epochDuration = _duration;
+        ds.epoch1Start = _epoch1Start;
+        ds.epochDuration = _epochDuration;
     }
 
     // deposit allows a user to add more reign to his staked balance
@@ -150,6 +152,10 @@ contract ReignFacet {
             ds.userStakeHistory[msg.sender];
         LibReignStorage.Stake storage currentStake =
             checkpoints[checkpoints.length - 1];
+
+        if (!epochIsInitialized(getEpoch())) {
+            _initEpoch(getEpoch());
+        }
 
         require(
             timestamp > currentStake.expiryTimestamp,
@@ -412,7 +418,9 @@ contract ReignFacet {
         returns (uint256)
     {
         uint256 epochTime;
-        if (epochId == getEpoch()) {
+        // if initialisedAt[epochId] == 0 then the epoch has not yet been initialized
+        // this guarntees that no deposits or lock updates happend since last epoch and we can safely use the latest checkpoint
+        if (epochId == getEpoch() || initialisedAt[epochId] == 0) {
             epochTime = block.timestamp;
         } else {
             epochTime = initialisedAt[epochId];

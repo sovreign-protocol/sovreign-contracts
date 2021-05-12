@@ -4,6 +4,7 @@ import { expect } from 'chai';
 import { InterestStrategy } from '../typechain';
 import * as deploy from './helpers/deploy';
 import * as helpers from './helpers/helpers';
+import { int } from 'hardhat/internal/core/params/argumentTypes';
 
 
 describe('InterestStrategy', function () {
@@ -22,12 +23,32 @@ describe('InterestStrategy', function () {
         await setupSigners();
 
         interest = (await deploy.deployContract(
-            'InterestStrategy',[multiplier, offset, baseDelta, reignDAOAddress, helpers.stakingEpochStart])
+            'InterestStrategy',[multiplier, offset, baseDelta])
             ) as InterestStrategy;
 
-        await interest.connect(reignDAO).setPool(userAddress)
+        await interest.initialize(userAddress, reignDAOAddress, helpers.stakingEpochStart)
     });
 
+    describe('general', function () {
+
+        it("can not be initialized twice", async () => {
+    
+            await expect(interest.initialize(userAddress, reignDAOAddress, helpers.stakingEpochStart)).to.be.revertedWith("Can not be initialized again")
+        })
+
+
+        it("returns 0 if epoch is before start", async () => {
+    
+            interest = (await deploy.deployContract(
+                'InterestStrategy',[multiplier, offset, baseDelta])
+                ) as InterestStrategy;
+    
+            await interest.initialize(userAddress, reignDAOAddress, helpers.getCurrentUnix() +100000)
+
+            expect(await interest.getCurrentEpoch()).to.be.eq(0)
+        })
+
+    })
     describe('formula output', function () {
 
         it("returns positive rate when reserves < target", async () => {

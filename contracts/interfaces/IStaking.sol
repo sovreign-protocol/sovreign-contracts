@@ -19,7 +19,7 @@ interface IStaking {
 
     function epoch1Start() external view returns (uint256);
 
-    function EPOCH_DURATION() external view returns (uint256);
+    function epochDuration() external view returns (uint256);
 
     function getRewardsForEpoch(uint128, address)
         external

@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/InterestStrategyInterface.sol";
-import "../interfaces/IPoolController.sol";
+import "../interfaces/IEpochClock.sol";
 
 contract Staking is ReentrancyGuard {
     using SafeMath for uint256;
@@ -17,9 +17,8 @@ contract Staking is ReentrancyGuard {
     uint256 public epoch1Start;
 
     // duration of each epoch
-    uint256 public EPOCH_DURATION = 604800;
+    uint256 public epochDuration;
 
-    IPoolController private controller;
     IERC20 private reignToken;
 
     address liquidityBuffer;
@@ -71,8 +70,9 @@ contract Staking is ReentrancyGuard {
         uint256 amount
     );
 
-    constructor(uint256 _epoch1Start) {
-        epoch1Start = _epoch1Start;
+    constructor(address epochClock) {
+        epoch1Start = IEpochClock(epochClock).getEpoch1Start();
+        epochDuration = IEpochClock(epochClock).getEpochDuration();
     }
 
     /*
@@ -437,7 +437,7 @@ contract Staking is ReentrancyGuard {
             return 0;
         }
 
-        return uint128((block.timestamp - epoch1Start) / EPOCH_DURATION + 1);
+        return uint128((block.timestamp - epoch1Start) / epochDuration + 1);
     }
 
     /*
@@ -471,10 +471,10 @@ contract Staking is ReentrancyGuard {
      */
     function currentEpochMultiplier() public view returns (uint128) {
         uint128 currentEpoch = getCurrentEpoch();
-        uint256 currentEpochEnd = epoch1Start + currentEpoch * EPOCH_DURATION;
+        uint256 currentEpochEnd = epoch1Start + currentEpoch * epochDuration;
         uint256 timeLeft = currentEpochEnd - block.timestamp;
         uint128 multiplier =
-            uint128((timeLeft * BASE_MULTIPLIER) / EPOCH_DURATION);
+            uint128((timeLeft * BASE_MULTIPLIER) / epochDuration);
 
         return multiplier;
     }

@@ -4,6 +4,7 @@ pragma solidity ^0.7.6;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../interfaces/IStaking.sol";
+import "../libraries/LibRewardsDistribution.sol";
 
 contract LPRewards {
     // lib
@@ -56,9 +57,9 @@ contract LPRewards {
         _depositLP = depositLP;
         _staking = IStaking(stakeContract);
         _communityVault = communityVault;
-        epochDuration = _staking.EPOCH_DURATION();
+        epochDuration = _staking.epochDuration();
         epochStart = _staking.epoch1Start() + epochDuration;
-        _totalAmountPerEpoch = TOTAL_DISTRIBUTED_AMOUNT.mul(10**18).div(
+        _totalAmountPerEpoch = LibRewardsDistribution.rewardsPerEpochLPRewards(
             NR_OF_EPOCHS
         );
     }

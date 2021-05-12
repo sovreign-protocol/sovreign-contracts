@@ -3,7 +3,7 @@ import { BigNumber, Signer } from "ethers";
 import { moveAtEpoch, tenPow18 } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
-import {RewardsVault, ERC20Mock, Staking, LPRewards} from "../typechain";
+import {RewardsVault, ERC20Mock, Staking, LPRewards, EpochClockMock} from "../typechain";
 
 describe('YieldFarm AMM Pool', function () {
     let staking: Staking;
@@ -12,13 +12,14 @@ describe('YieldFarm AMM Pool', function () {
     let rewardsVault: RewardsVault;
     let yieldFarm: LPRewards;
     let creator: Signer, user: Signer;
+    let epochClock:EpochClockMock
     let userAddr: string;
 
     const epochStart = Math.floor(Date.now() / 1000) + 1000;
     const epochDuration = 604800;
     const numberOfEpochs = 100;
 
-    const distributedAmount: BigNumber = BigNumber.from(2000000).mul(tenPow18);
+    const distributedAmount: BigNumber = BigNumber.from(4000000).mul(tenPow18);
     const amount = BigNumber.from(100).mul(tenPow18) as BigNumber;
 
     let snapshotId: any;
@@ -27,7 +28,10 @@ describe('YieldFarm AMM Pool', function () {
         [creator, user] = await ethers.getSigners();
         userAddr = await user.getAddress();
 
-        staking = (await deployContract("Staking", [epochStart])) as Staking;
+
+        epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
+
+        staking = (await deployContract("Staking", [epochClock.address])) as Staking;
         reignToken = (await deployContract("ERC20Mock")) as ERC20Mock;
         uniLP = (await deployContract("ERC20Mock")) as ERC20Mock;
 

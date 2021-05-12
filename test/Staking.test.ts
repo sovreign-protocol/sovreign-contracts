@@ -3,13 +3,14 @@ import { BigNumber, BigNumberish, Signer } from "ethers";
 import { moveAtEpoch, setNextBlockTimestamp, tenPow18, getCurrentUnix } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
-import { ERC20Mock, Staking } from "../typechain";
+import { ERC20Mock, Staking, EpochClockMock } from "../typechain";
 
 describe("Staking", function () {
     let staking: Staking;
     let erc20Mock: ERC20Mock;
     let creator: Signer, owner: Signer, user: Signer;
     let ownerAddr: string, userAddr: string;
+    let epochClock:EpochClockMock
 
     const amount = BigNumber.from(100).mul(tenPow18) as BigNumber;
     const MULTIPLIER_DECIMALS = 18;
@@ -26,7 +27,9 @@ describe("Staking", function () {
         userAddr = await user.getAddress();
 
         epoch1Start = getCurrentUnix() + 1000;
-        staking = (await deployContract("Staking", [epoch1Start])) as Staking;
+
+        epochClock = (await deployContract('EpochClockMock', [epoch1Start])) as EpochClockMock;
+        staking = (await deployContract("Staking", [epochClock.address])) as Staking;
 
         erc20Mock = (await deployContract("ERC20Mock")) as ERC20Mock;
 

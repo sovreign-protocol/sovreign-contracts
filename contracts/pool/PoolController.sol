@@ -5,14 +5,15 @@ import "../interfaces/IBasketBalancer.sol";
 import "../interfaces/InterestStrategyInterface.sol";
 import "../interfaces/IPool.sol";
 import "../interfaces/IOracle.sol";
+import "../interfaces/IEpochClock.sol";
 import "./Pool.sol";
-import "../periphery/InterestStrategy.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract PoolController is IPoolController {
     using SafeMath for uint256;
 
     IBasketBalancer private basketBalancer;
+    IEpochClock private clock;
     address public override svrToken;
     address public override reignToken;
     address public override reignDAO;
@@ -35,12 +36,14 @@ contract PoolController is IPoolController {
         address _svrToken,
         address _reignToken,
         address _reignDAO,
+        address _reignDiamond,
         address _liquidityBuffer
     ) {
         basketBalancer = IBasketBalancer(_basketBalancer);
         svrToken = _svrToken;
         reignToken = _reignToken;
         reignDAO = _reignDAO;
+        clock = IEpochClock(_reignDiamond);
         liquidityBuffer = _liquidityBuffer;
     }
 
@@ -52,11 +55,6 @@ contract PoolController is IPoolController {
         require(underlyingToken != address(0), "SoVReign: ZERO_ADDRESS");
         require(interestStrategy != address(0), "SoVReign: ZERO_ADDRESS");
         require(oracle != address(0), "SoVReign: ZERO_ADDRESS");
-
-        require(
-            InterestStrategyInterface(interestStrategy).reignDAO() == reignDAO,
-            "Interest Strategy needs to be governed by DAO"
-        );
 
         require(
             IOracle(oracle).owner_address() == reignDAO,
@@ -76,6 +74,11 @@ contract PoolController is IPoolController {
         }
 
         IPool(pool).initialize(underlyingToken);
+        InterestStrategyInterface(interestStrategy).initialize(
+            pool,
+            reignDAO,
+            clock.getEpoch1Start()
+        );
 
         getPool[underlyingToken] = pool;
         getInterestStrategy[pool] = interestStrategy;

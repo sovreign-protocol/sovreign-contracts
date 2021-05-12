@@ -7,7 +7,7 @@ import * as time from './helpers/time';
 import { expect } from "chai";
 import { RewardsVault, ERC20Mock, GovRewards, ReignFacet,ChangeRewardsFacet,EpochClockFacet} from "../typechain";
 
-describe("Rewards", function () {
+describe("GovRewards", function () {
     let reignToken: ERC20Mock;
     let yieldFarm: GovRewards;
     let reign: ReignFacet, changeRewards: ChangeRewardsFacet;
@@ -16,7 +16,7 @@ describe("Rewards", function () {
     let flayingParrot: Signer;
     let userAddr: string;
 
-    const epochStart = Math.floor(Date.now() / 1000) + 1000;
+    const epochStart = Math.floor(Date.now() / 1000)+1000;
     const epochDuration = 604800;
 
     const distributedAmount: BigNumber = BigNumber.from(10000000).mul(tenPow18);
@@ -95,7 +95,7 @@ describe("Rewards", function () {
 
             
             // get epoch 1 rewards
-            let epoch1Rewards = (await yieldFarm.getRewardsForEpoch(1));
+            let epoch1Rewards = (await yieldFarm.getRewardsForEpoch());
             
             let balanceBeforeHarvest = await reignToken.balanceOf(userAddr)
             await yieldFarm.connect(user).harvest(1)
@@ -119,7 +119,7 @@ describe("Rewards", function () {
 
             await yieldFarm.connect(user).harvest(1)
             let epoch1Rewards = 
-                (await yieldFarm.getRewardsForEpoch(1))
+                (await yieldFarm.getRewardsForEpoch())
 
             let boostMultiplier = await yieldFarm.getBoost(userAddr, 1);
             
@@ -200,25 +200,28 @@ describe("Rewards", function () {
         it('Adds Boost to harvest', async function () {
             await depositReign(amount)
 
-            let ts = await getLatestBlockTimestamp();
 
-            //1 Year lockup
+            await moveToEpoch(1)        
+            await moveToEpoch(2)
+
+            let ts = await getLatestBlockTimestamp();
             const lockExpiryTs = ts + 1000000;
             await reign.connect(user).lock(lockExpiryTs);
 
-            let epochBoost = await yieldFarm.getBoost(userAddr, 1);
-
             // get epoch 1 rewards
-            let epoch1Rewards = (await yieldFarm.getRewardsForEpoch(1));
+            let epoch1Rewards = (await yieldFarm.getRewardsForEpoch());
+            let epochBoost = await yieldFarm.getBoost(userAddr, 1);
             let boostedRewards = epoch1Rewards.mul(epochBoost).div(tenPow18);
-            
-            await moveToEpoch(2)
+
+
             let balanceBeforeHarvest = await reignToken.balanceOf(userAddr)
             await yieldFarm.connect(user).harvest(1)
+            let balanceAfter = await reignToken.balanceOf(userAddr)
             expect(await reignToken.balanceOf(userAddr)).to.eq(balanceBeforeHarvest.add(boostedRewards));
         })
 
         it('Adds Boost to Mass harvest', async function () {
+
             await depositReign(amount)
 
             let ts = await getLatestBlockTimestamp();
@@ -226,10 +229,12 @@ describe("Rewards", function () {
             //1 Year lockup
             const lockExpiryTs = ts + time.year;
             await reign.connect(user).lock(lockExpiryTs);
+            
 
             await moveToEpoch(8)
+
             // get epoch 1 rewards
-            let boostedRewards = await totalAccrued(0,7);
+            let boostedRewards = await totalAccrued(1,8);
             let balanceBeforeHarvest = await reignToken.balanceOf(userAddr)
             await yieldFarm.connect(user).massHarvest()
             expect(await reignToken.balanceOf(userAddr)).to.eq(balanceBeforeHarvest.add(boostedRewards));
@@ -271,7 +276,7 @@ describe("Rewards", function () {
         let total = BigNumber.from(0);
         for(let i = n; i < m; i++){
             let epochBoost = await yieldFarm.getBoost(userAddr, i);
-            let adjusted = epochBoost.mul((await yieldFarm.getRewardsForEpoch(i))).div(tenPow18)
+            let adjusted = epochBoost.mul((await yieldFarm.getRewardsForEpoch())).div(tenPow18)
             total = total.add(adjusted);
         }
         return total

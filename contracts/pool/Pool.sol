@@ -253,15 +253,16 @@ contract Pool is IPool, PoolErc20 {
         view
         returns (uint256 userFee)
     {
-        address interestStrategy =
-            controller.getInterestStrategy(address(this));
+        InterestStrategyInterface interestStrategy =
+            InterestStrategyInterface(
+                controller.getInterestStrategy(address(this))
+            );
 
         uint256 totalFeeAccrued =
-            InterestStrategyInterface(interestStrategy)
-                .withdrawFeeAccrued()
-                .mul(
+            interestStrategy.withdrawFeeAccrued().mul(
                 LibRewardsDistribution.rewardsPerBlockPerPool(
-                    controller.getTargetAllocation(address(this))
+                    controller.getTargetAllocation(address(this)),
+                    interestStrategy.epoch1Start() //we can use this as it is inherited by epochClock
                 )
             );
 

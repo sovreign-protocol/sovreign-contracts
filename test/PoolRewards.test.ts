@@ -3,7 +3,10 @@ import { BigNumber, Signer } from "ethers";
 import { moveAtEpoch, tenPow18,mineBlocks,setNextBlockTimestamp,getCurrentUnix, moveAtTimestamp } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
-import { RewardsVault, ERC20Mock, Staking, PoolRewards, PoolControllerMock,LiquidityBufferVault, InterestStrategy, BasketBalancerMock  } from "../typechain";
+import { RewardsVault, ERC20Mock, Staking, PoolRewards, 
+         PoolControllerMock,LiquidityBufferVault, 
+         InterestStrategy, BasketBalancerMock, EpochClockMock
+    } from "../typechain";
 
 describe("YieldFarm Liquidity Pool", function () {
     let staking: Staking;
@@ -15,6 +18,7 @@ describe("YieldFarm Liquidity Pool", function () {
     let controller: PoolControllerMock;
     let rewardsVault: RewardsVault;
     let liquidityBuffer:LiquidityBufferVault;
+    let epochClock:EpochClockMock
     let creator: Signer, user: Signer;
     let reignDAO: Signer, treasury: Signer;
     let userAddr: string;
@@ -31,6 +35,9 @@ describe("YieldFarm Liquidity Pool", function () {
         await setupSigners()
         userAddr = await user.getAddress();
 
+
+        epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
+
         reignToken = (await deployContract("ERC20Mock")) as ERC20Mock;
         svrToken = (await deployContract("ERC20Mock")) as ERC20Mock;
         poolLP = (await deployContract("ERC20Mock")) as ERC20Mock;
@@ -41,14 +48,14 @@ describe("YieldFarm Liquidity Pool", function () {
         let offset = BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)));
         let baseDelta = 0;
         interest = (await deployContract(
-            'InterestStrategy',[multiplier, offset,baseDelta, reignDAO.getAddress(), epochStart])
+            'InterestStrategy',[multiplier, offset, baseDelta])
             ) as InterestStrategy;
 
-        interest.connect(reignDAO).setPool(userAddr);
+            await interest.initialize(userAddr, userAddr, epochStart)
 
         controller = (await deployContract("PoolControllerMock",[interest.address, balancer.address ])) as PoolControllerMock;
 
-        staking = (await deployContract("Staking", [epochStart])) as Staking;
+        staking = (await deployContract("Staking", [epochClock.address])) as Staking;
 
         rewardsVault = (await deployContract("RewardsVault", [reignToken.address])) as RewardsVault;
         liquidityBuffer = (await deployContract("LiquidityBufferVault", [reignToken.address])) as LiquidityBufferVault;

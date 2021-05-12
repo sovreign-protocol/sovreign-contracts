@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../interfaces/InterestStrategyInterface.sol";
+import "../interfaces/IReign.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
@@ -23,7 +24,7 @@ contract InterestStrategy is InterestStrategyInterface {
 
     // timestamp for the epoch 1
     // everything before that is considered epoch 0
-    uint256 public epoch1Start;
+    uint256 public override epoch1Start;
 
     uint256 public override withdrawFeeAccrued;
     uint256 public blockNumberLast;
@@ -56,13 +57,20 @@ contract InterestStrategy is InterestStrategyInterface {
     constructor(
         uint256 _multiplier,
         uint256 _offset,
-        int256 _baseDelta,
-        address _reignDAO,
-        uint256 _epoch1Start // set reign Diamond address here and fetch this value from there
+        int256 _baseDelta
     ) {
         multiplier = _multiplier;
         offset = _offset;
         baseDelta = _baseDelta;
+    }
+
+    function initialize(
+        address _pool,
+        address _reignDAO,
+        uint256 _epoch1Start
+    ) external override {
+        require(pool == address(0), "Can not be initialized again"); // sufficient check, poolController will initialize once after deployment
+        pool = _pool;
         reignDAO = _reignDAO;
         epoch1Start = _epoch1Start;
     }

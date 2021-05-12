@@ -60,7 +60,7 @@ contract PoolRewards {
         _staking = IStaking(stakeContract);
         _rewardsVault = rewardsVault;
         _liquidityBuffer = liquidityBuffer;
-        epochDuration = _staking.EPOCH_DURATION();
+        epochDuration = _staking.epochDuration();
         epochStart = _staking.epoch1Start() + epochDuration;
     }
 
@@ -208,21 +208,20 @@ contract PoolRewards {
         view
         returns (uint256, uint256)
     {
+        InterestStrategyInterface interest =
+            InterestStrategyInterface(_controller.getInterestStrategy(_pool));
         uint256 baseRewards =
             LibRewardsDistribution.rewardsPerEpochPerPool(
-                _controller.getTargetAllocation(_pool)
+                _controller.getTargetAllocation(_pool),
+                interest.epoch1Start() // this is inherited from epoch Clock
             );
 
         uint256 epochRewards =
-            (
-                InterestStrategyInterface(
-                    _controller.getInterestStrategy(_pool)
-                )
-                    .getEpochRewards(epochId)
-            )
+            (interest.getEpochRewards(epochId))
                 .mul(
                 LibRewardsDistribution.rewardsPerBlockPerPool(
-                    _controller.getTargetAllocation(_pool)
+                    _controller.getTargetAllocation(_pool),
+                    interest.epoch1Start() // this is inherited from epoch Clock
                 )
             )
                 .div(10**18); //account for 18 decimals of baseRewards
