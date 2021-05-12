@@ -15,7 +15,7 @@ import {diamondAsFacet} from "../test/helpers/diamond";
 import {BigNumber} from "ethers";
 import * as helpers from "../test/helpers/governance-helpers";
 import {day} from "../test/helpers/time";
-import {moveAtTimestamp, stakingEpochStart} from "../test/helpers/helpers";
+import {increaseBlockTime, moveAtTimestamp, stakingEpochStart} from "../test/helpers/helpers";
 
 export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
 
@@ -90,7 +90,6 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     // set owner to zeroAddress:
     await reignToken.connect(c.sovReignOwnerAcct).setOwner(helpers.ZERO_ADDRESS)
     console.log(`ReignToken owner set: '${helpers.ZERO_ADDRESS.toLowerCase()}' (Zero Address)`);
-
 
     ///////////////////////////
     // Deploy "SVR Token" contract:
@@ -175,7 +174,6 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     await svrToken.connect(c.sovReignOwnerAcct).setController(poolController.address)
     console.log(`SvrToken controller set: '${poolController.address.toLowerCase()}' (PoolController contract)`);
 
-
     ///////////////////////////
     // Set Controller in "BasketBalancer"
     ///////////////////////////
@@ -210,7 +208,7 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     const timeWarpInSeconds = 1 * day
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
-    await moveAtTimestamp(timeWarpInSeconds)
+    await increaseBlockTime(timeWarpInSeconds)
 
     return c;
 }

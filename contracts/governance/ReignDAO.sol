@@ -568,6 +568,7 @@ contract ReignDAO is Bridge {
             return ProposalState.Failed;
         }
 
+        // what it checks here is if the proposal is not queued
         if (proposal.eta == 0) {
             return ProposalState.Accepted;
         }

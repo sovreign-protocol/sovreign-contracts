@@ -45,7 +45,7 @@ describe('Reign', function () {
         await reign.initReign(reignToken.address, startEpoch, duration);
 
 
-        await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
+        await helpers.setTime(await helpers.getCurrentUnix());
     });
 
     beforeEach(async function () {
@@ -146,7 +146,7 @@ describe('Reign', function () {
             await prepareAccount(user,amount.mul(10))
             await helpers.moveAtEpoch(startEpoch,duration, 1);
 
-            await helpers.setNextBlockTimestamp(getEpochStart(1) + Math.floor(duration / 2));
+            await helpers.setTime(getEpochStart(1) + Math.floor(duration / 2));
 
             await reign.connect(user).deposit(amount)
 
@@ -162,12 +162,12 @@ describe('Reign', function () {
             await prepareAccount(user,amount.mul(10))
             await helpers.moveAtEpoch(startEpoch,duration, 1);
 
-            await helpers.setNextBlockTimestamp(getEpochStart(1) + Math.floor(duration / 2));
+            await helpers.setTime(getEpochStart(1) + Math.floor(duration / 2));
             await reign.connect(user).deposit(amount)
 
             await helpers.moveAtEpoch(startEpoch,duration, 4);
 
-            await helpers.setNextBlockTimestamp(getEpochStart(4) + Math.floor(duration / 2));
+            await helpers.setTime(getEpochStart(4) + Math.floor(duration / 2));
 
             expect(await getEpochUserBalance(userAddress, 4)).to.equal(amount);
 
@@ -185,11 +185,11 @@ describe('Reign', function () {
             await prepareAccount(user,amount.mul(10))
             await helpers.moveAtEpoch(startEpoch,duration, 1);
         
-            await helpers.setNextBlockTimestamp(getEpochStart(1) + Math.floor(duration / 2));
+            await helpers.setTime(getEpochStart(1) + Math.floor(duration / 2));
             await reign.connect(user).deposit(amount)
 
             await helpers.moveAtEpoch(startEpoch,duration, 2);
-            await helpers.setNextBlockTimestamp(getEpochStart(2) + Math.floor(duration / 2));
+            await helpers.setTime(getEpochStart(2) + Math.floor(duration / 2));
 
             expect(await getEpochUserBalance(userAddress, 2)).to.equal(amount);
 
@@ -206,18 +206,18 @@ describe('Reign', function () {
         it("deposit epoch 1, deposit epoch 5, deposit epoch 5", async function () {
             await prepareAccount(user,amount.mul(10))
             await helpers.moveAtEpoch(startEpoch,duration, 1);
-            await helpers.setNextBlockTimestamp(getEpochStart(1) + Math.floor(duration / 2));
+            await helpers.setTime(getEpochStart(1) + Math.floor(duration / 2));
             await reign.connect(user).deposit(amount)
 
             await helpers.moveAtEpoch(startEpoch,duration, 5);
 
-            await helpers.setNextBlockTimestamp(getEpochStart(5) + Math.floor(duration / 2));
+            await helpers.setTime(getEpochStart(5) + Math.floor(duration / 2));
             await reign.connect(user).deposit(amount)
 
             const expectedMultiplier = multiplierAtTs(5, await helpers.getLatestBlockTimestamp());
             const totalMultiplier = calculateMultiplier(amount, BigNumber.from(1).mul(helpers.tenPow18), amount, expectedMultiplier);
 
-            await helpers.setNextBlockTimestamp(getEpochStart(5) + Math.floor(duration * 3 / 4));
+            await helpers.setTime(getEpochStart(5) + Math.floor(duration * 3 / 4));
             await reign.connect(user).deposit(amount)
 
             const expectedMultiplier2 = multiplierAtTs(5, await helpers.getLatestBlockTimestamp());
@@ -280,7 +280,7 @@ describe('Reign', function () {
 
                 const ts = Math.floor(Math.random() * duration);
 
-                await helpers.setNextBlockTimestamp(startEpoch + ts);
+                await helpers.setTime(startEpoch + ts);
                 await reign.connect(user).deposit(amount);
 
                 const multiplier = multiplierAtTs(1, await helpers.getLatestBlockTimestamp());
@@ -411,7 +411,7 @@ describe('Reign', function () {
             await helpers.moveAtEpoch(startEpoch, duration, 5);
 
             const ts = startEpoch + 24 * 60 * 60;
-            await helpers.setNextBlockTimestamp(ts);
+            await helpers.setTime(ts);
 
             await reign.connect(user).withdraw(amount.div(2));
 
@@ -427,7 +427,7 @@ describe('Reign', function () {
             await helpers.moveAtEpoch(startEpoch, duration, 5);
 
             const ts = startEpoch + 24 * 60 * 60;
-            await helpers.setNextBlockTimestamp(ts);
+            await helpers.setTime(ts);
 
             await reign.connect(user).withdraw(amount.div(3));
             expect(await reign.getEpochUserBalance(userAddress, 5)).to.equal(amount.div(3).mul(2).add(1));//rounding
@@ -445,7 +445,7 @@ describe('Reign', function () {
             await helpers.moveAtEpoch(startEpoch, duration, 2);
 
             const ts = startEpoch + 24 * 60 * 60;
-            await helpers.setNextBlockTimestamp(ts);
+            await helpers.setTime(ts);
 
             await reign.connect(user).withdraw(amount.div(2));
         });
@@ -498,12 +498,12 @@ describe('Reign', function () {
             await helpers.moveAtEpoch(startEpoch, duration, 5);
 
             const ts = startEpoch + 24 * 60 * 60;
-            await helpers.setNextBlockTimestamp(ts);
+            await helpers.setTime(ts);
 
             await reign.connect(user).deposit(amount);
 
             const ts1 = startEpoch + Math.floor(duration / 2);
-            await helpers.setNextBlockTimestamp(ts1);
+            await helpers.setTime(ts1);
 
             const balance = await reign.getEpochUserBalance(userAddress, 5);
 
@@ -535,12 +535,12 @@ describe('Reign', function () {
             await helpers.moveAtEpoch(startEpoch, duration, 5);
 
             const ts = startEpoch + 24 * 60 * 60;
-            await helpers.setNextBlockTimestamp(ts);
+            await helpers.setTime(ts);
 
             await reign.connect(user).deposit(amount);
 
             const ts1 = startEpoch + Math.floor(duration / 2);
-            await helpers.setNextBlockTimestamp(ts1);
+            await helpers.setTime(ts1);
 
             await reign.connect(user).withdraw(amount.add(amount.div(2)));
 
@@ -613,7 +613,7 @@ describe('Reign', function () {
 
         it('reverts if user does not have balance', async function () {
 
-            await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
+            await helpers.setTime(await helpers.getCurrentUnix());
 
             await expect(
                 reign.connect(user).lock(await helpers.getCurrentUnix() + (10 * time.day))
@@ -623,7 +623,7 @@ describe('Reign', function () {
         it('reverts if timestamp is in the past', async function () {
             await prepareAccount(user, amount);
 
-            await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
+            await helpers.setTime(await helpers.getCurrentUnix());
 
             await reign.connect(user).deposit(amount);
             await expect(reign.connect(user).lock(await helpers.getCurrentUnix() - (1 * time.year))
@@ -634,7 +634,7 @@ describe('Reign', function () {
         it('reverts if user already has a lock and timestamp is lower', async function () {
             await prepareAccount(user, amount);
 
-            await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
+            await helpers.setTime(await helpers.getCurrentUnix());
 
             await reign.connect(user).deposit(amount);
             await reign.connect(user).lock(await helpers.getCurrentUnix() + (1 * time.year));
@@ -717,7 +717,7 @@ describe('Reign', function () {
             await expect(reign.connect(user).withdraw(amount)).to.be.revertedWith('User balance is locked');
             expect(await reign.balanceOf(userAddress)).to.be.equal(amount);
 
-            await helpers.setNextBlockTimestamp(expiryTs + 3600);
+            await helpers.setTime(expiryTs + 3600);
 
             await expect(reign.connect(user).withdraw(amount)).to.not.be.reverted;
             expect(await reign.balanceOf(userAddress)).to.be.equal(0);
@@ -898,7 +898,7 @@ describe('Reign', function () {
 
             const firstDepositTs = await helpers.getLatestBlockTimestamp();
 
-            await helpers.setNextBlockTimestamp(firstDepositTs + 300);
+            await helpers.setTime(firstDepositTs + 300);
             await reign.connect(user).deposit(amount);
 
             const secondDepositTs = await helpers.getLatestBlockTimestamp();
@@ -916,7 +916,7 @@ describe('Reign', function () {
 
             const depositTs = await helpers.getLatestBlockTimestamp();
 
-            await helpers.setNextBlockTimestamp(depositTs + 50);
+            await helpers.setTime(depositTs + 50);
             await reign.connect(user).delegate(happyPirateAddress);
 
             const delegateTs = await helpers.getLatestBlockTimestamp();

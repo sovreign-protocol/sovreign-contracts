@@ -15,7 +15,7 @@ export function getCurrentUnix() {
 }
 
 export async function moveAtEpoch(start: number, duration: number, epoch: number) {
-    await setNextBlockTimestamp(start + duration * (epoch-1));
+    await setTime(start + duration * (epoch-1));
     await ethers.provider.send("evm_mine", []);
 }
 
@@ -27,15 +27,27 @@ export async function getLatestBlockTimestamp(): Promise<number> {
     return parseInt((await getLatestBlock()).timestamp);
 }
 
-export async function setNextBlockTimestamp(timestamp: number): Promise<void> {
+export async function setTime(timestamp: number): Promise<void> {
     const block = await ethers.provider.send('eth_getBlockByNumber', ['latest', false]);
     const currentTs = parseInt(block.timestamp);
     const diff = timestamp - currentTs;
     await ethers.provider.send('evm_increaseTime', [diff]);
 }
 
-export async function moveAtTimestamp(timestamp: number): Promise<void> {
+export async function setNextBlockTimestamp(timestamp: number): Promise<void> {
+    const block = await ethers.provider.send('eth_getBlockByNumber', ['latest', false]);
+    const currentTs = parseInt(block.timestamp);
+    const timeInFuture = timestamp + currentTs;
+    await ethers.provider.send('evm_setNextBlockTimestamp', [timeInFuture]);
+}
+
+export async function increaseBlockTime(timestamp: number): Promise<void> {
     await setNextBlockTimestamp(timestamp);
+    await ethers.provider.send('evm_mine', []);
+}
+
+export async function moveAtTimestamp(timestamp: number): Promise<void> {
+    await setTime(timestamp);
     await ethers.provider.send('evm_mine', []);
 }
 

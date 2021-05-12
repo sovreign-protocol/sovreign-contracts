@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import { BigNumber, Signer } from "ethers";
-import { moveAtEpoch, tenPow18,mineBlocks,setNextBlockTimestamp,getCurrentUnix, moveAtTimestamp } from "./helpers/helpers";
+import { moveAtEpoch, tenPow18,mineBlocks,setTime,getCurrentUnix, moveAtTimestamp } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
 import { RewardsVault, ERC20Mock, Staking, PoolRewards, 
@@ -75,7 +75,7 @@ describe("YieldFarm Liquidity Pool", function () {
         await liquidityBuffer.connect(creator).setAllowance(yieldFarm.address, distributedAmount);
 
 
-        await setNextBlockTimestamp(await getCurrentUnix());
+        await setTime(await getCurrentUnix());
     });
 
     

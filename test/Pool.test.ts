@@ -44,7 +44,7 @@ describe('Pool', function () {
         ) as BasketBalancerMock;
 
 
-        await helpers.setNextBlockTimestamp(await helpers.getCurrentUnix());
+        await helpers.setTime(await helpers.getCurrentUnix());
     
    
     });

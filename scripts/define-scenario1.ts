@@ -3,8 +3,8 @@ import {BigNumber, Contract, ethers as ejs} from "ethers";
 import {GovRewards, InterestStrategy, PoolController, ReignDAO, ReignFacet, ReignToken} from "../typechain";
 import * as helpers from "../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../test/helpers/diamond";
-import {minute} from "../test/helpers/time";
-import {moveAtTimestamp, stakingEpochStart} from "../test/helpers/helpers";
+import {day, hour, minute} from "../test/helpers/time";
+import {increaseBlockTime, moveAtTimestamp, stakingEpochStart} from "../test/helpers/helpers";
 import * as deploy from "../test/helpers/deploy";
 
 export class Scenario1Config {
@@ -46,6 +46,22 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
         .deposit(amountStakedUser1);
 
     ///////////////////////////
+    // User2 stakes ReignToken to ReignDiamond:
+    ///////////////////////////
+    const amountStakedUser2 = BigNumber.from(100_000).mul(helpers.tenPow18);
+    c.scenario1.amountStakedUser2 = amountStakedUser2;
+
+    console.log(`User2 approves addr '${reignDiamond.address}' to transfer '${amountStakedUser2}'`)
+    await reignToken
+        .connect(c.user2Acct)
+        .approve(reignDiamond.address, amountStakedUser2);
+
+    console.log(`User2 deposits '${amountStakedUser2}' to ReignDiamond`)
+    await reignFacet
+        .connect(c.user2Acct)
+        .deposit(amountStakedUser2);
+
+    ///////////////////////////
     // User1 deploy InterestStrategy1 contract for Pool1:
     ///////////////////////////
     const interestStrategy1 = await deploy.deployContract(
@@ -55,7 +71,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
             BigNumber.from(3).mul(10 ** 10),
             BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
             BigNumber.from(0),
-            reignDiamond.address,
+            reignDAO.address,
             stakingEpochStart
         ]
     ) as InterestStrategy;
@@ -63,7 +79,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`InterestStrategy1 deployed at: ${interestStrategy1.address.toLowerCase()}`);
 
     ///////////////////////////
-    // User1 deploy InterestStrategy2:
+    // User1 deploy InterestStrategy2 contract for Pool2:
     ///////////////////////////
     const interestStrategy2 = await deploy.deployContract(
         'InterestStrategy',
@@ -72,13 +88,12 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
             BigNumber.from(3).mul(10 ** 10),
             BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
             BigNumber.from(0),
-            reignDiamond.address,
+            reignDAO.address,
             stakingEpochStart
         ]
     ) as InterestStrategy;
     c.scenario1.interestStrategy2 = interestStrategy2;
     console.log(`InterestStrategy2 deployed at: ${interestStrategy2.address.toLowerCase()}`);
-
 
     const targets = [
         poolController.address,
@@ -96,12 +111,12 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
             ],
             [
                 // first param: token address
-                // WBTC: https://etherscan.io/token/0x2260fac5e5542a773aa44fbcfedf7c193bc2c599
-                "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+                // FRAX: https://etherscan.io/token/0x853d955acef822db058eb8505911ed77f175b99e
+                "0x853d955acef822db058eb8505911ed77f175b99e",
                 // second param: interestStrategy
                 interestStrategy1.address,
-                // third param: oracle
-                helpers.ZERO_ADDRESS,
+                // FRAX-USDC: https://etherscan.io/address/0x2e45c589a9f301a2061f6567b9f432690368e3c6#code
+                "0x2e45c589a9f301a2061f6567b9f432690368e3c6",
             ]
         ),
         // for the second pool (Pool2):
@@ -113,12 +128,12 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
             ],
             [
                 // first param: token address
-                // MKR: https://etherscan.io/token/0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2
-                "0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2",
+                // WETH: https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
+                "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
                 // second param: interestStrategy
                 interestStrategy2.address,
-                // third param: oracle
-                helpers.ZERO_ADDRESS,
+                // WETH-USDT:
+                "0x2e45c589a9f301a2061f6567b9f432690368e3c6",
             ]
         ),
     ];
@@ -136,11 +151,11 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
         );
 
     ///////////////////////////
-    // Time warp
+    // Time warp: go through the 'warmUpDuration'
     ///////////////////////////
-    const timeWarpInSeconds = 5 * minute
+    let timeWarpInSeconds = 1 * hour
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
-    await moveAtTimestamp(timeWarpInSeconds)
+    await increaseBlockTime(timeWarpInSeconds)
 
     ///////////////////////////
     // Get last proposal
@@ -148,11 +163,96 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     let proposalId = await reignDAO
         .connect(c.user1Acct)
         .lastProposalId();
-    console.log(`Proposal created with ID: ${proposalId}`)
+    console.log(`Proposal created with ID: ${proposalId}`);
 
-    // - test case:
-    //   -- updateAllocationVote
-    //   -- updateBasketBalance
+    ///////////////////////////
+    // Time warp: go to the middle-point of the 'activeDuration'
+    ///////////////////////////
+    timeWarpInSeconds = (30 * minute);
+    console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
+    await increaseBlockTime(timeWarpInSeconds)
+
+    ///////////////////////////
+    // 'SoVReignOwner' cast vote "true" (yes)
+    // to support the created proposal
+    ///////////////////////////
+    await reignDAO
+        .connect(c.sovReignOwnerAcct)
+        .castVote(proposalId, true);
+    console.log(`SoVReignOwner votes in favor of proposal '${proposalId}'`);
+
+    ///////////////////////////
+    // 'User2' cast vote "true" (yes)
+    // to support the created proposal
+    ///////////////////////////
+    await reignDAO
+        .connect(c.user2Acct)
+        .castVote(proposalId, true);
+    console.log(`User2 votes in favor of proposal '${proposalId}'`);
+
+    ///////////////////////////
+    // Time warp: go AFTER the 'activeDuration'
+    ///////////////////////////
+    timeWarpInSeconds = (1 * hour);
+    console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
+    await increaseBlockTime(timeWarpInSeconds)
+
+    ///////////////////////////
+    // 'User1' queues the proposal
+    ///////////////////////////
+    await reignDAO
+        .connect(c.user1Acct)
+        .queue(proposalId);
+    console.log(`User1 queues the proposal '${proposalId}'`);
+
+    // For example, here would be the time where an
+    // "abrogation proposal" would be made. :-)
+
+    ///////////////////////////
+    // Time warp: go AFTER the 'gracePeriodDuration'
+    ///////////////////////////
+    timeWarpInSeconds = (1 * hour);
+    console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
+    await increaseBlockTime(timeWarpInSeconds)
+
+    ///////////////////////////
+    // 'User1' executes the proposal
+    ///////////////////////////
+    await reignDAO
+        .connect(c.user1Acct)
+        .execute(proposalId);
+    console.log(`User1 executes the proposal '${proposalId}'`);
+
+    ///////////////////////////
+    // Display Pool1 and Pool2 addresses
+    ///////////////////////////
+
+    let pool1Addr = await poolController
+        .connect(c.sovReignOwnerAcct)
+        .allPools(0);
+    console.log(`Pool1 address: ${c.user1Acct}`);
+
+    let pool2Addr = await poolController
+        .connect(c.sovReignOwnerAcct)
+        .allPools(1);
+    console.log(`Pool2 address: ${c.user1Acct}`);
+
+    // - user1 created the proposal
+    // - sovreign owner votes
+    // - user2 votes
+    // -
+
+    // - vote on the allocation of the pool1 and pool2
+    //   -- BasketBalancer.updateAllocationVote()
+
+    // - check if User1 has voting power
+    // - BasketBalancer.updateBasketBalance()
+
+    // - User1 deposit tokens to the Pool1
+    // - User1 mint SVR (Pool.mint())
+    //    -- user1 will receive SVR + LP Tokens
+
+    // * deploy all the staking stuff
 
     return c;
 
