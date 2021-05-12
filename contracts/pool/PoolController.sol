@@ -58,10 +58,14 @@ contract PoolController is IPoolController {
             "Interest Strategy needs to be governed by DAO"
         );
 
-        require(
-            IOracle(oracle).owner_address() == reignDAO,
-            "Oracle needs to be governed by DAO"
-        );
+        // TODO
+        // IMPORTANT: we removed this for testing reasons for now.
+        // Maybe this should be done off-chain? Like, highlight on the
+        // governance frontend..?!
+        //require(
+        //    IOracle(oracle).owner_address() == reignDAO,
+        //    "Oracle needs to be governed by DAO"
+        //);
 
         require(
             getPool[underlyingToken] == address(0),

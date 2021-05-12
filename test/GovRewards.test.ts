@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import { BigNumber, Signer } from "ethers";
-import { moveAtEpoch, tenPow18,mineBlocks,setNextBlockTimestamp,getCurrentUnix, moveAtTimestamp, getLatestBlockTimestamp } from "./helpers/helpers";
+import { moveAtEpoch, tenPow18,mineBlocks,setTime,getCurrentUnix, moveAtTimestamp, getLatestBlockTimestamp } from "./helpers/helpers";
 import { deployContract, deployDiamond } from "./helpers/deploy";
 import {diamondAsFacet} from "./helpers/diamond";
 import * as time from './helpers/time';
@@ -60,7 +60,7 @@ describe("Rewards", function () {
 
         await reignToken.mint(userAddr, amount);
 
-        await setNextBlockTimestamp(await getCurrentUnix());
+        await setTime(await getCurrentUnix());
     });
 
     
