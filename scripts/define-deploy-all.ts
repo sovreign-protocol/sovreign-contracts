@@ -161,6 +161,7 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
             svrToken.address,
             reignToken.address,
             reignDAO.address,
+            reignDiamond.address,
             liquidityBufferVault.address
         ]
     ) as PoolController;

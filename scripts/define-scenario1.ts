@@ -71,8 +71,6 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
             BigNumber.from(3).mul(10 ** 10),
             BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
             BigNumber.from(0),
-            reignDAO.address,
-            stakingEpochStart
         ]
     ) as InterestStrategy;
     c.scenario1.interestStrategy1 = interestStrategy1;
@@ -88,8 +86,6 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
             BigNumber.from(3).mul(10 ** 10),
             BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
             BigNumber.from(0),
-            reignDAO.address,
-            stakingEpochStart
         ]
     ) as InterestStrategy;
     c.scenario1.interestStrategy2 = interestStrategy2;
@@ -230,12 +226,12 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     let pool1Addr = await poolController
         .connect(c.sovReignOwnerAcct)
         .allPools(0);
-    console.log(`Pool1 address: ${c.user1Acct}`);
+    console.log(`Pool1 address: ${pool1Addr}`);
 
     let pool2Addr = await poolController
         .connect(c.sovReignOwnerAcct)
         .allPools(1);
-    console.log(`Pool2 address: ${c.user1Acct}`);
+    console.log(`Pool2 address: ${pool2Addr}`);
 
     // - user1 created the proposal
     // - sovreign owner votes

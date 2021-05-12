@@ -211,7 +211,7 @@ describe('PoolController', function () {
                 underlying2.address,  helpers.zeroAddress, oracle.address,
             )).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
         });
-
+/*
         it('reverts if oracle is not owned by DAO', async function () {
             let badOracle = (await deploy.deployContract('OracleMock', [userAddress])) as OracleMock;
 
@@ -219,6 +219,7 @@ describe('PoolController', function () {
                 underlying2.address, interestStrategy, badOracle.address
             )).to.be.revertedWith('Oracle needs to be governed by DAO');
         });
+*/
     }); 
 
     describe('Getters and Setters', async function () {
