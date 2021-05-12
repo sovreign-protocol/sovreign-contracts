@@ -85,6 +85,14 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     console.log(`ReignToken minted: '${c.amountReignTokenToUser2}' to addr '${c.user2Addr.toLowerCase()}' (User2 address)`);
 
     ///////////////////////////
+    // Renounce Ownership in "ReignToken"
+    ///////////////////////////
+    // set owner to zeroAddress:
+    await reignToken.connect(c.sovReignOwnerAcct).setOwner(helpers.ZERO_ADDRESS)
+    console.log(`ReignToken owner set: '${helpers.ZERO_ADDRESS.toLowerCase()}' (Zero Address)`);
+
+
+    ///////////////////////////
     // Deploy "SVR Token" contract:
     ///////////////////////////
     const svrToken = await deploy.deployContract('SvrToken', [c.sovReignOwnerAddr]) as SvrToken;
@@ -113,7 +121,7 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
 
     ///////////////////////////
     // Set Allowance in "RewardsVault"
-    // giving permission to "Rewards" contract:
+    // giving permission to "GovRewards" contract:
     ///////////////////////////
     console.log(`Calling setAllowance() at '${rewardsVault.address.toLowerCase()}' (RewardsVault contract)`);
     await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(govRewards.address, c.amountReignTokenToRewardsVault)
@@ -167,12 +175,6 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     await svrToken.connect(c.sovReignOwnerAcct).setController(poolController.address)
     console.log(`SvrToken controller set: '${poolController.address.toLowerCase()}' (PoolController contract)`);
 
-    ///////////////////////////
-    // Set Controller in "ReignToken"
-    ///////////////////////////
-    // set controller to ReignDiamond:
-    await reignToken.connect(c.sovReignOwnerAcct).setOwner(poolController.address)
-    console.log(`ReignToken controller set: '${poolController.address.toLowerCase()}' (PoolController contract)`);
 
     ///////////////////////////
     // Set Controller in "BasketBalancer"
