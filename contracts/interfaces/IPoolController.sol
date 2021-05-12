@@ -14,8 +14,6 @@ interface IPoolController {
 
     function setOracle(address, address) external;
 
-    function setTreasury(address) external;
-
     function setReignDAO(address) external;
 
     function setBaseketBalancer(address) external;
@@ -46,7 +44,7 @@ interface IPoolController {
 
     function getTargetAllocation(address) external view returns (uint256);
 
-    function treasury() external view returns (address);
+    function reignDAO() external view returns (address);
 
     function liquidityBuffer() external view returns (address);
 

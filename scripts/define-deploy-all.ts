@@ -154,8 +154,6 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
             svrToken.address,
             reignToken.address,
             reignDAO.address,
-            // we're using the reignDAO as "treasury"
-            reignDAO.address,
             liquidityBufferVault.address
         ]
     ) as PoolController;

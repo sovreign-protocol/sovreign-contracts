@@ -15,10 +15,8 @@ contract PoolController is IPoolController {
     IBasketBalancer private basketBalancer;
     address public override svrToken;
     address public override reignToken;
-    address public override treasury;
+    address public override reignDAO;
     address public override liquidityBuffer;
-
-    address public reignDAO;
 
     mapping(address => address) public override getPool;
     mapping(address => address) public override getInterestStrategy;
@@ -37,14 +35,12 @@ contract PoolController is IPoolController {
         address _svrToken,
         address _reignToken,
         address _reignDAO,
-        address _treasury,
         address _liquidityBuffer
     ) {
         basketBalancer = IBasketBalancer(_basketBalancer);
         svrToken = _svrToken;
         reignToken = _reignToken;
         reignDAO = _reignDAO;
-        treasury = _treasury;
         liquidityBuffer = _liquidityBuffer;
     }
 
@@ -90,11 +86,6 @@ contract PoolController is IPoolController {
         emit PoolCreated(underlyingToken, pool, allPools.length);
 
         return pool;
-    }
-
-    function setTreasury(address _treasury) external override onlyDAO {
-        require(_treasury != address(0), "SoVReign: ZERO_ADDRESS");
-        treasury = _treasury;
     }
 
     function setReignDAO(address _reignDAO) external override onlyDAO {

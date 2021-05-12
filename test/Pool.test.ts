@@ -18,7 +18,7 @@ describe('Pool', function () {
     let  pool:Pool, pool2:Pool;
 
     let user: Signer, userAddress: string;
-    let treasury: Signer, treasuryAddress: string;
+    let happyPirate: Signer, happyPirateAddress: string;
     let reignDAO: Signer, reignDAOAddress: string;
     let newUser: Signer, newUserAddress:string;
     let liquidityBufferAddress:string;
@@ -64,7 +64,7 @@ describe('Pool', function () {
 
         poolController = (
             await deploy.deployContract('PoolController', [
-                balancer.address, svr.address, reign.address, reignDAOAddress, treasuryAddress, liquidityBufferAddress
+                balancer.address, svr.address, reign.address, reignDAOAddress, liquidityBufferAddress
             ])
         ) as PoolController; 
 
@@ -181,8 +181,8 @@ describe('Pool', function () {
             await depositToPool(100000,pool)
             let allow = BigNumber.from(10)
             await pool.connect(user).approve(newUserAddress,allow);
-            await pool.connect(newUser).transferFrom(userAddress,treasuryAddress, allow);
-            expect(await pool.balanceOf(treasuryAddress)).to.be.eq(allow);
+            await pool.connect(newUser).transferFrom(userAddress,happyPirateAddress, allow);
+            expect(await pool.balanceOf(happyPirateAddress)).to.be.eq(allow);
         })
 
         it('reverts if transferFrom is above allowance', async function () {
@@ -190,7 +190,7 @@ describe('Pool', function () {
             let allow = BigNumber.from(10)
             await pool.connect(user).approve(newUserAddress,allow);
             await expect(
-                pool.connect(user).transferFrom(userAddress,treasuryAddress,allow.add(1))
+                pool.connect(user).transferFrom(userAddress,happyPirateAddress,allow.add(1))
             ).to.be.revertedWith("SafeMath: subtraction overflow")
         })
 
@@ -198,7 +198,7 @@ describe('Pool', function () {
             await depositToPool(100000,pool)
             let allow = BigNumber.from(10)
             await pool.connect(user).approve(newUserAddress,allow);
-            await pool.connect(newUser).transferFrom(userAddress,treasuryAddress, allow.sub(5));
+            await pool.connect(newUser).transferFrom(userAddress,happyPirateAddress, allow.sub(5));
             expect(await pool.allowance(userAddress,newUserAddress)).to.be.eq(allow.sub(5))
         })
     })
@@ -472,12 +472,12 @@ describe('Pool', function () {
     async function setupSigners () {
         const accounts = await ethers.getSigners();
         user = accounts[0];
-        treasury = accounts[1];
+        happyPirate = accounts[1];
         reignDAO = accounts[2];
         newUser = accounts[3];
 
         userAddress = await user.getAddress();
-        treasuryAddress = await treasury.getAddress();
+        happyPirateAddress = await happyPirate.getAddress();
         reignDAOAddress = await reignDAO.getAddress();
         newUserAddress = await newUser.getAddress();
         liquidityBufferAddress = await accounts[4].getAddress();

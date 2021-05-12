@@ -61,7 +61,7 @@ contract Pool is IPool, PoolErc20 {
         ); // sufficient check, poolController will initialize once after deployment
         controller = IPoolController(msg.sender);
         token = _token;
-        treasury = controller.treasury();
+        treasury = controller.reignDAO();
         svrToken = controller.svrToken();
         reignToken = controller.reignToken();
         liquidityBuffer = controller.liquidityBuffer();
