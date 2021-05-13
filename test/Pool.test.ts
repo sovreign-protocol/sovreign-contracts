@@ -68,7 +68,7 @@ describe('Pool', function () {
 
         poolController = (
             await deploy.deployContract('PoolController', [
-                balancer.address, svr.address, reign.address, reignDAOAddress, epochClock.address, liquidityBufferAddress
+                balancer.address, svr.address, reign.address,oracle.address, reignDAOAddress, epochClock.address, liquidityBufferAddress
             ])
         ) as PoolController; 
 
@@ -207,10 +207,10 @@ describe('Pool', function () {
     describe('Computing Fees', async function () {
 
         it('returns correct expected deposit fee', async function () {
-            await depositToPool(11000,pool);
-            await depositToPool(10000,pool2);
 
             let amount = BigNumber.from(1000)
+            await depositToPool(11000,pool);
+            await depositToPool(10000,pool2);
 
             let target = await poolController.getTargetSize(pool.address)
             let reservesAfter = (await pool.getReserves()).add(amount)

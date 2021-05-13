@@ -67,7 +67,7 @@ export async function getCurrentEpoch(): Promise<number> {
     return Math.floor((currentBlockTs - stakingEpochStart) / stakingEpochDuration) + 1;
 }
 
-export async function contractAt(name: string, address: string): Promise<Contract> {
+export async function contractAt(name: string|any[], address: string): Promise<Contract> {
     return await ethers.getContractAt(name, address);
 }
 export async function setAutomine(val: boolean) {

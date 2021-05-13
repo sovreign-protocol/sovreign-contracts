@@ -18,6 +18,7 @@ contract PoolController is IPoolController {
     address public override reignToken;
     address public override reignDAO;
     address public override liquidityBuffer;
+    address public reignTokenOracle;
 
     mapping(address => address) public override getPool;
     mapping(address => address) public override getInterestStrategy;
@@ -35,12 +36,14 @@ contract PoolController is IPoolController {
         address _basketBalancer,
         address _svrToken,
         address _reignToken,
+        address _reignTokenOracle,
         address _reignDAO,
         address _reignDiamond,
         address _liquidityBuffer
     ) {
         basketBalancer = IBasketBalancer(_basketBalancer);
         svrToken = _svrToken;
+        reignTokenOracle = _reignTokenOracle;
         reignToken = _reignToken;
         reignDAO = _reignDAO;
         clock = IEpochClock(_reignDiamond);
@@ -115,6 +118,11 @@ contract PoolController is IPoolController {
         reignToken = _reignToken;
     }
 
+    function setReignTokenOracle(address _reignTokenOracle) external onlyDAO {
+        require(_reignTokenOracle != address(0), "SoVReign: ZERO_ADDRESS");
+        reignTokenOracle = _reignTokenOracle;
+    }
+
     function setInterestStrategy(address strategy, address pool)
         external
         override
@@ -165,7 +173,8 @@ contract PoolController is IPoolController {
     {
         //returns the amount in USDC recived for paying in 1 underlyingToken, i.e the USD price of 1 underlyingToken
         address pool_token = IPool(pool).token();
-        return IOracle(getOracle[pool]).consult(pool_token, 10**18);
+        uint256 _decimals = IERC20(pool_token).decimals();
+        return IOracle(getOracle[pool]).consult(pool_token, 1 * 10**_decimals);
     }
 
     function getPoolsTVL() public view override returns (uint256) {
@@ -191,7 +200,7 @@ contract PoolController is IPoolController {
 
     function getReignPrice() external view override returns (uint256) {
         uint256 reign_price =
-            IOracle(getOracle[allPools[0]]).consult(reignToken, 10**18);
+            IOracle(reignTokenOracle).consult(reignToken, 10**18);
 
         return reign_price;
     }

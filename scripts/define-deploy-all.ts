@@ -9,15 +9,22 @@ import {
     ReignFacet,
     ReignToken,
     RewardsVault,
-    SvrToken
+    SvrToken,
+    ERC20Mock,
 } from "../typechain";
 import {diamondAsFacet} from "../test/helpers/diamond";
-import {BigNumber} from "ethers";
+import {BigNumber, Contract} from "ethers";
 import * as helpers from "../test/helpers/governance-helpers";
 import {day} from "../test/helpers/time";
-import {increaseBlockTime, moveAtTimestamp, stakingEpochStart} from "../test/helpers/helpers";
+import {deployOracle} from "../test/helpers/oracles";
+import {increaseBlockTime, moveAtTimestamp, stakingEpochStart, contractAt} from "../test/helpers/helpers";
+import UniswapV2Factory from "./ContractABIs/UniswapV2Factory.json"
+import UniswapV2Router from "./ContractABIs/UniswapV2Router.json"
+
 
 export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
+    
+    const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 
     ///////////////////////////
     // Deploy 'Facet' contracts:
@@ -52,6 +59,12 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     console.log(`ReignDiamond deployed at: ${reignDiamond.address.toLowerCase()}`);
 
     ///////////////////////////
+    // Deploy "usdcMock" contract:
+    ///////////////////////////
+    const usdcMock = await deploy.deployContract('ERC20Mock') as ERC20Mock;
+    console.log(`usdcMock deployed at: ${usdcMock.address.toLowerCase()}`);
+
+    ///////////////////////////
     // Deploy "ReignToken" contract:
     ///////////////////////////
     const reignToken = await deploy.deployContract('ReignToken', [c.sovReignOwnerAddr]) as ReignToken;
@@ -83,6 +96,13 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     console.log(`ReignToken minted: '${c.amountReignTokenToUser1}' to addr '${c.user1Addr.toLowerCase()}' (User1 address)`);
     await reignToken.connect(c.sovReignOwnerAcct).mint(c.user2Addr, c.amountReignTokenToUser2)
     console.log(`ReignToken minted: '${c.amountReignTokenToUser2}' to addr '${c.user2Addr.toLowerCase()}' (User2 address)`);
+
+    ///////////////////////////
+    // Mint coins "UsdcMock" contract:
+    ///////////////////////////
+    await usdcMock.connect(c.sovReignOwnerAcct).mint(c.sovReignOwnerAddr, c.amountReignTokenToSoVReignOwner)
+    console.log(`UsdcMock minted: '${c.amountReignTokenToSoVReignOwner}' to addr '${c.sovReignOwnerAddr.toLowerCase()}' (SoVReignOwner address)`);
+    
 
     ///////////////////////////
     // Renounce Ownership in "ReignToken"
@@ -150,6 +170,53 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     c.basketBalancer = basketBalancer1;
     console.log(`BasketBalancer deployed at: ${basketBalancer1.address.toLowerCase()}`);
 
+
+    ///////////////////////////
+    // Connect to UniswapV2Factory
+    ///////////////////////////
+    let uniswapFactory = new Contract(
+        "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f", 
+        UniswapV2Factory,
+        c.sovReignOwnerAcct 
+    )
+    console.log(`Connected to UniswapV2Factory at '${uniswapFactory.address}'`);
+
+
+    ///////////////////////////
+    // Create a pair for REIGN/USDC
+    ///////////////////////////
+    await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(reignToken.address, usdcMock.address)
+    let pairAddress = await uniswapFactory.getPair(reignToken.address, usdcMock.address)
+    console.log(`Deployed a Uniswap pair for REIGN/USDC: '${pairAddress}'`);
+
+    ///////////////////////////
+    // Deposit liquidity into the pair 
+    ///////////////////////////
+    let uniwapRouter = new Contract(
+        "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D", 
+        UniswapV2Router,
+        c.sovReignOwnerAcct 
+    )
+    await reignToken.connect(c.sovReignOwnerAcct).approve(uniwapRouter.address, BigNumber.from(1000000))
+    await usdcMock.connect(c.sovReignOwnerAcct).approve(uniwapRouter.address, BigNumber.from(1000000))
+    await uniwapRouter.addLiquidity(
+            reignToken.address,
+            usdcMock.address,
+            BigNumber.from(1000000),
+            BigNumber.from(1000000),
+            1,
+            1,
+            c.sovReignOwnerAcct.address,
+            Date.now() + 1000
+        )
+
+    ///////////////////////////
+    // Deploy an Oracle for the Pair
+    ///////////////////////////
+    let reignTokenOracle = await deployOracle(reignToken.address, usdcMock.address,
+        reignDAO.address)
+    console.log(`Deployed Oracle for for REIGN/USDC at: '${pairAddress}'`);
+
     ///////////////////////////
     // Deploy "PoolController" contract:
     ///////////////////////////
@@ -159,6 +226,7 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
             basketBalancer1.address,
             svrToken.address,
             reignToken.address,
+            reignTokenOracle.address,
             reignDAO.address,
             reignDiamond.address,
             liquidityBufferVault.address

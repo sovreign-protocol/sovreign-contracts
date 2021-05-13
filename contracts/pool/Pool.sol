@@ -33,6 +33,7 @@ contract Pool is IPool, PoolErc20 {
     address public override liquidityBuffer;
 
     uint256 private reserve;
+    uint256 public tokenDecimals;
     uint256 public BASE_MULTIPLIER = 10**18;
     uint256 public depositFeeMultiplier = 100000;
 
@@ -43,7 +44,7 @@ contract Pool is IPool, PoolErc20 {
     IPoolController controller;
 
     modifier lock() {
-        require(unlocked == 1, "UniswapV2: LOCKED");
+        require(unlocked == 1, "SoVReign: LOCKED");
         unlocked = 0;
         _;
         unlocked = 1;
@@ -61,6 +62,7 @@ contract Pool is IPool, PoolErc20 {
         ); // sufficient check, poolController will initialize once after deployment
         controller = IPoolController(msg.sender);
         token = _token;
+        tokenDecimals = IERC20(token).decimals();
         treasury = controller.reignDAO();
         svrToken = controller.svrToken();
         reignToken = controller.reignToken();
@@ -244,7 +246,7 @@ contract Pool is IPool, PoolErc20 {
                     .mul(controller.getTokenPrice(address(this)))
                     .div(controller.getReignPrice())
             )
-                .div(10**18);
+                .div(10**tokenDecimals); //adjust for  token decimals
     }
 
     // get the withdraw fee to be paid to withdraw a given amount of liquidity
