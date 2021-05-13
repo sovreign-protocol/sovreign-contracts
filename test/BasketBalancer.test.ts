@@ -136,18 +136,34 @@ describe('BasketBalancer', function () {
             ])).to.be.revertedWith("Allocation is not complete");
         });
 
-        it('sets correct allocations during deployment', async function () {
+        it('sets correct allocations during deployment with arrays', async function () {
             let alloc = await balancer.getTargetAllocation(pools[0]);
             expect(alloc).to.equal(500000000);
             alloc = await balancer.getTargetAllocation(pools[1]);
             expect(alloc).to.equal(500000000);
         });
 
-        it('sets correct current vote during deployment', async function () {
+        it('sets correct current vote during deployment with arrays', async function () {
             let alloc = await balancer.continuousVote(pools[0]);
             expect(alloc).to.equal(500000000);
             alloc = await balancer.continuousVote(pools[1]);
             expect(alloc).to.equal(500000000);
+        });
+
+        it('sets correct allocation and current during initialization', async function () {
+
+            await expect(
+                balancer.connect(flyingParrot).setInitialAllocation([450000000,550000000])
+            ).to.be.revertedWith("Only the DAO can execute this")
+
+            await balancer.connect(reignDAO).setInitialAllocation([450000000,550000000]);
+            
+            let alloc = await balancer.continuousVote(pools[0]);
+            expect(alloc).to.equal(450000000);
+            alloc = await balancer.continuousVote(pools[1]);
+            expect(alloc).to.equal(550000000);
+
+            await expect(balancer.connect(reignDAO).setInitialAllocation([450000000,550000000])).to.be.revertedWith("Already Initialized")
         });
 
         it('can vote with correct allocation', async function () {

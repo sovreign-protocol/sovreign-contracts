@@ -22,6 +22,8 @@ contract BasketBalancer is IBasketBalancer {
 
     address[] public allPools;
 
+    bool initialized = false;
+
     mapping(address => uint256) public continuousVote;
     mapping(address => uint256) private poolAllocation;
     mapping(address => uint256) private poolAllocationBefore;
@@ -51,7 +53,7 @@ contract BasketBalancer is IBasketBalancer {
     constructor(
         address[] memory _newPools,
         uint256[] memory _newAllocation,
-        address _reignAddress,
+        address _reignDiamond,
         address _reignDAO,
         address _controller,
         uint256 _maxDelta
@@ -78,7 +80,7 @@ contract BasketBalancer is IBasketBalancer {
         lastEpochUpdate = 0;
         maxDelta = _maxDelta;
         allPools = _newPools;
-        reign = IReign(_reignAddress);
+        reign = IReign(_reignDiamond);
         controller = _controller;
         reignDAO = _reignDAO;
         epoch1Start = reign.getEpoch1Start();
@@ -196,6 +198,19 @@ contract BasketBalancer is IBasketBalancer {
 
     function setMaxDelta(uint256 _maxDelta) public onlyDAO {
         maxDelta = _maxDelta;
+    }
+
+    function setInitialAllocation(uint256[] calldata allocations)
+        external
+        onlyDAO
+    {
+        require(initialized == false, "Already Initialized");
+        for (uint256 i = 0; i < allPools.length; i++) {
+            continuousVote[allPools[i]] = allocations[i];
+            poolAllocation[allPools[i]] = allocations[i];
+        }
+
+        initialized = true;
     }
 
     /*
