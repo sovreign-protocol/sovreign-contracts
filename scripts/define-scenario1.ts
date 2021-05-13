@@ -1,10 +1,11 @@
 import {DeployConfig} from "./config";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
-import {GovRewards, InterestStrategy, PoolController, ReignDAO, ReignFacet, ReignToken} from "../typechain";
+import {BasketBalancer, GovRewards, InterestStrategy, PoolController, ReignDAO,Pool, ReignFacet, ReignToken} from "../typechain";
 import * as helpers from "../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../test/helpers/diamond";
+import {deployOracle} from "../test/helpers/oracles";
 import {day, hour, minute} from "../test/helpers/time";
-import {increaseBlockTime, moveAtTimestamp, stakingEpochStart} from "../test/helpers/helpers";
+import {increaseBlockTime, moveAtTimestamp, stakingEpochStart, tenPow18} from "../test/helpers/helpers";
 import * as deploy from "../test/helpers/deploy";
 
 export class Scenario1Config {
@@ -27,7 +28,13 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     const reignFacet = await diamondAsFacet(reignDiamond, 'ReignFacet') as ReignFacet;
     const reignDAO = c.reignDAO as ReignDAO;
     const poolController = c.poolController as PoolController;
+    const balancer = c.basketBalancer as BasketBalancer;
     const govRewards = c.govRewards as GovRewards;
+
+    // Mainnet token contract addresses
+    const WBTC = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+    const WETH = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 
     ///////////////////////////
     // User1 stakes ReignToken to ReignDiamond:
@@ -91,12 +98,36 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     c.scenario1.interestStrategy2 = interestStrategy2;
     console.log(`InterestStrategy2 deployed at: ${interestStrategy2.address.toLowerCase()}`);
 
+    const oracle1 = await deployOracle(
+        WBTC,
+        USDC,
+        reignDAO.address)
+    
+    console.log("WBTC Oracle deployed at: " + oracle1.address)
+    await oracle1.update()
+    let WBTCPrice = await oracle1.consult(WBTC,BigNumber.from(1).mul(tenPow18))
+    console.log("WBTC Oracle price: " + WBTCPrice.toString())
+
+    const oracle2 = await deployOracle(
+        WETH,
+        USDC,
+        reignDAO.address)
+
+    console.log("WETH Oracle deployed at: " + oracle2.address)
+    await oracle2.update()
+    let WETHPrice = await oracle2.consult(WETH,BigNumber.from(1).mul(tenPow18))
+    console.log("WETH Oracle price: " + WETHPrice.toString())
+
     const targets = [
         poolController.address,
-        poolController.address
+        poolController.address,
+        balancer.address
     ];
-    const values = ['0', '0'];
-    const signatures = ['createPool(address,address,address)', 'createPool(address,address,address)'];
+    const values = ['0', '0', '0'];
+    const signatures = [
+        'createPool(address,address,address)', 
+        'createPool(address,address,address)', 
+        'setInitialAllocation(uint256[])'];
     const callDatas = [
         // for the first pool (Pool1):
         ejs.utils.defaultAbiCoder.encode(
@@ -107,12 +138,12 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
             ],
             [
                 // first param: token address
-                // FRAX: https://etherscan.io/token/0x853d955acef822db058eb8505911ed77f175b99e
-                "0x853d955acef822db058eb8505911ed77f175b99e",
+                // WBTC: https://etherscan.io/token/0x2260fac5e5542a773aa44fbcfedf7c193bc2c599
+                WBTC,
                 // second param: interestStrategy
                 interestStrategy1.address,
-                // FRAX-USDC: https://etherscan.io/address/0x2e45c589a9f301a2061f6567b9f432690368e3c6#code
-                "0x2e45c589a9f301a2061f6567b9f432690368e3c6",
+                // third param: oracle
+                oracle1.address,
             ]
         ),
         // for the second pool (Pool2):
@@ -125,11 +156,20 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
             [
                 // first param: token address
                 // WETH: https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
-                "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                WETH,
                 // second param: interestStrategy
                 interestStrategy2.address,
-                // WETH-USDT:
-                "0x2e45c589a9f301a2061f6567b9f432690368e3c6",
+                // third param: oracle
+                oracle2.address,
+            ]
+        ),
+        // for allocation:
+        ejs.utils.defaultAbiCoder.encode(
+            [
+                'uint256[]',
+            ],
+            [
+                [500000000,500000000],
             ]
         ),
     ];
@@ -220,26 +260,67 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`User1 executes the proposal '${proposalId}'`);
 
     ///////////////////////////
-    // Display Pool1 and Pool2 addresses
+    // Display Pool1 and Pool2 addresses and initial allocation
     ///////////////////////////
 
     let pool1Addr = await poolController
         .connect(c.sovReignOwnerAcct)
         .allPools(0);
     console.log(`Pool1 address: ${pool1Addr}`);
+    let pool1Alloc = (await balancer.getTargetAllocation(pool1Addr)).toString()
+    console.log(`Pool1 allocation: ${pool1Alloc}`);
 
     let pool2Addr = await poolController
         .connect(c.sovReignOwnerAcct)
         .allPools(1);
     console.log(`Pool2 address: ${pool2Addr}`);
+    let pool2Alloc = (await balancer.getTargetAllocation(pool2Addr)).toString()
+    console.log(`Pool2 allocation: ${pool2Alloc}`);
 
-    // - user1 created the proposal
-    // - sovreign owner votes
-    // - user2 votes
-    // -
 
-    // - vote on the allocation of the pool1 and pool2
-    //   -- BasketBalancer.updateAllocationVote()
+    ///////////////////////////
+    // Initialize Epoch in balancer
+    ///////////////////////////
+    await balancer.connect(c.user1Acct).updateBasketBalance()
+
+    ///////////////////////////
+    // All Users Vote on Basket Allocation
+    ///////////////////////////
+    await balancer.connect(c.user1Acct).updateAllocationVote([pool1Addr,pool2Addr], [510000000,490000000])
+    await balancer.connect(c.user2Acct).updateAllocationVote([pool1Addr,pool2Addr], [510000000,490000000])
+    await balancer.connect(c.sovReignOwnerAcct).updateAllocationVote([pool1Addr,pool2Addr], [510000000,490000000])
+    let votePool1 = await balancer.continuousVote(pool1Addr)
+    console.log(`Continuous Vote Tally Pool1: ${votePool1}`);
+    let votePool2 = await balancer.continuousVote(pool2Addr)
+    console.log(`Continuous Vote Tally Pool2: ${votePool2}`);
+    
+
+    ///////////////////////////
+    // Time warp: go to the next Epoch
+    ///////////////////////////
+    timeWarpInSeconds = (hour/2)+100
+    console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
+    await moveAtTimestamp(Date.now() + timeWarpInSeconds)
+
+
+    ///////////////////////////
+    // Basket Allocation is updated
+    ///////////////////////////
+    await balancer.connect(c.user1Acct).updateBasketBalance()
+
+    ///////////////////////////
+    // Attach To deployed Pools
+    ///////////////////////////
+    let pool1 = (await deploy.deployContract('Pool')) as Pool;
+    pool1 = pool1.attach(pool1Addr);
+    console.log(`Pool1 Reserves '${ (await pool1.getReserves() ).toString()}'`)
+
+    let pool2 = (await deploy.deployContract('Pool')) as Pool;
+    pool2 = pool2.attach(pool1Addr);
+    console.log(`Pool2 Reserves '${ (await pool2.getReserves() ).toString()}'`)
+
+    
+
 
     // - check if User1 has voting power
     // - BasketBalancer.updateBasketBalance()

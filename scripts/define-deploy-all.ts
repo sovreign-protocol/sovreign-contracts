@@ -145,7 +145,6 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
             reignDAO.address,
             c.sovReignOwnerAcct.address,
             100000000,
-            stakingEpochStart
         ]
     ) as BasketBalancer;
     c.basketBalancer = basketBalancer1;
@@ -178,7 +177,7 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Set Controller in "BasketBalancer"
     ///////////////////////////
-    // set controller to ReignDiamond:
+    // set controller to poolController:
     await basketBalancer1.connect(c.sovReignOwnerAcct).setController(poolController.address)
     console.log(`BasketBalancer controller set: '${poolController.address.toLowerCase()}' (PoolController contract)`);
 

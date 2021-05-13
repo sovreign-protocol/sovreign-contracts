@@ -10,6 +10,8 @@ export async function deployContract (name: string, args?: Array<any>): Promise<
     return ctr;
 }
 
+
+
 export async function deployDiamond (diamondArtifactName: string, facets: Array<Contract>, owner: string): Promise<Contract> {
     const diamondCut = [];
 
