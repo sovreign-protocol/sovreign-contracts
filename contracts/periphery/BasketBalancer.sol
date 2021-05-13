@@ -10,9 +10,9 @@ contract BasketBalancer is IBasketBalancer {
     using SafeMath for uint256;
 
     uint256 public epoch1Start;
+    uint256 public epochDuration; // ca. one week in seconds
 
     uint256 public override FULL_ALLOCATION = 1000000000; // 9 decimals precision
-    uint256 public EPOCH_DURATION = 604800; // ca. one week in seconds
     uint256 public UPDATE_PERIOD = 172800; // ca. two days in seconds
 
     uint128 public lastEpochUpdate;
@@ -54,8 +54,7 @@ contract BasketBalancer is IBasketBalancer {
         address _reignAddress,
         address _reignDAO,
         address _controller,
-        uint256 _maxDelta,
-        uint256 _epoch1Start
+        uint256 _maxDelta
     ) {
         uint256 amountAllocated = 0;
 
@@ -76,13 +75,14 @@ contract BasketBalancer is IBasketBalancer {
                 "Allocation is not complete"
             );
         }
-        epoch1Start = _epoch1Start;
         lastEpochUpdate = 0;
         maxDelta = _maxDelta;
         allPools = _newPools;
         reign = IReign(_reignAddress);
         controller = _controller;
         reignDAO = _reignDAO;
+        epoch1Start = reign.getEpoch1Start();
+        epochDuration = reign.getEpochDuration();
     }
 
     // Counts votes and sets the outcome allocation for each pool, can be called by anyone after an epoch ends.

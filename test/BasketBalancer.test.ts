@@ -69,8 +69,7 @@ describe('BasketBalancer', function () {
                 reign.address,
                 reignDAO.getAddress(), 
                 controller.getAddress(), 
-                maxAllocation/10, 
-                helpers.stakingEpochStart
+                maxAllocation/10,
             ])
             ) as BasketBalancer;
 
@@ -105,8 +104,7 @@ describe('BasketBalancer', function () {
                     reign.address,
                     reignDAO.getAddress(), 
                     controller.getAddress(), 
-                    maxAllocation/10, 
-                    helpers.stakingEpochStart
+                    maxAllocation/10
             ])
                 ) as BasketBalancer;
             expect(balancerEmpty.address).to.not.eql(0).and.to.not.be.empty;
@@ -121,8 +119,7 @@ describe('BasketBalancer', function () {
                     reign.address,
                     reignDAO.getAddress(), 
                     controller.getAddress(), 
-                    maxAllocation/10, 
-                    helpers.stakingEpochStart
+                    maxAllocation/10
             ])).to.be.revertedWith("Need to have same length");
         });
 
@@ -135,8 +132,7 @@ describe('BasketBalancer', function () {
                     reign.address,
                     reignDAO.getAddress(), 
                     controller.getAddress(), 
-                    maxAllocation/10, 
-                    helpers.stakingEpochStart
+                    maxAllocation/10
             ])).to.be.revertedWith("Allocation is not complete");
         });
 
