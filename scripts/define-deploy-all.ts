@@ -215,7 +215,7 @@ export async function deployAll(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     let reignTokenOracle = await deployOracle(reignToken.address, usdcMock.address,
         reignDAO.address)
-    console.log(`Deployed Oracle for for REIGN/USDC at: '${pairAddress}'`);
+    console.log(`Deployed Oracle for for REIGN/USDC at: '${reignTokenOracle.address}'`);
 
     ///////////////////////////
     // Deploy "PoolController" contract:
