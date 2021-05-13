@@ -8,6 +8,7 @@
     "test": "hardhat test",
     "clean": "hardhat clean",
     "run": "hardhat run",
+    "scenario1-mainnet": "MAINNET_ALCHEMY_ENABLED=true hardhat run scripts/run-scenario1.ts --network hardhat",
     "compile-and-test": "yarn run compile && hardhat test",
     "coverage": "hardhat coverage --temp artifacts ",
     "lint": "yarn run lint:ts && npm run lint:sol",
