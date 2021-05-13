@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/InterestStrategyInterface.sol";
 import "../interfaces/IEpochClock.sol";
 
+import "hardhat/console.sol";
+
 contract Staking is ReentrancyGuard {
     using SafeMath for uint256;
 
@@ -265,8 +267,9 @@ contract Staking is ReentrancyGuard {
                 .size
                 .sub(amount);
         }
-        // there was a deposit in the `epochId - 1` epoch => we have a checkpoint for the current epoch
+        // there was a deposit in the current epoch
         else if (checkpoints[last].epochId == currentEpoch) {
+            console.log("here");
             checkpoints[last].startBalance = balances[msg.sender][tokenAddress];
             checkpoints[last].newDeposits = 0;
             checkpoints[last].multiplier = BASE_MULTIPLIER;
@@ -277,7 +280,7 @@ contract Staking is ReentrancyGuard {
                 .size
                 .sub(amount);
         }
-        // there was a deposit in the current epoch
+        // there was a deposit in the `epochId - 1` epoch => we have a checkpoint for the current epoch
         else {
             Checkpoint storage currentEpochCheckpoint = checkpoints[last - 1];
 

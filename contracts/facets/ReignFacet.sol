@@ -152,7 +152,6 @@ contract ReignFacet {
             ds.userStakeHistory[msg.sender];
         LibReignStorage.Stake storage currentStake =
             checkpoints[checkpoints.length - 1];
-
         if (!epochIsInitialized(getEpoch())) {
             _initEpoch(getEpoch());
         }
@@ -557,7 +556,6 @@ contract ReignFacet {
     ) internal {
         uint128 currentEpoch = getEpoch();
         uint128 currentMultiplier = currentEpochMultiplier();
-
         if (!epochIsInitialized(currentEpoch)) {
             _initEpoch(currentEpoch);
         }
@@ -619,7 +617,7 @@ contract ReignFacet {
                     )
                 );
             }
-            // the last action happened in the previous epoch, update values and add a new checkpoint
+            // the last action happened in the current epoch, update values and add a new checkpoint
             // for the current epoch
             else if (old.epochId == currentEpoch) {
                 old.multiplier = computeNewMultiplier(
@@ -639,7 +637,7 @@ contract ReignFacet {
                     )
                 );
             }
-            // the last action happened in the current epoch, just upate the value
+            // the last action happened in the previous epoch, just upate the value
             else {
                 if (
                     lastIndex >= 1 &&
@@ -696,13 +694,13 @@ contract ReignFacet {
                 )
             );
         }
-        // there was a deposit in the `epochId - 1` epoch => we have a checkpoint for the current epoch
+        // there was a deposit in the current epoch
         else if (old.epochId == currentEpoch) {
             old.multiplier = BASE_BALANCE_MULTIPLIER;
             old.startBalance = balances[msg.sender];
             old.newDeposits = 0;
         }
-        // there was a deposit in the current epoch
+        // there was a deposit in the `epochId - 1` epoch => we have a checkpoint for the current epoch
         else {
             LibReignStorage.EpochBalance storage currentEpochCheckpoint =
                 epochBalances[lastIndex - 1];

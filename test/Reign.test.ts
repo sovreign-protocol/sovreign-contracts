@@ -454,9 +454,11 @@ describe('Reign', function () {
         it("deposit epoch 1, deposit epoch 4, deposit epoch 5, withdraw epoch 5", async function () {
             await prepareAccount(user, amount.mul(10))
             await helpers.moveAtEpoch(startEpoch, duration, 1);
-
             await reign.connect(user).deposit(amount);
-            expect(await getEpochUserBalance(userAddress, 2)).to.be.equal(amount.toString());
+            //deposit is made 1 block after epoch time, thus effective balance for epoch is with 1 block less
+            let after = await helpers.getLatestBlockTimestamp()
+            let balanceEffective = computeEffectiveBalance(amount, await multiplierAtTs(1, after));
+            expect(await getEpochUserBalance(userAddress, 1)).to.be.equal(balanceEffective);
 
             await helpers.moveAtEpoch(startEpoch, duration, 4);
 
@@ -478,14 +480,23 @@ describe('Reign', function () {
             await helpers.moveAtEpoch(startEpoch, duration, 1);
 
             await reign.connect(user).deposit(amount)
-            expect(await getEpochUserBalance(userAddress, 2)).to.be.equal(amount.toString());
+            let after = await helpers.getLatestBlockTimestamp()
+            let multiplier = await multiplierAtTs(1, after);
+            let balanceEffective = computeEffectiveBalance(amount, multiplier);
+            expect(await getEpochUserBalance(userAddress, 1)).to.be.equal(balanceEffective);
 
             await helpers.moveAtEpoch(startEpoch, duration, 3);
             await reign.connect(user).deposit(amount)
-            expect(await getEpochUserBalance(userAddress, 4)).to.be.equal(amount.mul(2).toString());
+
+            after = await helpers.getLatestBlockTimestamp()
+            multiplier = await multiplierAtTs(3, after);
+            balanceEffective = computeEffectiveBalance(amount, multiplier);
+            expect(await getEpochUserBalance(userAddress, 3)).to.be.equal(amount.add(balanceEffective));
 
 
             await reign.connect(user).withdraw(amount.mul(2));
+            expect(await getEpochUserBalance(userAddress, 3)).to.be.equal("0");
+
             expect(await getEpochUserBalance(userAddress, 2)).to.be.equal(amount.toString());
             expect(await getEpochUserBalance(userAddress, 4)).to.be.equal("0");
         });
@@ -526,6 +537,60 @@ describe('Reign', function () {
             expect(await reign.getEpochUserBalance(userAddress, 6)).to.equal(amount.add(amount.div(2)));
         });
 
+        it("deposit in epoch 0, deposit in epoch 1, deposit in epoch 2, withdraw in epoch 3", async function () {
+            await prepareAccount(user, amount.mul(4))
+            
+
+            expect(await getEpochUserBalance(userAddress, 1)).to.be.equal("0");
+
+            await helpers.moveAtEpoch(startEpoch, duration, 1);
+            await reign.connect(user).deposit(amount);
+
+            let after = await helpers.getLatestBlockTimestamp()
+            let multiplier = await multiplierAtTs(1, after);
+            let balanceEffective = computeEffectiveBalance(amount, multiplier);
+            expect(await getEpochUserBalance(userAddress, 1)).to.be.equal(balanceEffective);
+
+            await helpers.moveAtEpoch(startEpoch, duration, 2);
+            await reign.connect(user).deposit(amount);
+
+            after = await helpers.getLatestBlockTimestamp()
+            multiplier = await multiplierAtTs(2, after);
+            balanceEffective = computeEffectiveBalance(amount, multiplier);
+            expect(await getEpochUserBalance(userAddress, 2)).to.be.equal(amount.add(balanceEffective));
+
+            await helpers.moveAtEpoch(startEpoch, duration, 3);
+            await reign.connect(user).deposit(amount);
+
+            after = await helpers.getLatestBlockTimestamp()
+            multiplier = await multiplierAtTs(3, after);
+            balanceEffective = computeEffectiveBalance(amount, multiplier);
+            expect(await getEpochUserBalance(userAddress, 3)).to.be.equal(amount.mul(2).add(balanceEffective));
+
+            await helpers.moveAtEpoch(startEpoch, duration, 4);
+            await reign.connect(user).withdraw(amount.mul(3));
+
+            expect(await getEpochUserBalance(userAddress, 4)).to.be.equal("0");
+        });
+
+        it("deposit in epoch 1, withdraw in epoch 1", async function () {
+            await prepareAccount(user, amount)
+            
+
+            await helpers.moveAtEpoch(startEpoch, duration, 1);
+            await reign.connect(user).deposit(amount);
+
+            let after = await helpers.getLatestBlockTimestamp()
+            let multiplier = await multiplierAtTs(1, after);
+            let balanceEffective = computeEffectiveBalance(amount, multiplier);
+            expect(await getEpochUserBalance(userAddress, 1)).to.be.equal(balanceEffective);
+
+
+            await reign.connect(user).withdraw( amount);
+
+            expect(await reign.getEpochUserBalance(userAddress, 1)).to.equal("0");
+        });
+
         it("deposit epoch 1, deposit epoch 5, withdraw epoch 5 more than deposited", async function () {
             await prepareAccount(user, amount.mul(2));
             await helpers.moveAtEpoch(startEpoch, duration, 1);
@@ -547,6 +612,8 @@ describe('Reign', function () {
             expect(await reign.getEpochUserBalance(userAddress, 5)).to.equal(amount.div(2));
             expect(await reign.getEpochUserBalance(userAddress, 6)).to.equal(amount.div(2));
         });
+
+        
 
         it('does not affect old checkpoints', async function () {
             await prepareAccount(user, amount);
@@ -760,6 +827,33 @@ describe('Reign', function () {
 
             const expectedMultiplier = multiplierForLock(ts, lockExpiryTs);
             const actualMultiplier = await reign.stakingBoostAtEpoch(userAddress, await reign.getEpoch());
+
+            expect(
+                actualMultiplier
+            ).to.be.equal(expectedMultiplier);
+        });
+
+        it('returns expected multiplier at past epochs', async function () {
+            helpers.moveAtEpoch(startEpoch, duration, 1)
+
+            await prepareAccount(user, amount.mul(2));
+            await reign.connect(user).deposit(amount);
+
+            let ts = await helpers.getLatestBlockTimestamp();
+
+            const lockExpiryTs = ts +time.year;
+            await reign.connect(user).lock(lockExpiryTs);
+
+            ts = await helpers.getLatestBlockTimestamp();
+            const expectedMultiplier = multiplierForLock(ts, lockExpiryTs);
+
+            await helpers.moveAtEpoch(startEpoch, duration, 2)
+            //initialize epoch 2
+            await reign.connect(user).deposit(amount);
+
+            await helpers.moveAtEpoch(startEpoch, duration,4)
+
+            const actualMultiplier = await reign.stakingBoostAtEpoch(userAddress, 2);
 
             expect(
                 actualMultiplier
