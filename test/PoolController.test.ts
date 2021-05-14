@@ -157,20 +157,25 @@ describe('PoolController', function () {
             expect(await poolController.getPoolsTVL()).to.eq(0)
             await depositIntoBothPools();
             let tvl = await poolController.getPoolsTVL();
-            expect(tvl).to.eq((
-                    BigNumber.from(1400000).mul(10**6).mul(1)  //token1 balance * price1
-                    .add(BigNumber.from(1000000).mul(10**6).mul(1)) //token2 balance * price2
-                ).mul(2)
-            )
+            expect(tvl).to.eq(
+                        BigNumber.from(1400000).mul(helpers.tenPow18).mul(2*10**6)
+                        .div(10** (await pool.tokenDecimals()).toNumber())  //token1 balance * price1
+                    .add(
+                        BigNumber.from(1000000).mul(helpers.tenPow18).mul(2*10**6)
+                        .div(10** (await pool.tokenDecimals()).toNumber()) //token2 balance * price2
+                )    
+            )//4'800'000'000'000 = 1'400'000 * 2000000 + 1'000'000 * 2000000
         });
+
 
         it('correctly returns target Size', async function () {
             expect(await poolController.getTargetSize(pool.address)).to.eq(0)
             await depositIntoBothPools();
             let targetSize = await poolController.getTargetSize(pool.address);
             expect(targetSize).to.eq(
-                (await poolController.getPoolsTVL()).div(2).div(2).mul(10**(18-6))  // (TVL / 2) / price
-            )
+                (await poolController.getPoolsTVL()).div(2).div(2*10**6)
+                    .mul(10** (await pool.tokenDecimals()).toNumber())  // (TVL / 2) / price
+            )// 1'200'000 = 4'800'000'000'000 / 2 / 2' 000'000 
         });
 
         it('reverts if unauthorized addresses creates pool', async function () {

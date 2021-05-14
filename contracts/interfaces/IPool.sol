@@ -13,6 +13,8 @@ interface IPool {
 
     function token() external view returns (address);
 
+    function tokenDecimals() external view returns (uint256);
+
     function treasury() external view returns (address);
 
     function liquidityBuffer() external view returns (address);
@@ -22,6 +24,8 @@ interface IPool {
     function reignToken() external view returns (address);
 
     function getReserves() external view returns (uint256 reserve);
+
+    function getTokenBalance() external view returns (uint256 reserve);
 
     function feeIn() external view returns (uint256);
 

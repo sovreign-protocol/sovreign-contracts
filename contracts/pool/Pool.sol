@@ -29,13 +29,13 @@ contract Pool is IPool, PoolErc20 {
 
     address public override controllerAddress;
     address public override token;
+    uint256 public override tokenDecimals;
     address public override svrToken;
     address public override reignToken;
     address public override treasury;
     address public override liquidityBuffer;
 
     uint256 private reserve;
-    uint256 public tokenDecimals;
     uint256 public BASE_MULTIPLIER = 10**18;
     uint256 public depositFeeMultiplier = 100000;
 
@@ -79,8 +79,8 @@ contract Pool is IPool, PoolErc20 {
         returns (uint256 liquidity)
     {
         uint256 _reserve = getReserves(); // gas savings
-        uint256 balance = IERC20(token).balanceOf(address(this));
-        uint256 amount = balance.sub(_reserve);
+        uint256 _balance = getTokenBalance();
+        uint256 amount = _balance.sub(_reserve);
 
         require(amount > 0, "Can only issue positive amounts");
 
@@ -110,11 +110,11 @@ contract Pool is IPool, PoolErc20 {
         //store new balance in reserve
         _updateReserves();
 
-        //accrue interest based on new balance
-        _accrueInterest();
-
         //mint SVR tokens based on new balance
         _mintSvr(to, amount);
+
+        //accrue interest based on new balance
+        _accrueInterest();
     }
 
     //burns LP tokens,burns SVR tokens and returns liquidity to user
@@ -143,11 +143,11 @@ contract Pool is IPool, PoolErc20 {
         //burn LP tokens
         _burn(msg.sender, amount);
 
+        //burn SVR tokens (before sending out tokens which reduces TVL)
+        _burnSvr(_to, amount);
+
         //return liquidity
         _safeTransfer(_to, amount);
-
-        //burn SVR tokens
-        _burnSvr(_to, amount);
 
         //store new balance in reserve
         _updateReserves();
@@ -162,6 +162,10 @@ contract Pool is IPool, PoolErc20 {
         _safeTransfer(to, IERC20(_token).balanceOf(address(this)).sub(reserve));
     }
 
+    /**
+        INTERNAL
+     */
+
     // ERC20 transfer that can revert
     function _safeTransfer(address to, uint256 value) internal {
         address _token = token; // gas savings
@@ -170,26 +174,27 @@ contract Pool is IPool, PoolErc20 {
 
     // update reserves to match token
     function _updateReserves() internal {
-        address _token = token;
-        reserve = IERC20(_token).balanceOf(address(this));
+        reserve = getTokenBalance();
         emit Sync(reserve);
     }
 
     // Mints SVR tokens using the minting/burn formula, if there are no tokens mints the BASE_AMOUNT
     function _mintSvr(address to, uint256 amount) internal {
-        uint256 svrSupply = IMintBurnErc20(svrToken).totalSupply();
-        uint256 TVL = controller.getPoolsTVL();
-        uint256 price = controller.getTokenPrice(address(this));
-        uint256 amountSvr;
-        if (svrSupply == 0) {
-            amountSvr = BASE_SVR_AMOUNT;
+        uint256 _svrSupply = IMintBurnErc20(svrToken).totalSupply();
+        uint256 _TVL = controller.getPoolsTVL();
+        uint256 _price = controller.getTokenPrice(address(this));
+        uint256 _amountSvr;
+        if (_svrSupply == 0) {
+            _amountSvr = BASE_SVR_AMOUNT;
         } else {
-            amountSvr = amount.mul(price).mul(svrSupply).div(TVL).div(10**18);
+            _amountSvr = amount.mul(_price).mul(_svrSupply).div(_TVL).div(
+                10**18
+            );
         }
 
-        IMintBurnErc20(svrToken).mint(to, amountSvr);
+        IMintBurnErc20(svrToken).mint(to, _amountSvr);
 
-        emit Mint(msg.sender, amount, amountSvr);
+        emit Mint(msg.sender, amount, _amountSvr);
     }
 
     // Burnd SVR tokens using the minting/burn formula
@@ -223,6 +228,10 @@ contract Pool is IPool, PoolErc20 {
 
     function getReserves() public view override returns (uint256 _reserve) {
         _reserve = reserve;
+    }
+
+    function getTokenBalance() public view override returns (uint256 _balance) {
+        _balance = IERC20(token).balanceOf(address(this));
     }
 
     // get the deposit fee to be paid to deposit a given amount of liquidity

@@ -208,6 +208,7 @@ contract BasketBalancer is IBasketBalancer {
         for (uint256 i = 0; i < allPools.length; i++) {
             continuousVote[allPools[i]] = allocations[i];
             poolAllocation[allPools[i]] = allocations[i];
+            poolAllocationBefore[allPools[i]] = allocations[i];
         }
 
         initialized = true;

@@ -119,7 +119,7 @@ describe('Pool', function () {
         it('should allow to skim', async function () {
             let amount = BigNumber.from(27);
             await underlying1.connect(user).transfer(pool.address,amount);
-            expect(await underlying1.balanceOf(pool.address)).to.be.equal(amount);
+            expect(await pool.getTokenBalance()).to.be.equal(amount);
             await pool.skim(newUserAddress);
             expect(await underlying1.balanceOf(newUserAddress)).to.be.equal(amount);
         });
@@ -415,14 +415,15 @@ describe('Pool', function () {
             await depositToPool(110000,pool)
 
             let svrBalanceAfter = await svr.balanceOf(userAddress);
-            let svrSupplyAfter = await svr.totalSupply();
+            let svrSupply = await svr.totalSupply();
             
-            let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
+            let amountToBurn = BigNumber.from(10000).mul(helpers.tenPow18);
             let underlyingPrice = await poolController.getTokenPrice(pool.address)
+            let TVL = await poolController.getPoolsTVL()
 
             let svrBurned = amountToBurn.mul(underlyingPrice)
-                .mul(svrSupplyAfter)
-                .div(await poolController.getPoolsTVL())
+                .mul(svrSupply)
+                .div(TVL)
                 .div(helpers.tenPow18)
             let expectedAmountSvr = (svrBalanceAfter).sub(svrBurned)
 

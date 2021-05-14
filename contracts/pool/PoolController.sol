@@ -141,6 +141,7 @@ contract PoolController is IPoolController {
         return allPools.length;
     }
 
+    // returns the target size of the pool denominated in underlying pool token
     function getTargetSize(address pool)
         external
         view
@@ -150,9 +151,11 @@ contract PoolController is IPoolController {
         uint256 allocation = basketBalancer.getTargetAllocation(pool);
         uint256 fullAllocation = basketBalancer.FULL_ALLOCATION();
         uint256 tvl = getPoolsTVL();
-        uint256 targetValue =
-            tvl.mul(allocation).div(fullAllocation).mul(10**18);
-        uint256 targetSize = targetValue.div(getTokenPrice(pool));
+        uint256 targetValue = tvl.mul(allocation).div(fullAllocation);
+        uint256 targetSize =
+            targetValue.mul(10**IPool(pool).tokenDecimals()).div(
+                getTokenPrice(pool)
+            );
         return targetSize;
     }
 
@@ -165,6 +168,7 @@ contract PoolController is IPoolController {
         return basketBalancer.getTargetAllocation(pool);
     }
 
+    // returns the total price of the poool token denominated in usdc (6 decimals)
     function getTokenPrice(address pool)
         public
         view
@@ -177,14 +181,16 @@ contract PoolController is IPoolController {
         return IOracle(getOracle[pool]).consult(pool_token, 1 * 10**_decimals);
     }
 
+    // retusrns the total value locked across al pools denominated in usdc (6 decimals)
     function getPoolsTVL() public view override returns (uint256) {
         uint256 tvl = 0;
         for (uint32 i = 0; i < allPools.length; i++) {
             IPool pool = IPool(allPools[i]);
-            uint256 pool_size = pool.getReserves();
+            uint256 pool_size = pool.getTokenBalance(); // we use the actual balance, not reserves
             uint256 price = getTokenPrice(allPools[i]);
-            uint256 pool_value = pool_size.mul(price);
-            tvl = tvl.add(pool_value.div(10**18));
+            uint256 pool_value =
+                pool_size.mul(price).div(10**pool.tokenDecimals());
+            tvl = tvl.add(pool_value);
         }
         return tvl;
     }
