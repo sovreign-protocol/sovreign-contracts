@@ -27,6 +27,7 @@ describe('Pool', function () {
     let multiplier = BigNumber.from(3).mul(10**10);
     let offset = BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)));
     let baseDelta = 0;
+    let decimalsFactor:BigNumber;
 
 
     before(async function () {
@@ -53,6 +54,8 @@ describe('Pool', function () {
         
         underlying1 = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
         underlying2 = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
+
+        decimalsFactor = BigNumber.from(10).pow(await underlying1.decimals())
 
         
         interestStrategy = (await deploy.deployContract(
@@ -306,11 +309,13 @@ describe('Pool', function () {
             let amount2 = await depositToPool(100,pool)
 
             let underlyingPrice = await poolController.getTokenPrice(pool.address);
+
+
+            let valueAdded = underlyingPrice.mul(amount2).div(decimalsFactor);
     
-            let newSvr = amount2.mul(underlyingPrice)
+            let newSvr = valueAdded
                 .mul(svrSupplyAfter)
-                .div(await poolController.getPoolsTVL())
-                .div(helpers.tenPow18)
+                .div((await poolController.getPoolsTVL()).sub(valueAdded))
 
             let expectedAmountSvr = (svrBalanceAfter).add(newSvr)
 
@@ -333,10 +338,13 @@ describe('Pool', function () {
 
             let underlyingPrice = await poolController.getTokenPrice(pool.address);
         
-            let newSvr = amount2.mul(underlyingPrice)
+            let valueAdded = underlyingPrice.mul(amount2).div(decimalsFactor);
+    
+            let newSvr = valueAdded
                 .mul(svrSupplyAfter)
-                .div(await poolController.getPoolsTVL())
-                .div(helpers.tenPow18)
+                .div((await poolController.getPoolsTVL()).sub(valueAdded))
+
+
             let expectedAmountSvr = (svrBalanceAfter).add(newSvr)
 
             expect(await svr.balanceOf(userAddress)).to.be.eq(expectedAmountSvr)
@@ -424,7 +432,7 @@ describe('Pool', function () {
             let svrBurned = amountToBurn.mul(underlyingPrice)
                 .mul(svrSupply)
                 .div(TVL)
-                .div(helpers.tenPow18)
+                .div(decimalsFactor)
             let expectedAmountSvr = (svrBalanceAfter).sub(svrBurned)
 
             let withdrawFee = await pool.getWithdrawFeeReign(amountToBurn);

@@ -181,15 +181,14 @@ contract Pool is IPool, PoolErc20 {
     // Mints SVR tokens using the minting/burn formula, if there are no tokens mints the BASE_AMOUNT
     function _mintSvr(address to, uint256 amount) internal {
         uint256 _svrSupply = IMintBurnErc20(svrToken).totalSupply();
-        uint256 _TVL = controller.getPoolsTVL();
-        uint256 _price = controller.getTokenPrice(address(this));
         uint256 _amountSvr;
         if (_svrSupply == 0) {
             _amountSvr = BASE_SVR_AMOUNT;
         } else {
-            _amountSvr = amount.mul(_price).mul(_svrSupply).div(_TVL).div(
-                10**18
-            );
+            uint256 _price = controller.getTokenPrice(address(this));
+            uint256 _valuePaid = amount.mul(_price).div(10**tokenDecimals);
+            uint256 _TVL = controller.getPoolsTVL().sub(_valuePaid);
+            _amountSvr = _valuePaid.mul(_svrSupply).div(_TVL);
         }
 
         IMintBurnErc20(svrToken).mint(to, _amountSvr);
@@ -203,7 +202,7 @@ contract Pool is IPool, PoolErc20 {
         uint256 _TVL = controller.getPoolsTVL();
         uint256 _price = controller.getTokenPrice(address(this));
         uint256 _amountSvr =
-            amount.mul(_price).mul(_svrSupply).div(_TVL).div(10**18);
+            amount.mul(_price).mul(_svrSupply).div(_TVL).div(10**tokenDecimals);
 
         IMintBurnErc20(svrToken).burnFrom(from, _amountSvr);
 

@@ -186,7 +186,7 @@ contract PoolController is IPoolController {
         uint256 tvl = 0;
         for (uint32 i = 0; i < allPools.length; i++) {
             IPool pool = IPool(allPools[i]);
-            uint256 pool_size = pool.getTokenBalance(); // we use the actual balance, not reserves
+            uint256 pool_size = pool.getReserves();
             uint256 price = getTokenPrice(allPools[i]);
             uint256 pool_value =
                 pool_size.mul(price).div(10**pool.tokenDecimals());
