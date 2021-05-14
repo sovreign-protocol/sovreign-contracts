@@ -356,6 +356,16 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     let poolLpBalance2 = await pool2.balanceOf(c.user2Addr)
     console.log(`User2 Pool2 LP Balance '${poolLpBalance2}'`)
 
+
+    ///////////////////////////
+    // Burn SVR & LP from WBTC Pools
+    ///////////////////////////
+    await pool2.connect(c.user2Acct).burn(poolLpBalance2.div(2))
+    let svrBalance2After = await svrToken.balanceOf(c.user2Addr)
+    console.log(`User2 SVR Balance After Burn '${svrBalance2After}'`)
+    let poolLpBalance2After = await pool2.balanceOf(c.user2Addr)
+    console.log(`User2 Pool2 LP Balance After Burn '${poolLpBalance2After}'`)
+
     // * deploy all the staking stuff and stake LP Tokens
 
     return c;
