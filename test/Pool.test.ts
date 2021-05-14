@@ -205,13 +205,11 @@ describe('Pool', function () {
         })
     })
     describe('Computing Fees', async function () {
-
         it('returns correct expected deposit fee', async function () {
 
-            let amount = BigNumber.from(1000)
-            await depositToPool(11000,pool);
+            let amount = BigNumber.from(10).mul(BigNumber.from(10).pow(await underlying1.decimals()))
+            await depositToPool(11000,pool); // 5% above balance
             await depositToPool(10000,pool2);
-
             let target = await poolController.getTargetSize(pool.address)
             let reservesAfter = (await pool.getReserves()).add(amount)
 
@@ -220,20 +218,20 @@ describe('Pool', function () {
             .mul(amount)
             .mul(await poolController.getTokenPrice(pool.address))
             .div(await poolController.getReignPrice())
-            .div(helpers.tenPow18)
+            .div(BigNumber.from(10).pow(await underlying1.decimals()))
             
-            expect(await pool.getDepositFeeReign(amount)).to.be.eq(60)
             expect(await pool.getDepositFeeReign(amount)).to.be.eq(expectedDepositFee)
         });
-
+        
         it('returns correct expected withdraw Fee', async function () {
-
-            await depositToPool(1,pool);
+            
+            await depositToPool(500,pool);
+            await depositToPool(600,pool2);
             await helpers.mineBlocks(100)
-            await depositToPool(1000,pool);
+            await depositToPool(50,pool);
 
 
-            let amount = BigNumber.from(1000)
+            let amount = BigNumber.from(50)
 
             let expectedWithdrawFee = (await interestStrategy.withdrawFeeAccrued())
             .mul(await rewardsPerPool(pool))
@@ -305,7 +303,7 @@ describe('Pool', function () {
             let svrBalanceAfter = await svr.balanceOf(userAddress);
             let svrSupplyAfter = await svr.totalSupply();
 
-            let amount2 = await depositToPool(110000,pool)
+            let amount2 = await depositToPool(100,pool)
 
             let underlyingPrice = await poolController.getTokenPrice(pool.address);
     

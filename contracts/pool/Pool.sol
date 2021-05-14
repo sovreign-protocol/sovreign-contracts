@@ -11,6 +11,8 @@ import "../libraries/SafeERC20.sol";
 import "../interfaces/InterestStrategyInterface.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+import "hardhat/console.sol";
+
 contract Pool is IPool, PoolErc20 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -86,7 +88,6 @@ contract Pool is IPool, PoolErc20 {
 
         if (depositFee > 0) {
             IERC20 _reignToken = IERC20(reignToken);
-
             require(
                 _reignToken.allowance(msg.sender, address(this)) >= depositFee,
                 "Insufficient allowance"
@@ -120,21 +121,22 @@ contract Pool is IPool, PoolErc20 {
     function burn(uint256 amount) external override lock returns (bool) {
         require(amount > 0, "Can only burn positive amounts");
 
-        address to = msg.sender;
+        address _to = msg.sender;
 
-        uint256 withdrawFee = getWithdrawFeeReign(amount);
+        uint256 _withdrawFee = getWithdrawFeeReign(amount);
 
-        if (withdrawFee > 0) {
+        if (_withdrawFee > 0) {
             IERC20 _reignToken = IERC20(reignToken);
 
             require(
-                _reignToken.allowance(msg.sender, address(this)) >= withdrawFee,
+                _reignToken.allowance(msg.sender, address(this)) >=
+                    _withdrawFee,
                 "Insufficient allowance"
             );
             _reignToken.safeTransferFrom(
                 msg.sender,
                 liquidityBuffer,
-                withdrawFee
+                _withdrawFee
             );
         }
 
@@ -142,10 +144,10 @@ contract Pool is IPool, PoolErc20 {
         _burn(msg.sender, amount);
 
         //return liquidity
-        _safeTransfer(to, amount);
+        _safeTransfer(_to, amount);
 
         //burn SVR tokens
-        _burnSvr(to, amount);
+        _burnSvr(_to, amount);
 
         //store new balance in reserve
         _updateReserves();
@@ -162,7 +164,8 @@ contract Pool is IPool, PoolErc20 {
 
     // ERC20 transfer that can revert
     function _safeTransfer(address to, uint256 value) internal {
-        IERC20(token).safeTransfer(to, value);
+        address _token = token; // gas savings
+        IERC20(_token).safeTransfer(to, value);
     }
 
     // update reserves to match token
@@ -191,25 +194,26 @@ contract Pool is IPool, PoolErc20 {
 
     // Burnd SVR tokens using the minting/burn formula
     function _burnSvr(address from, uint256 amount) internal {
-        uint256 svrSupply = IMintBurnErc20(svrToken).totalSupply();
-        uint256 TVL = controller.getPoolsTVL();
-        uint256 price = controller.getTokenPrice(address(this));
-        uint256 amountSvr =
-            amount.mul(price).mul(svrSupply).div(TVL).div(10**18);
+        uint256 _svrSupply = IMintBurnErc20(svrToken).totalSupply();
+        uint256 _TVL = controller.getPoolsTVL();
+        uint256 _price = controller.getTokenPrice(address(this));
+        uint256 _amountSvr =
+            amount.mul(_price).mul(_svrSupply).div(_TVL).div(10**18);
 
-        IMintBurnErc20(svrToken).burnFrom(from, amountSvr);
+        IMintBurnErc20(svrToken).burnFrom(from, _amountSvr);
 
-        emit Burn(msg.sender, amount, amountSvr);
+        emit Burn(msg.sender, amount, _amountSvr);
     }
 
     // Calls accrue interest in the pools interest startegy contract
     function _accrueInterest() internal {
-        uint256 target = controller.getTargetSize(address(this));
+        uint256 _target = controller.getTargetSize(address(this));
+        uint256 _reserves = getReserves();
         address interestStrategy =
             controller.getInterestStrategy(address(this));
         InterestStrategyInterface(interestStrategy).accrueInterest(
-            getReserves(),
-            target
+            _reserves,
+            _target
         );
     }
 
@@ -223,10 +227,11 @@ contract Pool is IPool, PoolErc20 {
 
     // get the deposit fee to be paid to deposit a given amount of liquidity
     function getDepositFeeReign(uint256 amount) public view returns (uint256) {
-        uint256 target = controller.getTargetSize(address(this));
+        uint256 _target = controller.getTargetSize(address(this));
+        uint256 _reserves = getReserves();
 
-        if (target == 0 || reserve == 0) {
-            return 0;
+        if (_target == 0 || _reserves == 0) {
+            return 0; // the initial amount into the pool will have no fee
         }
 
         address interestStrategy =
@@ -234,8 +239,8 @@ contract Pool is IPool, PoolErc20 {
 
         (uint256 _, uint256 interestRate) =
             InterestStrategyInterface(interestStrategy).getFormulaOutput(
-                getReserves(),
-                target
+                _reserves.add(amount),
+                _target
             );
 
         return

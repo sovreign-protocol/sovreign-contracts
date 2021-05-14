@@ -18,6 +18,6 @@ contract OracleMock is IOracle {
         override
         returns (uint256 amountOut)
     {
-        return amountIn * 2;
+        return 2 * 10**6;
     }
 }

@@ -137,12 +137,14 @@ describe('PoolController', function () {
 
         it('correctly relays price', async function () {
             //Mock Oracle returns always 2
-            expect(await poolController.getTokenPrice(pool.address)).to.eq(BigNumber.from(2).mul(helpers.tenPow18));
+            expect(await poolController.getTokenPrice(pool.address)).to.eq(
+                BigNumber.from(2).mul(10**6)
+                );
         });
 
         it('correctly relays Reign Rate', async function () {
             //Mock Oracle returns always 2
-            expect(await poolController.getReignPrice()).to.eq(BigNumber.from(2).mul(helpers.tenPow18));
+            expect(await poolController.getReignPrice()).to.eq(BigNumber.from(2).mul(10**6));
         });
 
         it('correctly returns on isPool', async function () {
@@ -156,8 +158,8 @@ describe('PoolController', function () {
             await depositIntoBothPools();
             let tvl = await poolController.getPoolsTVL();
             expect(tvl).to.eq((
-                    BigNumber.from(1400000).mul(helpers.tenPow18).mul(1)  //token1 balance * price1
-                    .add(BigNumber.from(1000000).mul(helpers.tenPow18).mul(1)) //token2 balance * price2
+                    BigNumber.from(1400000).mul(10**6).mul(1)  //token1 balance * price1
+                    .add(BigNumber.from(1000000).mul(10**6).mul(1)) //token2 balance * price2
                 ).mul(2)
             )
         });
@@ -167,7 +169,7 @@ describe('PoolController', function () {
             await depositIntoBothPools();
             let targetSize = await poolController.getTargetSize(pool.address);
             expect(targetSize).to.eq(
-                (await poolController.getPoolsTVL()).div(2).div(2)  // (TVL / 2) / price
+                (await poolController.getPoolsTVL()).div(2).div(2).mul(10**(18-6))  // (TVL / 2) / price
             )
         });
 
