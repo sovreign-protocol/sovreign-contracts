@@ -1,6 +1,6 @@
 import {DeployConfig} from "./config";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
-import {BasketBalancer, GovRewards, InterestStrategy, PoolController, ReignDAO,Pool, ReignFacet, ReignToken} from "../typechain";
+import {BasketBalancer, GovRewards, InterestStrategy, PoolController, ReignDAO,Pool, ReignFacet, ReignToken, SvrToken} from "../typechain";
 import * as helpers from "../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../test/helpers/diamond";
 import {deployOracle} from "../test/helpers/oracles";
@@ -24,17 +24,16 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
     const reignDiamondAddr = c.reignDiamond?.address as string;
     const reignToken = c.reignToken as ReignToken;
+    const svrToken = c.svrToken as SvrToken;
     const reignDiamond = c.reignDiamond as Contract;
     const reignFacet = await diamondAsFacet(reignDiamond, 'ReignFacet') as ReignFacet;
     const reignDAO = c.reignDAO as ReignDAO;
     const poolController = c.poolController as PoolController;
     const balancer = c.basketBalancer as BasketBalancer;
     const govRewards = c.govRewards as GovRewards;
-
-    // Mainnet token contract addresses
-    const WBTC = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
-    const WETH = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
-    const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    const usdc = c.usdc as Contract;
+    const wbtc = c.wbtc as Contract;
+    const weth = c.weth as Contract;
 
     ///////////////////////////
     // User1 stakes ReignToken to ReignDiamond:
@@ -99,23 +98,23 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`InterestStrategy2 deployed at: ${interestStrategy2.address.toLowerCase()}`);
 
     const oracle1 = await deployOracle(
-        WBTC,
-        USDC,
+        c.wbtcAddr,
+        c.usdcAddr,
         reignDAO.address)
     
     console.log("WBTC Oracle deployed at: " + oracle1.address)
     await oracle1.update()
-    let WBTCPrice = await oracle1.consult(WBTC,BigNumber.from(1).mul(tenPow18))
+    let WBTCPrice = await oracle1.consult(c.wbtcAddr,BigNumber.from(10).pow(await wbtc.decimals()))
     console.log("WBTC Oracle price: " + WBTCPrice.toString())
 
     const oracle2 = await deployOracle(
-        WETH,
-        USDC,
+        c.wethAddr,
+        c.usdcAddr,
         reignDAO.address)
 
     console.log("WETH Oracle deployed at: " + oracle2.address)
     await oracle2.update()
-    let WETHPrice = await oracle2.consult(WETH,BigNumber.from(1).mul(tenPow18))
+    let WETHPrice = await oracle2.consult(c.wethAddr,BigNumber.from(10).pow(await weth.decimals()))
     console.log("WETH Oracle price: " + WETHPrice.toString())
 
     const targets = [
@@ -138,14 +137,15 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
             ],
             [
                 // first param: token address
-                // WBTC: https://etherscan.io/token/0x2260fac5e5542a773aa44fbcfedf7c193bc2c599
-                WBTC,
+                // WETH: https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
+                c.wethAddr,
                 // second param: interestStrategy
-                interestStrategy1.address,
+                interestStrategy2.address,
                 // third param: oracle
-                oracle1.address,
+                oracle2.address,
             ]
         ),
+
         // for the second pool (Pool2):
         ejs.utils.defaultAbiCoder.encode(
             [
@@ -155,12 +155,12 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
             ],
             [
                 // first param: token address
-                // WETH: https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
-                WETH,
+                // WBTC: https://etherscan.io/token/0x2260fac5e5542a773aa44fbcfedf7c193bc2c599
+                c.wbtcAddr,
                 // second param: interestStrategy
-                interestStrategy2.address,
+                interestStrategy1.address,
                 // third param: oracle
-                oracle2.address,
+                oracle1.address,
             ]
         ),
         // for allocation:
@@ -302,6 +302,9 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
     await moveAtTimestamp(Date.now() + timeWarpInSeconds)
 
+    await oracle1.update()
+    await oracle2.update()
+
 
     ///////////////////////////
     // Basket Allocation is updated
@@ -316,21 +319,44 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Pool1 Reserves '${ (await pool1.getReserves() ).toString()}'`)
 
     let pool2 = (await deploy.deployContract('Pool')) as Pool;
-    pool2 = pool2.attach(pool1Addr);
+    pool2 = pool2.attach(pool2Addr);
     console.log(`Pool2 Reserves '${ (await pool2.getReserves() ).toString()}'`)
 
     
 
 
-    // - check if User1 has voting power
-    // - BasketBalancer.updateBasketBalance()
+    ///////////////////////////
+    // Deposit WETH into Pool
+    ///////////////////////////
+    let depositAmountWeth = BigNumber.from(100).mul(tenPow18) // 10 ETH
+    await weth.connect(c.user1Acct).transfer(pool1.address, depositAmountWeth)
+    
 
-    // - User1 deposit tokens to the Pool1
-    // - User1 mint SVR (Pool.mint())
-    //    -- user1 will receive SVR + LP Tokens
+    ///////////////////////////
+    // Mint SVR & LP from WETH Pool
+    ///////////////////////////
+    await pool1.mint(c.user1Addr)
+    let svrBalance1 = await svrToken.balanceOf(c.user1Addr)
+    console.log(`User1 SVR Balance '${svrBalance1}'`)
+    let poolLpBalance1 = await  pool1.balanceOf(c.user1Addr)
+    console.log(`User1 Pool1 LP Balance '${poolLpBalance1}'`)
 
-    // * deploy all the staking stuff
+    ///////////////////////////
+    // Deposit into WBTC Pool
+    ///////////////////////////
+    let depositAmountWbtc = depositAmountWeth.mul(WETHPrice).div(WBTCPrice).div(10**10) // Same value in WBTC
+    await wbtc.connect(c.user2Acct).transfer(pool2.address, depositAmountWbtc)
+
+    ///////////////////////////
+    // Mint SVR & LP from WBTC Pools
+    ///////////////////////////
+    await pool2.mint(c.user2Addr)
+    let svrBalance2 = await svrToken.balanceOf(c.user2Addr)
+    console.log(`User2 SVR Balance '${svrBalance2}'`)
+    let poolLpBalance2 = await pool2.balanceOf(c.user2Addr)
+    console.log(`User2 Pool2 LP Balance '${poolLpBalance2}'`)
+
+    // * deploy all the staking stuff and stake LP Tokens
 
     return c;
-
 }
