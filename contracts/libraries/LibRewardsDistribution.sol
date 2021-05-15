@@ -6,20 +6,23 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 library LibRewardsDistribution {
     using SafeMath for uint256;
 
-    uint256 public constant TREASOURY = 6000000 * 10**18;
-    uint256 public constant DEV_FUND = 5000000 * 10**18;
-    uint256 public constant LIQUIDITY_BUFFER = 2000000 * 10**18;
+    uint256 public constant TOTAL_REIGN_SUPPLY = 1000000000 * 10**18;
 
-    uint256 constant POOL_TOKENS = 50000000 * 10**18;
-    uint256 constant STAKING_TOKENS = 10000000 * 10**18;
-    uint256 constant LP_REWARDS_TOKENS = 4000000 * 10**18;
+    uint256 public constant TREASURY = 60000000 * 10**18;
+    uint256 public constant TEAM = 140000000 * 10**18;
+    uint256 public constant TREASURY_SALE = 90000000 * 10**18;
+    uint256 public constant DEV_FUND = 50000000 * 10**18;
+    uint256 public constant LIQUIDITY_BUFFER = 20000000 * 10**18;
+    uint256 public constant POOL_TOKENS = 500000000 * 10**18;
+    uint256 public constant STAKING_TOKENS = 100000000 * 10**18;
+    uint256 public constant LP_REWARDS_TOKENS = 40000000 * 10**18;
 
-    uint256 constant HALVING_PERIOD = 62899200; // 104 Weeks in Seconds
-    uint256 constant EPOCHS_IN_PERIOD = 104;
-    uint256 constant BLOCKS_IN_PERIOD = 2300000 * 2;
-    uint256 constant BLOCKS_IN_EPOCH = 44230;
+    uint256 public constant HALVING_PERIOD = 62899200; // 104 Weeks in Seconds
+    uint256 public constant EPOCHS_IN_PERIOD = 104;
+    uint256 public constant BLOCKS_IN_PERIOD = 2300000 * 2;
+    uint256 public constant BLOCKS_IN_EPOCH = 44230;
 
-    uint256 constant TOTAL_ALLOCATION = 1000000000;
+    uint256 public constant TOTAL_ALLOCATION = 1000000000;
 
     /*
      *   POOL
