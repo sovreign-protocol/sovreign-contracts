@@ -1,11 +1,11 @@
 import {DeployConfig} from "./config";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
-import {BasketBalancer, GovRewards, InterestStrategy, PoolController, ReignDAO,Pool, ReignFacet, ReignToken, SvrToken} from "../typechain";
+import {BasketBalancer, InterestStrategy, PoolController, ReignDAO,Pool, ReignFacet, ReignToken, SvrToken} from "../typechain";
 import * as helpers from "../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../test/helpers/diamond";
 import {deployOracle} from "../test/helpers/oracles";
 import {day, hour, minute} from "../test/helpers/time";
-import {increaseBlockTime, moveAtTimestamp, stakingEpochStart, tenPow18} from "../test/helpers/helpers";
+import {increaseBlockTime} from "../test/helpers/helpers";
 import * as deploy from "../test/helpers/deploy";
 
 export class Scenario1Config {
@@ -18,22 +18,21 @@ export class Scenario1Config {
     }
 }
 
-export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
+export async function createPools(c: DeployConfig): Promise<DeployConfig> {
 
     c.scenario1 = new Scenario1Config();
 
-    const reignDiamondAddr = c.reignDiamond?.address as string;
     const reignToken = c.reignToken as ReignToken;
-    const svrToken = c.svrToken as SvrToken;
     const reignDiamond = c.reignDiamond as Contract;
     const reignFacet = await diamondAsFacet(reignDiamond, 'ReignFacet') as ReignFacet;
     const reignDAO = c.reignDAO as ReignDAO;
     const poolController = c.poolController as PoolController;
     const balancer = c.basketBalancer as BasketBalancer;
-    const govRewards = c.govRewards as GovRewards;
-    const usdc = c.usdc as Contract;
     const wbtc = c.wbtc as Contract;
     const weth = c.weth as Contract;
+
+
+    console.log(`\n --- USER STAKE TOKENS INTO GOVERNANCE ---`);
 
     ///////////////////////////
     // User1 stakes ReignToken to ReignDiamond:
@@ -67,6 +66,9 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
         .connect(c.user2Acct)
         .deposit(amountStakedUser2);
 
+
+    console.log(`\n --- DEPLOY POOL DEPENDENCIES ---`);
+
     ///////////////////////////
     // User1 deploy InterestStrategy1 contract for Pool1:
     ///////////////////////////
@@ -98,24 +100,32 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`InterestStrategy2 deployed at: ${interestStrategy2.address.toLowerCase()}`);
 
     const oracle1 = await deployOracle(
-        c.wbtcAddr,
-        c.usdcAddr,
-        reignDAO.address)
-    
-    console.log("WBTC Oracle deployed at: " + oracle1.address)
-    await oracle1.update()
-    let WBTCPrice = await oracle1.consult(c.wbtcAddr,BigNumber.from(10).pow(await wbtc.decimals()))
-    console.log("WBTC Oracle price: " + WBTCPrice.toString())
-
-    const oracle2 = await deployOracle(
         c.wethAddr,
         c.usdcAddr,
         reignDAO.address)
-
-    console.log("WETH Oracle deployed at: " + oracle2.address)
-    await oracle2.update()
-    let WETHPrice = await oracle2.consult(c.wethAddr,BigNumber.from(10).pow(await weth.decimals()))
+    c.oracle1 = oracle1
+    console.log("WETH Oracle deployed at: " + oracle1.address)
+    await oracle1.update()
+    let WETHPrice = await oracle1.consult(c.wethAddr,BigNumber.from(10).pow(await weth.decimals()))
     console.log("WETH Oracle price: " + WETHPrice.toString())
+
+    const oracle2 = await deployOracle(
+        c.wbtcAddr,
+        c.usdcAddr,
+        reignDAO.address)
+    c.oracle2 = oracle2
+    console.log("WBTC Oracle deployed at: " + oracle2.address)
+    await oracle2.update()
+    let WBTCPrice = await oracle2.consult(c.wbtcAddr,BigNumber.from(10).pow(await wbtc.decimals()))
+    console.log("WBTC Oracle price: " + WBTCPrice.toString())
+
+    
+
+
+
+    console.log(`\n --- CREATE PROPOSAL  ---`);
+
+
 
     const targets = [
         poolController.address,
@@ -140,9 +150,9 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
                 // WETH: https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
                 c.wethAddr,
                 // second param: interestStrategy
-                interestStrategy2.address,
+                interestStrategy1.address,
                 // third param: oracle
-                oracle2.address,
+                oracle1.address,
             ]
         ),
 
@@ -158,9 +168,9 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
                 // WBTC: https://etherscan.io/token/0x2260fac5e5542a773aa44fbcfedf7c193bc2c599
                 c.wbtcAddr,
                 // second param: interestStrategy
-                interestStrategy1.address,
+                interestStrategy2.address,
                 // third param: oracle
-                oracle1.address,
+                oracle2.address,
             ]
         ),
         // for allocation:
@@ -208,6 +218,9 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
     await increaseBlockTime(timeWarpInSeconds)
 
+
+    console.log(`\n --- VOTING ON PROPOSAL  ---`);
+
     ///////////////////////////
     // 'SoVReignOwner' cast vote "true" (yes)
     // to support the created proposal
@@ -251,6 +264,10 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
     await increaseBlockTime(timeWarpInSeconds)
 
+
+
+    console.log(`\n --- EXECUTE PROPOSAL  ---`);
+
     ///////////////////////////
     // 'User1' executes the proposal
     ///////////////////////////
@@ -266,107 +283,30 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     let pool1Addr = await poolController
         .connect(c.sovReignOwnerAcct)
         .allPools(0);
-    console.log(`Pool1 address: ${pool1Addr}`);
+    console.log(`Pool1 created at address: ${pool1Addr}`);
     let pool1Alloc = (await balancer.getTargetAllocation(pool1Addr)).toString()
     console.log(`Pool1 allocation: ${pool1Alloc}`);
 
     let pool2Addr = await poolController
         .connect(c.sovReignOwnerAcct)
         .allPools(1);
-    console.log(`Pool2 address: ${pool2Addr}`);
+    console.log(`Pool2 created at address: ${pool2Addr}`);
     let pool2Alloc = (await balancer.getTargetAllocation(pool2Addr)).toString()
     console.log(`Pool2 allocation: ${pool2Alloc}`);
 
-
-    ///////////////////////////
-    // Initialize Epoch in balancer
-    ///////////////////////////
-    await balancer.connect(c.user1Acct).updateBasketBalance()
-
-    ///////////////////////////
-    // All Users Vote on Basket Allocation
-    ///////////////////////////
-    await balancer.connect(c.user1Acct).updateAllocationVote([pool1Addr,pool2Addr], [510000000,490000000])
-    await balancer.connect(c.user2Acct).updateAllocationVote([pool1Addr,pool2Addr], [510000000,490000000])
-    await balancer.connect(c.sovReignOwnerAcct).updateAllocationVote([pool1Addr,pool2Addr], [510000000,490000000])
-    let votePool1 = await balancer.continuousVote(pool1Addr)
-    console.log(`Continuous Vote Tally Pool1: ${votePool1}`);
-    let votePool2 = await balancer.continuousVote(pool2Addr)
-    console.log(`Continuous Vote Tally Pool2: ${votePool2}`);
-    
-
-    ///////////////////////////
-    // Time warp: go to the next Epoch
-    ///////////////////////////
-    timeWarpInSeconds = (hour/2)+100
-    console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
-    await moveAtTimestamp(Date.now() + timeWarpInSeconds)
-
-    await oracle1.update()
-    await oracle2.update()
-
-
-    ///////////////////////////
-    // Basket Allocation is updated
-    ///////////////////////////
-    await balancer.connect(c.user1Acct).updateBasketBalance()
 
     ///////////////////////////
     // Attach To deployed Pools
     ///////////////////////////
     let pool1 = (await deploy.deployContract('Pool')) as Pool;
     pool1 = pool1.attach(pool1Addr);
+    c.pool1 = pool1
     console.log(`Pool1 Reserves '${ (await pool1.getReserves() ).toString()}'`)
 
     let pool2 = (await deploy.deployContract('Pool')) as Pool;
     pool2 = pool2.attach(pool2Addr);
+    c.pool2 = pool2
     console.log(`Pool2 Reserves '${ (await pool2.getReserves() ).toString()}'`)
-
-    
-
-
-    ///////////////////////////
-    // Deposit WETH into Pool
-    ///////////////////////////
-    let depositAmountWeth = BigNumber.from(100).mul(tenPow18) // 10 ETH
-    await weth.connect(c.user1Acct).transfer(pool1.address, depositAmountWeth)
-    
-
-    ///////////////////////////
-    // Mint SVR & LP from WETH Pool
-    ///////////////////////////
-    await pool1.mint(c.user1Addr)
-    let svrBalance1 = await svrToken.balanceOf(c.user1Addr)
-    console.log(`User1 SVR Balance '${svrBalance1}'`)
-    let poolLpBalance1 = await  pool1.balanceOf(c.user1Addr)
-    console.log(`User1 Pool1 LP Balance '${poolLpBalance1}'`)
-
-    ///////////////////////////
-    // Deposit into WBTC Pool
-    ///////////////////////////
-    let depositAmountWbtc = depositAmountWeth.mul(WETHPrice).div(WBTCPrice).div(10**10) // Same value in WBTC
-    await wbtc.connect(c.user2Acct).transfer(pool2.address, depositAmountWbtc)
-
-    ///////////////////////////
-    // Mint SVR & LP from WBTC Pools
-    ///////////////////////////
-    await pool2.mint(c.user2Addr)
-    let svrBalance2 = await svrToken.balanceOf(c.user2Addr)
-    console.log(`User2 SVR Balance '${svrBalance2}'`)
-    let poolLpBalance2 = await pool2.balanceOf(c.user2Addr)
-    console.log(`User2 Pool2 LP Balance '${poolLpBalance2}'`)
-
-
-    ///////////////////////////
-    // Burn SVR & LP from WBTC Pools
-    ///////////////////////////
-    await pool2.connect(c.user2Acct).burn(poolLpBalance2.div(2))
-    let svrBalance2After = await svrToken.balanceOf(c.user2Addr)
-    console.log(`User2 SVR Balance After Burn '${svrBalance2After}'`)
-    let poolLpBalance2After = await pool2.balanceOf(c.user2Addr)
-    console.log(`User2 Pool2 LP Balance After Burn '${poolLpBalance2After}'`)
-
-    // * deploy all the staking stuff and stake LP Tokens
 
     return c;
 }

@@ -7,12 +7,19 @@ import {
     BasketBalancer,
     GovRewards,
     LiquidityBufferVault,
+    LPRewards,
+    Pool,
     PoolController,
     ReignDAO,
     ReignToken,
     RewardsVault,
-    SvrToken
+    SvrToken,
+    Staking,
+    UniswapPairOracle,
+    PoolRewards
 } from "../typechain";
+
+const REIGN_SUPPLY = BigNumber.from(1000000000).mul(helpers.tenPow18);
 
 export async function deployConfig(): Promise<DeployConfig> {
     const sovReignOwnerAddr: string = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
@@ -83,6 +90,8 @@ export class DeployConfig {
     // base contracts:
     public reignDiamond?: Contract;
     public rewardsVault?: RewardsVault;
+    public devVault?: RewardsVault;
+    public treasurySaleVault?: RewardsVault;
     public liquidityBufferVault?: LiquidityBufferVault;
     public usdc?: Contract;
     public wbtc?: Contract;
@@ -90,9 +99,20 @@ export class DeployConfig {
     public reignToken?: ReignToken;
     public svrToken?: SvrToken;
     public govRewards?: GovRewards;
+    public staking?: Staking;
+    public lpRewards?: LPRewards;
     public reignDAO?: ReignDAO;
     public basketBalancer?: BasketBalancer;
     public poolController?: PoolController;
+    public uniswapFactory?: Contract;
+    public uniswapRouter?: Contract;
+    public reignTokenOracle?: UniswapPairOracle;
+    public oracle1?: UniswapPairOracle;
+    public oracle2?: UniswapPairOracle;
+    public pool1?: Pool;
+    public pool2?: Pool;
+    public pool1Rewards?: PoolRewards;
+    public pool2Rewards?: PoolRewards;
 
     // Objects to carry context/scenario-specific data
     public scenario1?: any;
