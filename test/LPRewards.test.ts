@@ -19,7 +19,7 @@ describe('YieldFarm AMM Pool', function () {
     const epochDuration = 604800;
     const numberOfEpochs = 100;
 
-    const distributedAmount: BigNumber = BigNumber.from(4000000).mul(tenPow18);
+    const distributedAmount: BigNumber = BigNumber.from(40000000).mul(tenPow18);
     const amount = BigNumber.from(100).mul(tenPow18) as BigNumber;
 
     let snapshotId: any;
@@ -31,7 +31,8 @@ describe('YieldFarm AMM Pool', function () {
 
         epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
 
-        staking = (await deployContract("Staking", [epochClock.address])) as Staking;
+        staking = (await deployContract("Staking")) as Staking;
+        await staking.initialize(epochClock.address)
         reignToken = (await deployContract("ERC20Mock")) as ERC20Mock;
         uniLP = (await deployContract("ERC20Mock")) as ERC20Mock;
 
@@ -41,6 +42,7 @@ describe('YieldFarm AMM Pool', function () {
             uniLP.address,
             staking.address,
             rewardsVault.address,
+            1000 // Full allocation to this pool
         ])) as LPRewards;
 
         await reignToken.mint(rewardsVault.address, distributedAmount);

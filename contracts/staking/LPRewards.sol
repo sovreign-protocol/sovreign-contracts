@@ -51,7 +51,8 @@ contract LPRewards {
         address reignTokenAddress,
         address depositLP,
         address stakeContract,
-        address communityVault
+        address communityVault,
+        uint256 allocationPerc
     ) {
         _reignToken = IERC20(reignTokenAddress);
         _depositLP = depositLP;
@@ -59,9 +60,10 @@ contract LPRewards {
         _communityVault = communityVault;
         epochDuration = _staking.epochDuration();
         epochStart = _staking.epoch1Start() + epochDuration;
-        _totalAmountPerEpoch = LibRewardsDistribution.rewardsPerEpochLPRewards(
-            NR_OF_EPOCHS
-        );
+        _totalAmountPerEpoch = LibRewardsDistribution
+            .rewardsPerEpochLPRewards(NR_OF_EPOCHS)
+            .mul(allocationPerc)
+            .div(1000);
     }
 
     // public methods

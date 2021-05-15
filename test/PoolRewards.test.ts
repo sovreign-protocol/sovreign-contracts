@@ -26,7 +26,7 @@ describe("YieldFarm Liquidity Pool", function () {
     const epochStart = Math.floor(Date.now() / 1000) + 1000;
     const epochDuration = 604800;
 
-    const distributedAmount: BigNumber = BigNumber.from(50000000).mul(tenPow18);
+    const distributedAmount: BigNumber = BigNumber.from(500000000).mul(tenPow18);
     const amount = BigNumber.from(100).mul(tenPow18) as BigNumber;
 
     let snapshotId: any;
@@ -55,7 +55,8 @@ describe("YieldFarm Liquidity Pool", function () {
 
         controller = (await deployContract("PoolControllerMock",[interest.address, balancer.address ])) as PoolControllerMock;
 
-        staking = (await deployContract("Staking", [epochClock.address])) as Staking;
+        staking = (await deployContract("Staking")) as Staking;
+        await staking.initialize(epochClock.address)
 
         rewardsVault = (await deployContract("RewardsVault", [reignToken.address])) as RewardsVault;
         liquidityBuffer = (await deployContract("LiquidityBufferVault", [reignToken.address])) as LiquidityBufferVault;

@@ -72,7 +72,10 @@ contract Staking is ReentrancyGuard {
         uint256 amount
     );
 
-    constructor(address epochClock) {
+    constructor() {}
+
+    function initialize(address epochClock) public {
+        require(epoch1Start == 0, "Can only be initialzed once");
         epoch1Start = IEpochClock(epochClock).getEpoch1Start();
         epochDuration = IEpochClock(epochClock).getEpochDuration();
     }
@@ -440,7 +443,8 @@ contract Staking is ReentrancyGuard {
             return 0;
         }
 
-        return uint128((block.timestamp - epoch1Start) / epochDuration + 1);
+        return
+            uint128(((block.timestamp - epoch1Start).div(epochDuration)) + 1);
     }
 
     /*

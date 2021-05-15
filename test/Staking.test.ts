@@ -29,7 +29,8 @@ describe("Staking", function () {
         epoch1Start = getCurrentUnix() + 1000;
 
         epochClock = (await deployContract('EpochClockMock', [epoch1Start])) as EpochClockMock;
-        staking = (await deployContract("Staking", [epochClock.address])) as Staking;
+        staking = (await deployContract("Staking")) as Staking;
+        await staking.initialize(epochClock.address)
 
         erc20Mock = (await deployContract("ERC20Mock")) as ERC20Mock;
 
