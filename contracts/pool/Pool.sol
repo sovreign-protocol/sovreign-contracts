@@ -10,10 +10,11 @@ import "../libraries/LibRewardsDistribution.sol";
 import "../libraries/SafeERC20.sol";
 import "../interfaces/InterestStrategyInterface.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "hardhat/console.sol";
 
-contract Pool is IPool, PoolErc20 {
+contract Pool is IPool, PoolErc20, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -45,13 +46,6 @@ contract Pool is IPool, PoolErc20 {
 
     IPoolController controller;
 
-    modifier lock() {
-        require(unlocked == 1, "SoVReign: LOCKED");
-        unlocked = 0;
-        _;
-        unlocked = 1;
-    }
-
     constructor() {
         controllerAddress = msg.sender;
     }
@@ -75,7 +69,7 @@ contract Pool is IPool, PoolErc20 {
     function mint(address to)
         external
         override
-        lock
+        nonReentrant
         returns (uint256 liquidity)
     {
         uint256 _reserve = getReserves(); // gas savings
@@ -118,7 +112,12 @@ contract Pool is IPool, PoolErc20 {
     }
 
     //burns LP tokens,burns SVR tokens and returns liquidity to user
-    function burn(uint256 amount) external override lock returns (bool) {
+    function burn(uint256 amount)
+        external
+        override
+        nonReentrant
+        returns (bool)
+    {
         require(amount > 0, "Can only burn positive amounts");
 
         address _to = msg.sender;
@@ -157,7 +156,7 @@ contract Pool is IPool, PoolErc20 {
     }
 
     // allow anyone to remove tokens if accidentaly sent to pool addres
-    function skim(address to) external override lock {
+    function skim(address to) external override nonReentrant {
         address _token = token; // gas savings
         _safeTransfer(to, IERC20(_token).balanceOf(address(this)).sub(reserve));
     }
