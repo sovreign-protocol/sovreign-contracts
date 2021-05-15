@@ -465,7 +465,7 @@ describe('Pool', function () {
 
 
     async function rewardsPerPool(pool:Pool){
-        let rewardsTotal=BigNumber.from(25000000).mul(helpers.tenPow18).div(4600000);
+        let rewardsTotal = BigNumber.from(250000000).mul(helpers.tenPow18).div(4600000);
         return rewardsTotal.mul(await poolController.getTargetAllocation(pool.address)).div(1000000000)
     }
     
