@@ -517,7 +517,7 @@ describe('ReignDAO', function () {
                 'setMinQuorum(uint256)',
             ];
 
-            const period = (await reignDAO.gracePeriodDuration()).toNumber() / 2;
+            const period = (await reignDAO.gracePeriodDuration()).toNumber() * 25;
             const callDatas = [
                 ejs.utils.defaultAbiCoder.encode(['uint256'], [period]),
                 ejs.utils.defaultAbiCoder.encode(['uint256'], [period]),
@@ -1052,7 +1052,7 @@ describe('ReignDAO', function () {
                 'setMinQuorum(uint256)',
             ];
 
-            const period = (await reignDAO.gracePeriodDuration()).toNumber() / 2;
+            const period = (await reignDAO.gracePeriodDuration()).toNumber() *25;
             const callDatas = [
                 ejs.utils.defaultAbiCoder.encode(['uint256'], [warmUpDuration * 2]),
                 ejs.utils.defaultAbiCoder.encode(['uint256'], [period]),

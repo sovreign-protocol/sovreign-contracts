@@ -2,7 +2,6 @@
 pragma solidity 0.7.6;
 
 abstract contract Parameters {
-
     uint256 public warmUpDuration = 1 hours;
     uint256 public activeDuration = 1 hours;
     uint256 public queueDuration = 1 hours;
@@ -11,10 +10,10 @@ abstract contract Parameters {
     uint256 public acceptanceThreshold = 60;
     uint256 public minQuorum = 40;
 
-    uint256 constant ACTIVATION_THRESHOLD = 400_000*10**18;
+    uint256 constant ACTIVATION_THRESHOLD = 400_000 * 10**18;
     uint256 constant PROPOSAL_MAX_ACTIONS = 10;
 
-    modifier onlyDAO () {
+    modifier onlyDAO() {
         require(msg.sender == address(this), "Only DAO can call");
         _;
     }
@@ -24,7 +23,7 @@ abstract contract Parameters {
     }
 
     function setActiveDuration(uint256 period) public onlyDAO {
-        require(period >= 4 hours, "period must be > 0");
+        require(period >= 1 days, "period must be > 0");
         activeDuration = period;
     }
 
@@ -33,7 +32,7 @@ abstract contract Parameters {
     }
 
     function setGracePeriodDuration(uint256 period) public onlyDAO {
-        require(period >= 4 hours, "period must be > 0");
+        require(period >= 1 days, "period must be > 0");
         gracePeriodDuration = period;
     }
 
