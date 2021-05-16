@@ -4,8 +4,11 @@ pragma experimental ABIEncoderV2;
 
 import "../libraries/LibReignStorage.sol";
 import "../libraries/LibOwnership.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract EpochClockFacet {
+    using SafeMath for uint256;
+
     function getEpochDuration() public view returns (uint256) {
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
@@ -23,12 +26,23 @@ contract EpochClockFacet {
         ds.epochDuration = _duration;
     }
 
-    function getCurrentEpoch() public view returns (uint256) {
+    function getCurrentEpoch() public view returns (uint128) {
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
         if (block.timestamp < ds.epoch1Start) {
             return 0;
         }
         return
             uint128((block.timestamp - ds.epoch1Start) / ds.epochDuration + 1);
+    }
+
+    function getEpochStart() public view returns (uint256) {
+        LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
+        if (block.timestamp < ds.epoch1Start) {
+            return ds.epoch1Start;
+        }
+        uint256 _epcohId =
+            (block.timestamp - ds.epoch1Start) / ds.epochDuration;
+
+        return ds.epoch1Start.add(_epcohId.mul(ds.epochDuration));
     }
 }

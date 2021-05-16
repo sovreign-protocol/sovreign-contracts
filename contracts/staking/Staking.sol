@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/InterestStrategyInterface.sol";
 import "../interfaces/IEpochClock.sol";
 
-import "hardhat/console.sol";
-
 contract Staking is ReentrancyGuard {
     using SafeMath for uint256;
 
@@ -75,8 +73,8 @@ contract Staking is ReentrancyGuard {
     constructor() {}
 
     function initialize(address epochClock) public {
-        require(epoch1Start == 0, "Can only be initialzed once");
-        epoch1Start = IEpochClock(epochClock).getEpoch1Start();
+        require(epoch1Start == 0, "Can only be initialized once");
+        epoch1Start = IEpochClock(epochClock).getEpochStart();
         epochDuration = IEpochClock(epochClock).getEpochDuration();
     }
 
@@ -272,7 +270,6 @@ contract Staking is ReentrancyGuard {
         }
         // there was a deposit in the current epoch
         else if (checkpoints[last].epochId == currentEpoch) {
-            console.log("here");
             checkpoints[last].startBalance = balances[msg.sender][tokenAddress];
             checkpoints[last].newDeposits = 0;
             checkpoints[last].multiplier = BASE_MULTIPLIER;

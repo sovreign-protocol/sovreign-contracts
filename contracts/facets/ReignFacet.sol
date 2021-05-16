@@ -8,8 +8,6 @@ import "../libraries/LibOwnership.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "hardhat/console.sol";
-
 contract ReignFacet {
     using SafeMath for uint256;
 

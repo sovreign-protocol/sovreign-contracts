@@ -8,4 +8,6 @@ interface IEpochClock {
     function getEpoch1Start() external view returns (uint256);
 
     function getCurrentEpoch() external view returns (uint128);
+
+    function getEpochStart() external view returns (uint256);
 }
