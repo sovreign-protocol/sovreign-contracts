@@ -9,14 +9,14 @@ import {createRewards} from "./define-6-create-rewards";
 import {scenario1} from "./define-scenario-1-deposit";
 
 deployConfig()
-.then(c => mainnetPreFlight(c))
-.then(c => deployDAO(c))
-.then(c => tokenSetup(c))
-.then(c => controllerSetup(c))
-.then(c => activateSoVReign(c))
-.then(c => createPools(c))
-.then(c => createRewards(c))
-.then(c => scenario1(c))
+    .then(c => mainnetPreFlight(c))
+    .then(c => deployDAO(c))
+    .then(c => tokenSetup(c))
+    .then(c => controllerSetup(c))
+    .then(c => activateSoVReign(c))
+    .then(c => createPools(c))
+    .then(c => createRewards(c))
+    .then(c => scenario1(c))
     .catch(error => {
         console.error(error);
         process.exit(1);

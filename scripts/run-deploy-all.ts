@@ -8,13 +8,13 @@ import {createPools} from "./define-5-create-pools";
 import {createRewards} from "./define-6-create-rewards";
 
 deployConfig()
-.then(c => mainnetPreFlight(c))
-.then(c => deployDAO(c))
-.then(c => tokenSetup(c))
-.then(c => controllerSetup(c))
-.then(c => activateSoVReign(c))
-.then(c => createPools(c))
-.then(c => createRewards(c))
+    .then(c => mainnetPreFlight(c))
+    .then(c => deployDAO(c))
+    .then(c => tokenSetup(c))
+    .then(c => controllerSetup(c))
+    .then(c => activateSoVReign(c))
+    .then(c => createPools(c))
+    .then(c => createRewards(c))
     .catch(error => {
         console.error(error);
         process.exit(1);
