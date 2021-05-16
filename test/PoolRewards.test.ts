@@ -51,7 +51,7 @@ describe("YieldFarm Liquidity Pool", function () {
             'InterestStrategy',[multiplier, offset, baseDelta])
             ) as InterestStrategy;
 
-            await interest.initialize(userAddr, userAddr, epochStart)
+            await interest.initialize(userAddr, userAddr, epochStart, epochDuration)
 
         controller = (await deployContract("PoolControllerMock",[interest.address, balancer.address ])) as PoolControllerMock;
 

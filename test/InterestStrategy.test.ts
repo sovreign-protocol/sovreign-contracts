@@ -43,7 +43,7 @@ describe('InterestStrategy', function () {
                 'InterestStrategy',[multiplier, offset, baseDelta])
                 ) as InterestStrategy;
     
-            await interest.initialize(userAddress, reignDAOAddress, helpers.getCurrentUnix() +100000)
+            await interest.initialize(userAddress, reignDAOAddress, helpers.getCurrentUnix() +100000, helpers.stakingEpochDuration)
 
             expect(await interest.getCurrentEpoch()).to.be.eq(0)
         })
@@ -204,7 +204,7 @@ describe('InterestStrategy', function () {
             let delta = await interest.getDelta(reserves,target);
             let rates = await interest.getFormulaOutput(reserves,target);
 
-            expect(rates[0]).to.equal(904347826086);
+            expect(rates[0]).to.equal(9043478260);
             expect(rates[1]).to.equal(0);
         }); 
 
