@@ -26,14 +26,14 @@ describe('InterestStrategy', function () {
             'InterestStrategy',[multiplier, offset, baseDelta])
             ) as InterestStrategy;
 
-        await interest.initialize(userAddress, reignDAOAddress, helpers.stakingEpochStart)
+        await interest.initialize(userAddress, reignDAOAddress, helpers.stakingEpochStart, helpers.stakingEpochDuration)
     });
 
     describe('general', function () {
 
         it("can not be initialized twice", async () => {
     
-            await expect(interest.initialize(userAddress, reignDAOAddress, helpers.stakingEpochStart)).to.be.revertedWith("Can not be initialized again")
+            await expect(interest.initialize(userAddress, reignDAOAddress, helpers.stakingEpochStart, helpers.stakingEpochDuration)).to.be.revertedWith("Can not be initialized again")
         })
 
 

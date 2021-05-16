@@ -12,10 +12,9 @@ contract InterestStrategy is InterestStrategyInterface {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
-    uint256 public constant EPOCH_DURATION = 604800;
     uint256 public constant BLOCK_PER_YEAR = 2300000;
 
-    uint256 public constant MAGNITUDE_ADJUST = 48;
+    uint256 public constant MAGNITUDE_ADJUST = 50;
 
     int256 public constant SCALER = 10**20;
 
@@ -25,6 +24,7 @@ contract InterestStrategy is InterestStrategyInterface {
     // timestamp for the epoch 1
     // everything before that is considered epoch 0
     uint256 public override epoch1Start;
+    uint256 public override epochDuration;
 
     uint256 public override withdrawFeeAccrued;
     uint256 public blockNumberLast;
@@ -67,12 +67,14 @@ contract InterestStrategy is InterestStrategyInterface {
     function initialize(
         address _pool,
         address _reignDAO,
-        uint256 _epoch1Start
+        uint256 _epoch1Start,
+        uint256 _epochDuration
     ) external override {
         require(pool == address(0), "Can not be initialized again"); // sufficient check, poolController will initialize once after deployment
         pool = _pool;
         reignDAO = _reignDAO;
         epoch1Start = _epoch1Start;
+        epochDuration = _epochDuration;
     }
 
     // accrueInterest is called every time a user interacts with the pool,
@@ -264,7 +266,7 @@ contract InterestStrategy is InterestStrategyInterface {
             return 0;
         }
 
-        return uint128((block.timestamp - epoch1Start) / EPOCH_DURATION + 1);
+        return uint128(((block.timestamp - epoch1Start) / epochDuration) + 1);
     }
 
     // Returns the rewards that have accrues during a given epoch, future epochs return 0

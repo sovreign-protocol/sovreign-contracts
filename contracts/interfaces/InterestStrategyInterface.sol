@@ -40,9 +40,13 @@ interface InterestStrategyInterface {
     function initialize(
         address,
         address,
+        uint256,
         uint256
     ) external;
 
-    //returns the stores epoch1Start
+    //returns the stored epoch1Start
     function epoch1Start() external view returns (uint256);
+
+    //returns the stored epochDuration
+    function epochDuration() external view returns (uint256);
 }

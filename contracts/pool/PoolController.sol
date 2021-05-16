@@ -80,7 +80,8 @@ contract PoolController is IPoolController {
         InterestStrategyInterface(interestStrategy).initialize(
             pool,
             reignDAO,
-            clock.getEpoch1Start()
+            clock.getEpoch1Start(),
+            clock.getEpochDuration()
         );
 
         getPool[underlyingToken] = pool;
