@@ -6,6 +6,7 @@ import {
     Staking,
 } from "../typechain";
 import {diamondAsFacet} from "../test/helpers/diamond";
+import {getUnixTimestamp} from "../test/helpers/time";
 import {BigNumber, Contract} from "ethers";
 import * as helpers from "../test/helpers/governance-helpers";
 import {day, hour} from "../test/helpers/time";
@@ -26,7 +27,7 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     const reignDiamondFacet = (await diamondAsFacet(reignDiamond, 'ReignFacet')) as ReignFacet;
     console.log(`Calling initReign() at '${reignDiamondFacet.address.toLowerCase()}' (ReignDiamond contract)`);
-    await reignDiamondFacet.connect(c.sovReignOwnerAcct).initReign(reignToken.address, c.epoch1stStartTs, c.epochDuration);
+    await reignDiamondFacet.connect(c.sovReignOwnerAcct).initReign(reignToken.address, getUnixTimestamp()*1000, c.epochDuration);
 
     ///////////////////////////
     // Init "ReignDAO":
@@ -34,11 +35,7 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Calling initialize() at '${reignDAO.address.toLowerCase()}' (ReignDAO contract)`);
     await reignDAO.connect(c.sovReignOwnerAcct).initialize(reignDiamond.address);
 
-    ///////////////////////////
-    // Init "Staking":
-    ///////////////////////////
-    console.log(`Calling initialize() at '${staking.address.toLowerCase()}' (Staking contract)`);
-    await staking.connect(c.sovReignOwnerAcct).initialize(reignDiamond.address);
+    
 
     ///////////////////////////
     // "SoVReignOwner" stakes ReignToken to "ReignDiamond"

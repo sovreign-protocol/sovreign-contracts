@@ -1,5 +1,5 @@
 import {DeployConfig} from "./config";
-import {ethers as ejs} from "ethers";
+import {ethers as ejs, Contract} from "ethers";
 import {LibRewardsDistribution, PoolRewards, Staking, PoolController, ReignDAO,Pool, ReignToken, RewardsVault, LiquidityBufferVault} from "../typechain";
 
 import {day, hour, minute} from "../test/helpers/time";
@@ -11,6 +11,7 @@ export async function createRewards(c: DeployConfig): Promise<DeployConfig> {
 
 
     const reignToken = c.reignToken as ReignToken;
+    const reignDiamond = c.reignDiamond as Contract;
     const staking = c.staking as Staking;
     const reignDAO = c.reignDAO as ReignDAO;
     const poolController = c.poolController as PoolController;
@@ -22,7 +23,11 @@ export async function createRewards(c: DeployConfig): Promise<DeployConfig> {
 
     const tokenDistribution = await deploy.deployContract('LibRewardsDistribution' ) as LibRewardsDistribution;
     
-
+    ///////////////////////////
+    // Init "Staking":
+    ///////////////////////////
+    console.log(`Calling initialize() at '${staking.address.toLowerCase()}' (Staking contract)`);
+    await staking.connect(c.sovReignOwnerAcct).initialize(reignDiamond.address);
 
     console.log(`\n --- DEPLOY POOL REWARDS ---`);
 

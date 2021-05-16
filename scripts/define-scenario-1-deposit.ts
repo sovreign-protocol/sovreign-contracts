@@ -1,17 +1,19 @@
 import {DeployConfig} from "./config";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
-import {PoolRewards,Pool, ReignToken, SvrToken, BasketBalancer, UniswapPairOracle, Staking} from "../typechain";
+import {PoolRewards,Pool, ReignToken, SvrToken, BasketBalancer, UniswapPairOracle, Staking, LiquidityBufferVault, PoolController} from "../typechain";
 
-import {hour} from "../test/helpers/time";
-import { moveAtTimestamp, tenPow18} from "../test/helpers/helpers";
+import {hour, day} from "../test/helpers/time";
+import { getCurrentUnix, mineBlocks, moveAtTimestamp, tenPow18} from "../test/helpers/helpers";
 
 
 export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
+    const reignDiamond = c.reignDiamond as Contract;
     const svrToken = c.svrToken as SvrToken;
     const reignToken = c.reignToken as ReignToken;
     const staking = c.staking as Staking;
     const balancer = c.basketBalancer as BasketBalancer;
+    const poolController = c.poolController as PoolController;
     const pool1 = c.pool1 as Pool;
     const pool2 = c.pool2 as Pool;
     const pool1Rewards = c.pool1Rewards as PoolRewards;
@@ -24,11 +26,16 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
     console.log(`\n --- USERS VOTE ON ALLOCATION ---`);
 
+    ///////////////////////////
+    // Time warp: go to the next Epoch
+    ///////////////////////////
+    let timeWarpInSeconds = day+100
+    console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
+    await moveAtTimestamp(Date.now() + timeWarpInSeconds)
 
-    ///////////////////////////
-    // Initialize Epoch in balancer
-    ///////////////////////////
+
     await balancer.connect(c.user1Acct).updateBasketBalance()
+
 
     ///////////////////////////
     // All Users Vote on Basket Allocation
@@ -42,21 +49,8 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Continuous Vote Tally Pool2: ${votePool2}`);
     
 
-    ///////////////////////////
-    // Time warp: go to the next Epoch
-    ///////////////////////////
-    let timeWarpInSeconds = (hour/2)+100
-    console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
-    await moveAtTimestamp(Date.now() + timeWarpInSeconds)
-
     await oracle1.update()
     await oracle2.update()
-
-
-    ///////////////////////////
-    // Basket Allocation is updated
-    ///////////////////////////
-    await balancer.connect(c.user1Acct).updateBasketBalance()
 
 
     console.log(`\n --- USERS DEPOSIT ASSETS INTO POOLS ---`);
@@ -109,13 +103,11 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     
     console.log(`\n --- USERS STAKE LP TOKENS ---`);
 
-    ///////////////////////////
-    // Initialize previous epochs
-    ///////////////////////////
-    let epoch:number = (await staking.getCurrentEpoch()).toNumber();
-    for(let i =0; i < epoch; i++){
-        await staking.initEpochForTokens([pool1.address,pool2.address], i)
-    }
+    // we should be in staking epoch 2 now
+    await staking.initEpochForTokens([pool1.address, pool2.address], 0)
+    await staking.initEpochForTokens([pool1.address, pool2.address], 1)
+
+
 
     ///////////////////////////
     // Deposit Into staking contract
@@ -128,14 +120,36 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     await staking.connect(c.user2Acct).deposit(pool2.address, poolLpBalance2After)
     console.log(`User2 deposits '${poolLpBalance2After} into staking'`)
 
+    await mineBlocks(1000)
+    await oracle1.update()
+    await oracle2.update()
+
+    ///////////////////////////
+    // Interact with pool contracts to accrue interest
+    ///////////////////////////
+    await staking.connect(c.user1Acct).withdraw(pool1.address, 10)
+
+    let withdrawFee = await pool1.getWithdrawFeeReign(10);
+    await reignToken.connect(c.user1Acct).approve(pool1.address, withdrawFee)
+    console.log(`User1 pays '${withdrawFee}' REIGN to withdraw 10 WEI`)
+    await pool1.connect(c.user1Acct).burn(10)
+
+    await staking.connect(c.user2Acct).withdraw(pool2.address, 10)
+
+    withdrawFee = await pool2.getWithdrawFeeReign(10);
+    await reignToken.connect(c.user1Acct).approve(pool2.address, withdrawFee)
+    console.log(`User2 pays '${withdrawFee}' REIGN to withdraw 10 Satoshi`)
+    await pool2.connect(c.user2Acct).burn(10)
 
     ///////////////////////////
     // Time warp: go to the next Epoch
     ///////////////////////////
-    timeWarpInSeconds = (hour/2)+100
+    timeWarpInSeconds = 2*day+100
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
     await moveAtTimestamp(Date.now() + timeWarpInSeconds)
 
+    await oracle1.update()
+    await oracle2.update()
 
 
     console.log(`\n --- USERS HARVEST LP REWARDS ---`);
@@ -146,11 +160,8 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     let reignBalanceBefore1 = await reignToken.balanceOf(c.user1Addr)
     let reignBalanceBefore2 = await reignToken.balanceOf(c.user2Addr)
 
-    let epochRewards:number = (await pool1Rewards.getCurrentEpoch()).toNumber();
-    for(let i =1; i < epochRewards; i++){
-        await pool1Rewards.connect(c.user1Acct).harvest(i)
-        await pool2Rewards.connect(c.user2Acct).harvest(i)
-    }
+    await pool1Rewards.connect(c.user1Acct).massHarvest()
+    await pool2Rewards.connect(c.user2Acct).massHarvest()
 
     let reignBalanceAfter1 = await reignToken.balanceOf(c.user1Addr)
     let reignBalanceAfter2 = await reignToken.balanceOf(c.user2Addr)

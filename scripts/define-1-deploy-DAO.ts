@@ -3,6 +3,7 @@ import * as deploy from "../test/helpers/deploy";
 import {
     ReignDAO,
 } from "../typechain";
+import { getCurrentUnix } from "../test/helpers/helpers";
 
 
 export async function deployDAO(c: DeployConfig): Promise<DeployConfig> {

@@ -3,6 +3,7 @@ import {BigNumber, Contract, Signer} from "ethers";
 import {getAccount, impersonateAccount} from "../test/helpers/accounts";
 import * as helpers from "../test/helpers/helpers";
 import {addMinutes} from "../test/helpers/helpers";
+import {day, hour, minute} from "../test/helpers/time";
 import {
     BasketBalancer,
     GovRewards,
@@ -58,7 +59,7 @@ export async function deployConfig(): Promise<DeployConfig> {
         // 1st epoch start timestamp (now)
         Math.floor(Date.now() / 1000),
         // epoch's duration (30 minutes from now)
-        Math.floor(addMinutes(new Date(), 60).getTime() / 1000),
+        1*day,
         // rewards amount
         BigNumber.from(610000).mul(helpers.tenPow18)
     )

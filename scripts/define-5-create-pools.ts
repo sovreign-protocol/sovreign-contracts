@@ -308,5 +308,6 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
     c.pool2 = pool2
     console.log(`Pool2 Reserves '${ (await pool2.getReserves() ).toString()}'`)
 
+
     return c;
 }

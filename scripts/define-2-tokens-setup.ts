@@ -263,8 +263,6 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     await treasurySaleVault.connect(c.sovReignOwnerAcct).setAllowance(reignDAO.address, treasurySaleAllocation)
     console.log(`Calling setAllowance() from (TreasurySaleVault contract) to (Reign DAO contract)`);
 
-    await treasurySaleVault.connect(c.sovReignOwnerAcct).setAllowance(reignDAO.address, treasurySaleAllocation)
-    console.log(`Calling setAllowance() from (TreasurySaleVault contract) to (Reign DAO contract)`);
 
 
 

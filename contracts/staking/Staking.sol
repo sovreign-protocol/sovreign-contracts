@@ -74,7 +74,7 @@ contract Staking is ReentrancyGuard {
 
     function initialize(address epochClock) public {
         require(epoch1Start == 0, "Can only be initialized once");
-        epoch1Start = IEpochClock(epochClock).getEpochStart();
+        epoch1Start = IEpochClock(epochClock).getEpoch1Start();
         epochDuration = IEpochClock(epochClock).getEpochDuration();
     }
 
