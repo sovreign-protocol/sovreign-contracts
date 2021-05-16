@@ -59,6 +59,7 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
         controller = IPoolController(msg.sender);
         token = _token;
         tokenDecimals = IERC20(token).decimals();
+        decimals = IERC20(token).decimals();
         treasury = controller.reignDAO();
         svrToken = controller.svrToken();
         reignToken = controller.reignToken();

@@ -9,7 +9,7 @@ abstract contract PoolErc20 is IERC20 {
 
     string public constant override name = "SoVReign Pool";
     string public constant override symbol = "SVR-LP";
-    uint8 public constant override decimals = 18;
+    uint8 public override decimals = 18;
     uint256 public override totalSupply = 0;
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
