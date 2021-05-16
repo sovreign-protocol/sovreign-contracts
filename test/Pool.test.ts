@@ -69,6 +69,7 @@ describe('Pool', function () {
         svr = (await deploy.deployContract('SvrToken', [userAddress])) as SvrToken;
         reign = (await deploy.deployContract('ReignToken', [userAddress])) as ReignToken;
 
+
         poolController = (
             await deploy.deployContract('PoolController', [
                 balancer.address, svr.address, reign.address,oracle.address, reignDAOAddress, epochClock.address, liquidityBufferAddress
@@ -223,16 +224,19 @@ describe('Pool', function () {
             .div(await poolController.getReignPrice())
             .div(BigNumber.from(10).pow(await underlying1.decimals()))
             
+            expect(await pool.getDepositFeeReign(amount)).to.not.eq(0)
             expect(await pool.getDepositFeeReign(amount)).to.be.eq(expectedDepositFee)
         });
         
         it('returns correct expected withdraw Fee', async function () {
-            
-            await depositToPool(500,pool);
-            await depositToPool(600,pool2);
-            await helpers.mineBlocks(100)
-            await depositToPool(50,pool);
 
+            //initial setup
+            await depositToPool(10000,pool);
+            await depositToPool(10000,pool2);
+
+            await depositToPool(1000,pool);
+            await helpers.mineBlocks(100)
+            1224 
 
             let amount = BigNumber.from(50)
 
@@ -359,7 +363,7 @@ describe('Pool', function () {
             await depositToPool(110000,pool2) 
             await depositToPool(100000,pool)// this makes pool 1 to small -> no withdraw fee
             
-            let amountToBurn = BigNumber.from(10).mul(helpers.tenPow18);
+            let amountToBurn = BigNumber.from(10).mul(decimalsFactor);
             let withdrawFee = await pool.getWithdrawFeeReign(amountToBurn);
 
             expect(withdrawFee).to.eq(0)
@@ -371,7 +375,7 @@ describe('Pool', function () {
             await depositToPool(110000,pool)
 
             let userBalanceLP = await pool.balanceOf(userAddress);
-            let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
+            let amountToBurn = BigNumber.from(100000).mul(decimalsFactor);
 
             let withdrawFee = await pool.getWithdrawFeeReign(amountToBurn);
             await reign.connect(user).approve(pool.address, withdrawFee);
@@ -381,10 +385,13 @@ describe('Pool', function () {
         });
 
         it('reverts if withdraw fee allowance is too low', async function () {
-            await depositToPool(110000,pool)
+            await depositToPool(10000,pool)
+            await depositToPool(10000,pool2)
+            await helpers.mineBlocks(1000)
+            await depositToPool(1000,pool)
 
             let userBalanceLP = await pool.balanceOf(userAddress);
-            let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
+            let amountToBurn = BigNumber.from(100).mul(decimalsFactor);
 
             await pool.getWithdrawFeeReign(amountToBurn);
 
@@ -396,7 +403,7 @@ describe('Pool', function () {
             await depositToPool(110000,pool)
 
             let userBalanceUnderlying = await underlying1.balanceOf(userAddress);
-            let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
+            let amountToBurn = BigNumber.from(100000).mul(decimalsFactor);
 
             let withdrawFee = await pool.getWithdrawFeeReign(amountToBurn);
             await reign.connect(user).approve(pool.address, withdrawFee);
@@ -409,7 +416,7 @@ describe('Pool', function () {
             await depositToPool(110000,pool)
 
             let userBalanceLP = await pool.balanceOf(userAddress);
-            let amountToBurn = BigNumber.from(100000).mul(helpers.tenPow18);
+            let amountToBurn = BigNumber.from(100000).mul(decimalsFactor);
 
             let withdrawFee = await pool.getWithdrawFeeReign(amountToBurn);
             await reign.connect(user).approve(pool.address, withdrawFee);
@@ -425,7 +432,7 @@ describe('Pool', function () {
             let svrBalanceAfter = await svr.balanceOf(userAddress);
             let svrSupply = await svr.totalSupply();
             
-            let amountToBurn = BigNumber.from(10000).mul(helpers.tenPow18);
+            let amountToBurn = BigNumber.from(10000).mul(decimalsFactor);
             let underlyingPrice = await poolController.getTokenPrice(pool.address)
             let TVL = await poolController.getPoolsTVL()
 
@@ -448,7 +455,7 @@ describe('Pool', function () {
     });
 
     async function depositToPool (amount:number, poolUsed:Pool) {
-        let amountBN = BigNumber.from(amount).mul(helpers.tenPow18);
+        let amountBN = BigNumber.from(amount).mul(decimalsFactor);
         let depositFee = await poolUsed.getDepositFeeReign(amountBN);
 
         await reign.connect(user).approve(poolUsed.address, depositFee); 

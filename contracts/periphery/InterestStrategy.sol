@@ -62,6 +62,7 @@ contract InterestStrategy is InterestStrategyInterface {
         multiplier = _multiplier;
         offset = _offset;
         baseDelta = _baseDelta;
+        blockNumberLast = block.number;
     }
 
     function initialize(
@@ -93,11 +94,13 @@ contract InterestStrategy is InterestStrategyInterface {
 
         // Do not accrue two times in a single block
         if (_accrualBlockNumberPrior == _currentBlockNumber) {
+            blockNumberLast = _currentBlockNumber;
             return false;
         }
 
         // Dont do enything if pool is empty
         if (reserves == 0) {
+            blockNumberLast = _currentBlockNumber;
             return false;
         }
 

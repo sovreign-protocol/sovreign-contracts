@@ -3,7 +3,7 @@ import {BigNumber, Contract, ethers as ejs} from "ethers";
 import {PoolRewards,Pool, ReignToken, SvrToken, BasketBalancer, UniswapPairOracle, Staking, LiquidityBufferVault, PoolController} from "../typechain";
 
 import {hour, day} from "../test/helpers/time";
-import { getCurrentUnix, mineBlocks, moveAtTimestamp, tenPow18} from "../test/helpers/helpers";
+import { getCurrentUnix, getLatestBlockTimestamp, mineBlocks, moveAtTimestamp, tenPow18} from "../test/helpers/helpers";
 
 
 export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
@@ -81,6 +81,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     await wbtc.connect(c.user2Acct).transfer(pool2.address, depositAmountWbtc)
     console.log(`User1 deposit '${depositAmountWbtc.toNumber() / 10**8}' WBTC `)
 
+
     ///////////////////////////
     // Mint SVR & LP from WBTC Pools
     ///////////////////////////
@@ -144,9 +145,9 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Time warp: go to the next Epoch
     ///////////////////////////
-    timeWarpInSeconds = 2*day+100
+    timeWarpInSeconds = day+100
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
-    await moveAtTimestamp(Date.now() + timeWarpInSeconds)
+    await moveAtTimestamp(await getLatestBlockTimestamp() + timeWarpInSeconds)
 
     await oracle1.update()
     await oracle2.update()
@@ -166,8 +167,8 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     let reignBalanceAfter1 = await reignToken.balanceOf(c.user1Addr)
     let reignBalanceAfter2 = await reignToken.balanceOf(c.user2Addr)
 
-    console.log(`User1 Pool1 LP Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).toNumber()}' REIGN`)
-    console.log(`User2 Pool2 LP Rewards: '${reignBalanceAfter2.sub(reignBalanceBefore2).toNumber()}' REIGN`)
+    console.log(`User1 Pool1 LP Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).toString()}' REIGN`)
+    console.log(`User2 Pool2 LP Rewards: '${reignBalanceAfter2.sub(reignBalanceBefore2).toString()}' REIGN`)
 
 
     return c;

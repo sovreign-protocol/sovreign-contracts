@@ -12,8 +12,6 @@ import "../interfaces/InterestStrategyInterface.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "hardhat/console.sol";
-
 contract Pool is IPool, PoolErc20, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -108,8 +106,11 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
         //mint SVR tokens based on new balance
         _mintSvr(to, amount);
 
-        //accrue interest based on new balance
-        _accrueInterest();
+        //Dont accrue on first pay in
+        if (_reserve != 0) {
+            //accrue interest based on new balance
+            _accrueInterest();
+        }
     }
 
     //burns LP tokens,burns SVR tokens and returns liquidity to user
@@ -213,6 +214,7 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
     function _accrueInterest() internal {
         uint256 _target = controller.getTargetSize(address(this));
         uint256 _reserves = getReserves();
+
         address interestStrategy =
             controller.getInterestStrategy(address(this));
         InterestStrategyInterface(interestStrategy).accrueInterest(

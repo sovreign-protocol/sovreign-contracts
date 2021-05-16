@@ -8,7 +8,6 @@ import "../interfaces/IBasketBalancer.sol";
 import "../interfaces/IPoolController.sol";
 import "../libraries/LibRewardsDistribution.sol";
 import "../libraries/SafeERC20.sol";
-import "hardhat/console.sol";
 
 contract PoolRewards {
     // lib
@@ -159,7 +158,7 @@ contract PoolRewards {
         (uint256 epochRewards, uint256 baseRewards) =
             getRewardsForEpoch(epochId, _poolLP);
 
-        // if these pools need more rewards than base issuance, then we need to transfer it
+        // if this pool needs more rewards than base issuance, then we need to transfer the difference
         if (epochRewards > baseRewards) {
             uint256 transferToRewards = epochRewards.sub(baseRewards);
 
@@ -217,7 +216,7 @@ contract PoolRewards {
             );
 
         uint256 epochRewards =
-            (interest.getEpochRewards(epochId))
+            (interest.getEpochRewards(epochId + 1)) // interest epoch is 1 higher then pool rewards
                 .mul(
                 LibRewardsDistribution.rewardsPerBlockPerPool(
                     _controller.getTargetAllocation(_pool),
@@ -256,7 +255,7 @@ contract PoolRewards {
         if (
             IBasketBalancer(_controller.getBasketBalancer()).hasVotedInEpoch(
                 user,
-                epoch
+                epoch + 1 // balancer epoch is 1 higher then pool
             )
         ) {
             return 1 * 10**18;

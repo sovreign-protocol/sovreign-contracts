@@ -98,11 +98,10 @@ describe("YieldFarm Liquidity Pool", function () {
         it('Get epoch PoolSize and distribute tokens', async function () {
             await depositPoolLP(amount)
 
-            await interest.connect(user).accrueInterest(10000,10000);
-
-            await moveAtEpoch(epochStart, epochDuration, 1)
+            
+            await accrueAndMoveToEpoch(1)
             await accrueAndMoveToEpoch(2)
-            await moveAtEpoch(epochStart, epochDuration, 3)
+            await accrueAndMoveToEpoch(3)
             const totalAmount = amount
 
             expect(await yieldFarm.getPoolSize(1)).to.equal(totalAmount)
@@ -113,7 +112,6 @@ describe("YieldFarm Liquidity Pool", function () {
             expect(await yieldFarm.getCurrentEpoch()).to.equal(2) // epoch on yield is staking - 1
 
             let epoch1Rewards = (await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0];
-
             let boostMultiplier = await yieldFarm.getBoost(userAddr, 1);
             
             // as the user didn't vote this epoch (see balancerMock) we need to apply Boost
@@ -234,10 +232,11 @@ describe("YieldFarm Liquidity Pool", function () {
             expect(await reignToken.balanceOf(liquidityBuffer.address)).to.be.eq(balanceBefore.add(excessTokens))
         })
 
-        it('does not send tokens to Liquidity Buffer if rewards are above average in mass harvest', async function () {
+        it('does not send tokens to Liquidity Buffer if rewards are above base in mass harvest', async function () {
             await depositPoolLP(amount)
             await depositPoolLP(amount, creator)
-            await mineBlocks(20000); //<- I hope this doesn't fry your pc, didn't find another way to get above base rewards
+            await moveAtEpoch(epochStart, epochDuration, 2)
+            await mineBlocks(2000); //<- I hope this doesn't fry your pc, didn't find another way to get above base rewards
             await interest.connect(user).accrueInterest(10000,20000);
             await moveAtEpoch(epochStart, epochDuration, 3)
 
@@ -251,8 +250,9 @@ describe("YieldFarm Liquidity Pool", function () {
 
         it('receives the missing tokens from Liquidity Buffer', async function () {
             await depositPoolLP(amount)
-            await moveAtEpoch(epochStart, epochDuration, 1)
+            await accrueAndMoveToEpoch(1)
             await mineBlocks(1000); 
+            await moveAtEpoch(epochStart, epochDuration, 2)
             await interest.connect(user).accrueInterest(9000,11000);
             await moveAtEpoch(epochStart, epochDuration, 3)
             let epochRewards =(await yieldFarm.getRewardsForEpoch(1, poolLP.address))[0];
@@ -329,7 +329,7 @@ describe("YieldFarm Liquidity Pool", function () {
 
     async function totalAccruedUntilEpoch(n:number) {
         let total = BigNumber.from(0);
-        for(let i = 0; i < n; i++){
+        for(let i = 1; i < n; i++){
             let epochBoost = await yieldFarm.getBoost(userAddr, i);
             let adjusted = epochBoost.mul((await yieldFarm.getRewardsForEpoch(i, poolLP.address))[0]).div(tenPow18)
             total = total.add(adjusted);
