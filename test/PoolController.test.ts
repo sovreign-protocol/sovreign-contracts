@@ -4,7 +4,8 @@ import { expect } from 'chai';
 import * as helpers from './helpers/helpers';
 
 import {
-    ERC20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy, EpochClockMock
+    ERC20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken,
+    ReignBalancerMock, OracleMock, InterestStrategy, EpochClockMock
  } from '../typechain';
 import * as deploy from './helpers/deploy';
 import { stringify } from 'querystring';
@@ -44,9 +45,10 @@ describe('PoolController', function () {
         
         oracle = (await deploy.deployContract('OracleMock', [reignDaoAddress])) as OracleMock;
 
+        let reignMock = (await deploy.deployContract('ReignBalancerMock')) as ReignBalancerMock;
 
         balancer = (
-            await deploy.deployContract('BasketBalancerMock',[[underlying1.address], [500000]])
+            await deploy.deployContract('BasketBalancerMock',[[underlying1.address], [500000], reignMock.address])
         ) as BasketBalancerMock; 
         await setupContracts();
    

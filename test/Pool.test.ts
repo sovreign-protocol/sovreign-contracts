@@ -4,7 +4,8 @@ import { expect } from 'chai';
 import * as helpers from './helpers/helpers';
 
 import { 
-    ERC20Mock, BasketBalancerMock, PoolController, Pool, SvrToken, ReignToken, OracleMock, InterestStrategy, EpochClockMock
+    ERC20Mock, BasketBalancerMock, ReignBalancerMock, PoolController, Pool, SvrToken, 
+    ReignToken, OracleMock, InterestStrategy, EpochClockMock
 } from '../typechain';
 import * as deploy from './helpers/deploy';
 import { prependOnceListener } from 'process';
@@ -35,13 +36,14 @@ describe('Pool', function () {
         await setupSigners();
         
         oracle = (await deploy.deployContract('OracleMock', [reignDAOAddress])) as OracleMock;
-
+        oracle.update()
+        let reignMock = (await deploy.deployContract('ReignBalancerMock')) as ReignBalancerMock;
 
         epochClock = (await deploy.deployContract('EpochClockMock', [helpers.stakingEpochStart])) as EpochClockMock;
 
 
         balancer = (
-            await deploy.deployContract('BasketBalancerMock',[[], []])
+            await deploy.deployContract('BasketBalancerMock',[[], [], reignMock.address])
         ) as BasketBalancerMock;
 
 
@@ -413,6 +415,7 @@ describe('Pool', function () {
         });
 
         it('burns the correct amount of LP token', async function () {
+            await depositToPool(1000,pool)
             await depositToPool(110000,pool)
 
             let userBalanceLP = await pool.balanceOf(userAddress);

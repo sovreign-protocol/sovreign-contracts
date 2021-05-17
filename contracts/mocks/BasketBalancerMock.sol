@@ -9,15 +9,21 @@ contract BasketBalancerMock is IBasketBalancer {
 
     uint256 public override FULL_ALLOCATION = 1000000000; // 9 decimals precision
 
+    address public override reignAddress;
     address[] allPools;
     mapping(address => uint256) poolAllocation;
 
-    constructor(address[] memory newPools, uint256[] memory newAllocation) {
+    constructor(
+        address[] memory newPools,
+        uint256[] memory newAllocation,
+        address _reignAddress
+    ) {
         for (uint256 i = 0; i < newPools.length; i++) {
             uint256 poolPercentage = newAllocation[i];
             poolAllocation[newPools[i]] = poolPercentage;
         }
         allPools = newPools;
+        reignAddress = _reignAddress;
     }
 
     function updateAllocationVote(

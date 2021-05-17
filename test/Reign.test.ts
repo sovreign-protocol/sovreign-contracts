@@ -565,6 +565,7 @@ describe('Reign', function () {
             after = await helpers.getLatestBlockTimestamp()
             multiplier = await multiplierAtTs(3, after);
             balanceEffective = computeEffectiveBalance(amount, multiplier);
+            //This sometimes fails by 100 due to blocks messing up timestamps
             expect(await getEpochUserBalance(userAddress, 3)).to.be.equal(amount.mul(2).add(balanceEffective));
 
             await helpers.moveAtEpoch(startEpoch, duration, 4);

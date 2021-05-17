@@ -318,7 +318,6 @@ contract ERC20 is Context, IERC20 {
             "ERC20: burn amount exceeds balance"
         );
         _totalSupply = _totalSupply.sub(amount);
-        emit Transfer(account, address(0), amount);
     }
 
     /**
@@ -344,17 +343,6 @@ contract ERC20 is Context, IERC20 {
 
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
-    }
-
-    /**
-     * @dev Sets {decimals} to a value other than the default one of 18.
-     *
-     * WARNING: This function should only be called from the constructor. Most
-     * applications that interact with token contracts will not expect
-     * {decimals} to ever change, and may work incorrectly if it does.
-     */
-    function _setupDecimals(uint8 decimals_) internal virtual {
-        _decimals = decimals_;
     }
 
     /**
@@ -387,10 +375,6 @@ contract ERC20Mock is ERC20("ERC20Mock", "MCK", 8) {
 
     function mint(address user, uint256 amount) public {
         _mint(user, amount);
-    }
-
-    function burnFrom(address user, uint256 amount) public {
-        _burn(user, amount);
     }
 
     function transferFrom(

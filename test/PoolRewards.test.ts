@@ -1,10 +1,10 @@
 import { ethers } from "hardhat";
 import { BigNumber, Signer } from "ethers";
-import { moveAtEpoch, tenPow18,mineBlocks,setTime,getCurrentUnix, moveAtTimestamp } from "./helpers/helpers";
+import { moveAtEpoch, tenPow18,mineBlocks,setTime,getCurrentUnix, moveAtTimestamp, zeroAddress } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
 import { RewardsVault, ERC20Mock, Staking, PoolRewards, 
-         PoolControllerMock,LiquidityBufferVault, 
+         PoolControllerMock,LiquidityBufferVault, ReignBalancerMock,
          InterestStrategy, BasketBalancerMock, EpochClockMock
     } from "../typechain";
 
@@ -37,13 +37,13 @@ describe("YieldFarm Liquidity Pool", function () {
 
 
         epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
+        let reignMock = (await deployContract('ReignBalancerMock')) as ReignBalancerMock;
 
         reignToken = (await deployContract("ERC20Mock")) as ERC20Mock;
         svrToken = (await deployContract("ERC20Mock")) as ERC20Mock;
         poolLP = (await deployContract("ERC20Mock")) as ERC20Mock;
 
-        let balancer = (await deployContract("BasketBalancerMock",[[],[]])) as BasketBalancerMock;
-
+        let balancer = (await deployContract("BasketBalancerMock",[[],[], reignMock.address])) as BasketBalancerMock;
         let multiplier = BigNumber.from(3).mul(10**10);
         let offset = BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59)));
         let baseDelta = 0;

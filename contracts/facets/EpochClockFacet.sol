@@ -34,15 +34,4 @@ contract EpochClockFacet {
         return
             uint128((block.timestamp - ds.epoch1Start) / ds.epochDuration + 1);
     }
-
-    function getEpochStart() public view returns (uint256) {
-        LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
-        if (block.timestamp < ds.epoch1Start) {
-            return ds.epoch1Start;
-        }
-        uint256 _epcohId =
-            (block.timestamp - ds.epoch1Start) / ds.epochDuration;
-
-        return ds.epoch1Start.add(_epcohId.mul(ds.epochDuration));
-    }
 }

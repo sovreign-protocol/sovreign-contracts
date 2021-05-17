@@ -31,6 +31,7 @@ contract BasketBalancer is IBasketBalancer {
     mapping(address => mapping(uint128 => bool)) private votedInEpoch;
 
     IReign private reign;
+    address public override reignAddress;
     address public controller;
 
     modifier onlyController() {
@@ -81,6 +82,7 @@ contract BasketBalancer is IBasketBalancer {
         maxDelta = _maxDelta;
         allPools = _newPools;
         reign = IReign(_reignDiamond);
+        reignAddress = _reignDiamond;
         controller = _controller;
         reignDAO = _reignDAO;
         epoch1Start = reign.getEpoch1Start();

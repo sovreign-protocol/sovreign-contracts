@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../interfaces/IStaking.sol";
 import "../interfaces/InterestStrategyInterface.sol";
 import "../interfaces/IBasketBalancer.sol";
+import "../interfaces/IReignPoolRewards.sol";
 import "../interfaces/IPoolController.sol";
 import "../libraries/LibRewardsDistribution.sol";
 import "../libraries/SafeERC20.sol";
@@ -252,10 +253,18 @@ contract PoolRewards {
         view
         returns (uint256)
     {
+        IBasketBalancer _balancer =
+            IBasketBalancer(_controller.getBasketBalancer());
+        address _reign = _balancer.reignAddress();
+        // if user or users delegate has voted
         if (
-            IBasketBalancer(_controller.getBasketBalancer()).hasVotedInEpoch(
+            _balancer.hasVotedInEpoch(
                 user,
-                epoch + 1 // balancer epoch is 1 higher then pool
+                epoch + 1 // _balancer epoch is 1 higher then pool
+            ) ||
+            _balancer.hasVotedInEpoch(
+                IReignPoolRewards(_reign).userDelegatedTo(user),
+                epoch + 1 // _balancer epoch is 1 higher then pool
             )
         ) {
             return 1 * 10**18;

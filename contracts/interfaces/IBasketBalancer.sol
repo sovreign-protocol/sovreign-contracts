@@ -12,4 +12,6 @@ interface IBasketBalancer {
     function FULL_ALLOCATION() external view returns (uint256);
 
     function updateBasketBalance() external;
+
+    function reignAddress() external view returns (address);
 }
