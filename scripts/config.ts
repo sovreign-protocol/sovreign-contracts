@@ -59,7 +59,7 @@ export async function deployConfig(): Promise<DeployConfig> {
         // 1st epoch start timestamp (now)
         Math.floor(Date.now() / 1000),
         // epoch's duration (30 minutes from now)
-        1*day,
+        86400,
         // rewards amount
         BigNumber.from(610000).mul(helpers.tenPow18)
     )
@@ -101,7 +101,8 @@ export class DeployConfig {
     public svrToken?: SvrToken;
     public govRewards?: GovRewards;
     public staking?: Staking;
-    public lpRewards?: LPRewards;
+    public svrLpRewards?: LPRewards;
+    public reignLpRewards?: LPRewards;
     public reignDAO?: ReignDAO;
     public basketBalancer?: BasketBalancer;
     public poolController?: PoolController;

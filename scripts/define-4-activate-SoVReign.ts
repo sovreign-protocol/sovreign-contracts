@@ -1,9 +1,11 @@
 import {DeployConfig} from "./config";
 import {
+    GovRewards,
+    LPRewards,
     ReignDAO,
     ReignFacet,
     ReignToken,
-    Staking,
+    Staking
 } from "../typechain";
 import {diamondAsFacet} from "../test/helpers/diamond";
 import {getUnixTimestamp} from "../test/helpers/time";
@@ -18,6 +20,9 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     const reignDAO = c.reignDAO as ReignDAO;
     const reignToken = c.reignToken as ReignToken;
     const staking = c.staking as Staking;
+    const svrLpRewards = c.svrLpRewards as LPRewards;
+    const reignLpRewards = c.reignLpRewards as LPRewards;
+    const govRewards = c.govRewards as GovRewards;
 
 
     console.log(`\n --- ACTIVATE CONTRACTS ---`);
@@ -27,7 +32,7 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     const reignDiamondFacet = (await diamondAsFacet(reignDiamond, 'ReignFacet')) as ReignFacet;
     console.log(`Calling initReign() at '${reignDiamondFacet.address.toLowerCase()}' (ReignDiamond contract)`);
-    await reignDiamondFacet.connect(c.sovReignOwnerAcct).initReign(reignToken.address, getUnixTimestamp()*1000, c.epochDuration);
+    await reignDiamondFacet.connect(c.sovReignOwnerAcct).initReign(reignToken.address, getUnixTimestamp(), c.epochDuration);
 
     ///////////////////////////
     // Init "ReignDAO":
@@ -36,6 +41,29 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     await reignDAO.connect(c.sovReignOwnerAcct).initialize(reignDiamond.address);
 
     
+    ///////////////////////////
+    // Init "Staking":
+    ///////////////////////////
+    console.log(`Calling initialize() at '${staking.address.toLowerCase()}' (Staking contract)`);
+    await staking.connect(c.sovReignOwnerAcct).initialize(reignDiamond.address);
+
+    ///////////////////////////
+    // Init "svrLPRewards":
+    ///////////////////////////
+    console.log(`Calling initialize() at '${svrLpRewards.address.toLowerCase()}' (SVR LP Rewards contract)`);
+    await svrLpRewards.connect(c.sovReignOwnerAcct).initialize();
+
+    ///////////////////////////
+    // Init "reignLpRewards":
+    ///////////////////////////
+    console.log(`Calling initialize() at '${reignLpRewards.address.toLowerCase()}' (REIGN LP Rewards contract)`);
+    await reignLpRewards.connect(c.sovReignOwnerAcct).initialize();
+
+    ///////////////////////////
+    // Init "reignLpRewards":
+    ///////////////////////////
+    console.log(`Calling initialize() at '${govRewards.address.toLowerCase()}' (Gov Rewards contract)`);
+    await govRewards.connect(c.sovReignOwnerAcct).initialize();
 
     ///////////////////////////
     // "SoVReignOwner" stakes ReignToken to "ReignDiamond"

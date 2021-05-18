@@ -20,7 +20,7 @@ contract UniswapPairOracle is IOracle {
 
     uint256 public PERIOD = 3600; // 1 hour TWAP (time-weighted average price)
     uint256 public CONSULT_LENIENCY = 120; // Used for being able to consult past the period end
-    bool public ALLOW_STALE_CONSULTS = false; // If false, consult() will fail if the TWAP is stale
+    bool public ALLOW_STALE_CONSULTS = true; // If false, consult() will fail if the TWAP is stale
 
     IUniswapV2Pair public immutable pair;
     address public immutable token0;

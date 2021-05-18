@@ -23,11 +23,7 @@ export async function createRewards(c: DeployConfig): Promise<DeployConfig> {
 
     const tokenDistribution = await deploy.deployContract('LibRewardsDistribution' ) as LibRewardsDistribution;
     
-    ///////////////////////////
-    // Init "Staking":
-    ///////////////////////////
-    console.log(`Calling initialize() at '${staking.address.toLowerCase()}' (Staking contract)`);
-    await staking.connect(c.sovReignOwnerAcct).initialize(reignDiamond.address);
+    
 
     console.log(`\n --- DEPLOY POOL REWARDS ---`);
 
