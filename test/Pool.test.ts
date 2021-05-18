@@ -262,9 +262,18 @@ describe('Pool', function () {
             let depositFee = await pool.getDepositFeeReign(amountBN);
 
             await reign.connect(user).approve(pool.address, depositFee); 
-            await underlying1.connect(user).transfer(pool.address,amountBN);
-            await underlying2.connect(user).transfer(pool.address,amountBN);
-            await expect(pool.mint(userAddress)).to.be.revertedWith("Can only issue positive amounts")
+            await underlying1.connect(user).approve(pool.address,amountBN);
+            await underlying2.connect(user).approve(pool.address,amountBN);
+            await expect(pool.mint(userAddress, amountBN)).to.be.revertedWith("Can only issue positive amounts")
+        });
+
+        it('reverts if transfer allowance is to low', async function () {
+            await depositToPool(10000,pool);
+            await depositToPool(10000,pool2);
+
+            let amountBN = BigNumber.from(10000).mul(helpers.tenPow18);
+
+            await expect(pool.mint(userAddress, amountBN)).to.be.revertedWith("Insufficient allowance")
         });
 
         it('reverts if deposit fee allowance is to low', async function () {
@@ -273,8 +282,8 @@ describe('Pool', function () {
 
             let amountBN = BigNumber.from(10000).mul(helpers.tenPow18);
 
-            await underlying1.connect(user).transfer(pool.address,amountBN);
-            await expect(pool.mint(userAddress)).to.be.revertedWith("Insufficient allowance")
+            await underlying1.connect(user).approve(pool.address,amountBN);
+            await expect(pool.mint(userAddress, amountBN)).to.be.revertedWith("Insufficient allowance")
         });
 
         it('reverts if first deposit amount is equal min liquidity', async function () {
@@ -282,8 +291,8 @@ describe('Pool', function () {
             let depositFee = await pool.getDepositFeeReign(amountBN);
 
             await reign.connect(user).approve(pool.address, depositFee); 
-            await underlying1.connect(user).transfer(pool.address,amountBN);
-            await expect(pool.mint(userAddress)).to.be.revertedWith("Insufficient Liquidity Minted")
+            await underlying1.connect(user).approve(pool.address,amountBN);
+            await expect(pool.mint(userAddress, amountBN)).to.be.revertedWith("Insufficient Liquidity Minted")
         });
 
         it('mints the correct amount of LP Tokens', async function () {
@@ -292,9 +301,6 @@ describe('Pool', function () {
             expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount)
             let expected_amount_lp = amount.sub(await pool.MINIMUM_LIQUIDITY())
             expect(await pool.balanceOf(userAddress)).to.be.eq(expected_amount_lp)
-
-            await pool.connect(user).transfer(newUserAddress,BigNumber.from(10));
-            expect(await pool.balanceOf(newUserAddress)).to.be.eq(BigNumber.from(10))
         });
 
         it('mints the base amount of Svr for an empty pool', async function () {
@@ -338,8 +344,8 @@ describe('Pool', function () {
 
             let depositFee = await pool.getDepositFeeReign(amount2);
             await reign.connect(user).approve(pool.address, depositFee); 
-            await underlying1.connect(user).transfer(pool.address,amount2);
-            await pool.mint(userAddress);
+            await underlying1.connect(user).approve(pool.address,amount2);
+            await pool.mint(userAddress, amount2);
     
 
             let underlyingPrice = await poolController.getTokenPrice(pool.address);
@@ -463,11 +469,11 @@ describe('Pool', function () {
 
         await reign.connect(user).approve(poolUsed.address, depositFee); 
         if (poolUsed == pool){
-            await underlying1.connect(user).transfer(poolUsed.address,amountBN);
-            await poolUsed.mint(userAddress);
+            await underlying1.connect(user).approve(poolUsed.address,amountBN);
+            await poolUsed.mint(userAddress, amountBN);
         }else if (poolUsed == pool2){
-            await underlying2.connect(user).transfer(poolUsed.address,amountBN);
-            await poolUsed.mint(userAddress);
+            await underlying2.connect(user).approve(poolUsed.address,amountBN);
+            await poolUsed.mint(userAddress, amountBN);
         }
 
         return amountBN;

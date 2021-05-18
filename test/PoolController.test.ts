@@ -401,11 +401,11 @@ describe('PoolController', function () {
         pool2 = pool2.attach(pool2Address);
         
 
-        await underlying1.connect(user).transfer(pool.address,BigNumber.from(1400000).mul(helpers.tenPow18));
-        await pool.connect(user).mint(userAddress);
+        await underlying1.connect(user).approve(pool.address,BigNumber.from(1400000).mul(helpers.tenPow18));
+        await pool.connect(user).mint(userAddress, BigNumber.from(1400000).mul(helpers.tenPow18));
 
-        await underlying2.connect(user).transfer(pool2Address, BigNumber.from(1000000).mul(helpers.tenPow18));
-        await pool2.connect(user).mint(userAddress);
+        await underlying2.connect(user).approve(pool2Address, BigNumber.from(1000000).mul(helpers.tenPow18));
+        await pool2.connect(user).mint(userAddress, BigNumber.from(1000000).mul(helpers.tenPow18));
     }
 
     async function deployInterestStrategy(){

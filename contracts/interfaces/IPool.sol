@@ -33,7 +33,9 @@ interface IPool {
 
     function premiumFactor() external view returns (uint256);
 
-    function mint(address to) external returns (uint256 liquidity);
+    function mint(address to, uint256 amount)
+        external
+        returns (uint256 liquidity);
 
     function burn(uint256 amount) external returns (bool);
 

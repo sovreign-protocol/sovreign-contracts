@@ -71,17 +71,19 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
     }
 
     //receive liquidity: mint LP tokens and mint SVR tokens
-    function mint(address to)
+    function mint(address to, uint256 amount)
         external
         override
         nonReentrant
         returns (uint256 liquidity)
     {
-        uint256 _reserve = getReserves(); // gas savings
-        uint256 _balance = getTokenBalance();
-        uint256 amount = _balance.sub(_reserve);
-
         require(amount > 0, "Can only issue positive amounts");
+        require(
+            IERC20(token).allowance(msg.sender, address(this)) >= amount,
+            "Insufficient allowance"
+        );
+
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 depositFee = getDepositFeeReign(amount);
 
@@ -102,6 +104,8 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
             liquidity = amount;
         }
         require(liquidity > 0, "Insufficient Liquidity Minted");
+
+        uint256 _reserve = getReserves();
 
         //Mint LP Tokens
         _mint(to, liquidity);
