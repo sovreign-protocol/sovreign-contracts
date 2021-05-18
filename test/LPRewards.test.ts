@@ -45,6 +45,9 @@ describe('YieldFarm AMM Pool', function () {
             1000 // Full allocation to this pool
         ])) as LPRewards;
 
+        await yieldFarm.initialize()
+
+
         await reignToken.mint(rewardsVault.address, distributedAmount);
         await rewardsVault.connect(creator).setAllowance(yieldFarm.address, distributedAmount);
     });
@@ -63,6 +66,12 @@ describe('YieldFarm AMM Pool', function () {
             expect(yieldFarm.address).to.not.equal(0)
             expect(reignToken.address).to.not.equal(0)
         })
+
+        it("Can not initialize twice", async function () {
+            await expect(
+                yieldFarm.initialize()
+            ).to.be.revertedWith("Can only be initialized once");
+        });
 
         it('Get epoch PoolSize and distribute tokens', async function () {
             await depositLP(amount)

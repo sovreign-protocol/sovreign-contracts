@@ -55,6 +55,8 @@ describe("GovRewards", function () {
             rewardsVault.address,
         ])) as GovRewards;
 
+        await yieldFarm.initialize()
+
         await reignToken.mint(rewardsVault.address, distributedAmount);
         await rewardsVault.connect(user).setAllowance(yieldFarm.address, distributedAmount);
 
@@ -78,6 +80,12 @@ describe("GovRewards", function () {
             expect(yieldFarm.address).to.not.equal(0)
             expect(reignToken.address).to.not.equal(0)
         })
+
+        it("Can not initialize twice", async function () {
+            await expect(
+                yieldFarm.initialize()
+            ).to.be.revertedWith("Can only be initialized once");
+        });
 
         it('Get epoch PoolSize and distribute tokens', async function () {
             await moveToEpoch(1)

@@ -61,12 +61,16 @@ contract LPRewards {
         _depositLP = depositLP;
         _staking = IStaking(stakeContract);
         _communityVault = communityVault;
-        epochDuration = _staking.epochDuration();
-        epochStart = _staking.epoch1Start() + epochDuration;
         _totalAmountPerEpoch = LibRewardsDistribution
             .rewardsPerEpochLPRewards(NR_OF_EPOCHS)
             .mul(allocationPerc)
             .div(1000);
+    }
+
+    function initialize() public {
+        require(epochStart == 0, "Can only be initialized once");
+        epochDuration = _staking.epochDuration();
+        epochStart = _staking.epoch1Start() + epochDuration;
     }
 
     // public methods

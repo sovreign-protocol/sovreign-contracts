@@ -51,6 +51,10 @@ contract GovRewards {
         _reignToken = IERC20(reignTokenAddress);
         _reign = IReign(reign);
         _rewardsVault = rewardsVault;
+    }
+
+    function initialize() public {
+        require(epochStart == 0, "Can only be initialized once");
         epochDuration = _reign.getEpochDuration();
         epochStart = _reign.getEpoch1Start();
     }
