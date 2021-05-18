@@ -44,6 +44,8 @@ contract InterestStrategy is InterestStrategyInterface {
     address public override reignDAO;
     address public pool;
 
+    event AccrueInterest(uint256 indexed positive, uint256 indexed negative);
+
     modifier onlyDAO() {
         require(msg.sender == reignDAO, "Only the DAO can execute this");
         _;
@@ -137,6 +139,8 @@ contract InterestStrategy is InterestStrategyInterface {
                     withdrawFeeAccrued = 0;
                 }
             }
+
+            emit AccrueInterest(0, withdrawFeeAccrued);
         }
         // If the value is positive accrue the rewards to current epoch
         else {
@@ -151,6 +155,8 @@ contract InterestStrategy is InterestStrategyInterface {
             epochRewardValues[_epoch] = _currentRewards.add(
                 _accumulatedInterest
             );
+
+            emit AccrueInterest(epochRewardValues[_epoch], 0);
         }
 
         blockNumberLast = _currentBlockNumber;

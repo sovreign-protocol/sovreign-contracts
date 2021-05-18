@@ -41,11 +41,14 @@ contract LPRewards {
         uint256 sizeAtEpochHarvested,
         uint256 totalValue
     );
+
     event Harvest(
         address indexed user,
         uint128 indexed epochId,
         uint256 amount
     );
+
+    event InitEpoch(address indexed caller, uint128 indexed epochId);
 
     constructor(
         address reignTokenAddress,
@@ -127,7 +130,40 @@ contract LPRewards {
         return userReward;
     }
 
-    // views
+    // internal methods
+    function _initEpoch(uint128 epochId) internal {
+        //epochs can only be harvested in order, therfore they can also only be initialised in order
+        // i.e it's impossible that we init epoch 5 after 3 as to harvest 5 user needs to first harvets 4
+        lastInitializedEpoch = epochId;
+        // call the staking smart contract to init the epoch
+        _sizeAtEpoch[epochId] = _getPoolSize(epochId);
+
+        emit InitEpoch(msg.sender, epochId);
+    }
+
+    function _harvest(uint128 epochId) internal returns (uint256) {
+        // initialize the epoch
+        if (lastInitializedEpoch < epochId) {
+            _initEpoch(epochId);
+        }
+        // Set user state for last harvested
+        _lastEpochIdHarvested[msg.sender] = epochId;
+
+        // exit if there is no stake on the epoch
+        if (_sizeAtEpoch[epochId] == 0) {
+            return 0;
+        }
+        // compute and return user total reward.
+        // For optimization reasons the transfer have been moved to an upper layer (i.e. massHarvest needs to do a single transfer)
+        return
+            _totalAmountPerEpoch
+                .mul(_getUserBalancePerEpoch(msg.sender, epochId))
+                .div(_sizeAtEpoch[epochId]);
+    }
+
+    /**
+        VIEWS
+     */
 
     // compute epoch id from blocktimestamp and date
     function getCurrentEpoch() public view returns (uint128 epochId) {
@@ -156,35 +192,6 @@ contract LPRewards {
     // returns when epoch in which user last harvested
     function userLastEpochIdHarvested() external view returns (uint256) {
         return _lastEpochIdHarvested[msg.sender];
-    }
-
-    // internal methods
-    function _initEpoch(uint128 epochId) internal {
-        //epochs can only be harvested in order, therfore they can also only be initialised in order
-        // i.e it's impossible that we init epoch 5 after 3 as to harvest 5 user needs to first harvets 4
-        lastInitializedEpoch = epochId;
-        // call the staking smart contract to init the epoch
-        _sizeAtEpoch[epochId] = _getPoolSize(epochId);
-    }
-
-    function _harvest(uint128 epochId) internal returns (uint256) {
-        // initialize the epoch
-        if (lastInitializedEpoch < epochId) {
-            _initEpoch(epochId);
-        }
-        // Set user state for last harvested
-        _lastEpochIdHarvested[msg.sender] = epochId;
-
-        // exit if there is no stake on the epoch
-        if (_sizeAtEpoch[epochId] == 0) {
-            return 0;
-        }
-        // compute and return user total reward.
-        // For optimization reasons the transfer have been moved to an upper layer (i.e. massHarvest needs to do a single transfer)
-        return
-            _totalAmountPerEpoch
-                .mul(_getUserBalancePerEpoch(msg.sender, epochId))
-                .div(_sizeAtEpoch[epochId]);
     }
 
     // retrieve pool size at epoch

@@ -45,6 +45,8 @@ contract PoolRewards {
         uint256 amount
     );
 
+    event InitEpoch(address indexed caller, uint128 indexed epochId);
+
     // constructor
     constructor(
         address reignTokenAddress,
@@ -169,6 +171,8 @@ contract PoolRewards {
                 transferToRewards
             );
         }
+
+        emit InitEpoch(msg.sender, epochId);
     }
 
     function _distributeTokens(uint256 userRewards, uint256 baseRewards)

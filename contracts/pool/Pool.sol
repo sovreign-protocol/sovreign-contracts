@@ -44,6 +44,12 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
 
     IPoolController controller;
 
+    event MintLP(address indexed to, uint256 indexed amount);
+    event BurnLP(address indexed from, uint256 indexed amount);
+
+    event MintSVR(address indexed to, uint256 indexed amount);
+    event BurnSVR(address indexed from, uint256 indexed amount);
+
     constructor() {
         controllerAddress = msg.sender;
     }
@@ -111,6 +117,8 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
             //accrue interest based on new balance
             _accrueInterest();
         }
+
+        emit MintLP(to, liquidity);
     }
 
     //burns LP tokens,burns SVR tokens and returns liquidity to user
@@ -155,6 +163,8 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
 
         //accrue interest based on new balance
         _accrueInterest();
+
+        emit BurnLP(msg.sender, amount);
     }
 
     // allow anyone to remove tokens if accidentaly sent to pool addres
@@ -194,7 +204,7 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
 
         IMintBurnErc20(svrToken).mint(to, _amountSvr);
 
-        emit Mint(msg.sender, amount, _amountSvr);
+        emit MintSVR(to, _amountSvr);
     }
 
     // Burnd SVR tokens using the minting/burn formula
@@ -207,7 +217,7 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
 
         IMintBurnErc20(svrToken).burnFrom(from, _amountSvr);
 
-        emit Burn(msg.sender, amount, _amountSvr);
+        emit BurnSVR(from, _amountSvr);
     }
 
     // Calls accrue interest in the pools interest startegy contract

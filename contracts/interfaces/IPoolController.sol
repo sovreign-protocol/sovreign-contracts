@@ -2,8 +2,6 @@
 pragma solidity 0.7.6;
 
 interface IPoolController {
-    event PoolCreated(address indexed token, address pool, uint256);
-
     function createPool(
         address,
         address,

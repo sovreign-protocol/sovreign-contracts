@@ -25,7 +25,11 @@ contract PoolController is IPoolController {
     mapping(address => address) public override getOracle;
     address[] public override allPools;
 
-    event PairCreated(address indexed token, address pair, uint256);
+    event PoolCreated(
+        address indexed token,
+        address indexed pair,
+        uint256 indexed id
+    );
 
     modifier onlyDAO() {
         require(msg.sender == reignDAO, "SoVReign: FORBIDDEN");
@@ -95,6 +99,10 @@ contract PoolController is IPoolController {
         return pool;
     }
 
+    /**
+        SETTERS
+     */
+
     function setReignDAO(address _reignDAO) external override onlyDAO {
         require(_reignDAO != address(0), "SoVReign: ZERO_ADDRESS");
         reignDAO = _reignDAO;
@@ -137,6 +145,10 @@ contract PoolController is IPoolController {
         require(oracle != address(0), "SoVReign: ZERO_ADDRESS");
         getOracle[pool] = oracle;
     }
+
+    /**
+        VIEWS
+     */
 
     function allPoolsLength() external view override returns (uint256) {
         return allPools.length;

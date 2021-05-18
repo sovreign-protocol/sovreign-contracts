@@ -383,6 +383,10 @@ contract Staking is ReentrancyGuard {
         emit EmergencyWithdraw(msg.sender, tokenAddress, totalUserBalance);
     }
 
+    /**
+        VIEWS
+     */
+
     /*
      * Returns the valid balance of a user that was taken into consideration in the total pool size for the epoch
      * A deposit will only change the next epoch balance.

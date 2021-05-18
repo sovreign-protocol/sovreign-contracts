@@ -34,6 +34,11 @@ contract BasketBalancer is IBasketBalancer {
     address public override reignAddress;
     address public controller;
 
+    event UpdateAllocation(address indexed pool, uint256 indexed allocation);
+    event VoteOnAllocation(address indexed pool, uint256 indexed allocation);
+
+    event NewPool(address indexed pool);
+
     modifier onlyController() {
         require(
             msg.sender == controller,
@@ -113,6 +118,8 @@ contract BasketBalancer is IBasketBalancer {
 
             // update the previous value
             poolAllocationBefore[allPools[i]] = _previousValue;
+
+            emit UpdateAllocation(allPools[i], poolAllocation[allPools[i]]);
         }
 
         lastEpochUpdate = getCurrentEpoch();
@@ -161,6 +168,8 @@ contract BasketBalancer is IBasketBalancer {
                 _current.mul(_remainingPower).add(_votedFor.mul(_votingPower))
             )
                 .div(_totalPower);
+
+            emit UpdateAllocation(allPools[i], _votedFor);
         }
 
         //transaction will revert if allocation is not complete
@@ -183,6 +192,9 @@ contract BasketBalancer is IBasketBalancer {
     {
         allPools.push(pool);
         poolAllocation[pool] = 0;
+
+        emit NewPool(pool);
+
         return allPools.length;
     }
 

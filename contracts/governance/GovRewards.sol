@@ -40,6 +40,7 @@ contract GovRewards {
         uint128 indexed epochId,
         uint256 amount
     );
+    event InitEpoch(address indexed caller, uint128 indexed epochId);
 
     // constructor
     constructor(
@@ -142,6 +143,8 @@ contract GovRewards {
         _epochInitTime[epochId] = block.timestamp;
         // call the staking smart contract to init the epoch
         _sizeAtEpoch[epochId] = _getPoolSize(block.timestamp);
+
+        emit InitEpoch(msg.sender, epochId);
     }
 
     /*

@@ -273,8 +273,8 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     // Renounce Ownership in "ReignToken"
     ///////////////////////////
     // set owner to zeroAddress:
-    await reignToken.connect(c.sovReignOwnerAcct).setOwner(helpers.ZERO_ADDRESS)
-    console.log(`ReignToken owner set: '${helpers.ZERO_ADDRESS.toLowerCase()}' (Zero Address)`);
+    await reignToken.connect(c.sovReignOwnerAcct).setOwner(reignDAO.address)
+    console.log(`ReignToken owner set: '${reignDAO.address.toLowerCase()}' (Zero Address)`);
 
     ///////////////////////////
     // Transfer Ownership from Vaults to Diamond
