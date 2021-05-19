@@ -60,6 +60,8 @@ export async function deployConfig(): Promise<DeployConfig> {
         Math.floor(Date.now() / 1000),
         // epoch's duration (30 minutes from now)
         86400,
+        // base Delta
+        BigNumber.from(-1).mul(helpers.tenPow18),
         // rewards amount
         BigNumber.from(610000).mul(helpers.tenPow18)
     )
@@ -87,6 +89,7 @@ export class DeployConfig {
     public amountReignTokenToUser2: BigNumber;
     public epoch1stStartTs: number;
     public epochDuration: number;
+    public baseDelta:BigNumber;
     public rewardsAmount: BigNumber;
     // base contracts:
     public reignDiamond?: Contract;
@@ -140,6 +143,7 @@ export class DeployConfig {
         amountReignTokenToUser2: BigNumber,
         epoch1stStartTs: number,
         epochDuration: number,
+        baseDelta:BigNumber,
         rewardsAmount: BigNumber
     ) {
 
@@ -163,6 +167,7 @@ export class DeployConfig {
         this.amountReignTokenToUser2 = amountReignTokenToUser2;
         this.epoch1stStartTs = epoch1stStartTs;
         this.epochDuration = epochDuration;
+        this.baseDelta = baseDelta;
         this.rewardsAmount = rewardsAmount;
     }
 

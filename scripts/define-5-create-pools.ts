@@ -5,7 +5,7 @@ import * as helpers from "../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../test/helpers/diamond";
 import {deployOracle} from "../test/helpers/oracles";
 import {day, hour, minute} from "../test/helpers/time";
-import {increaseBlockTime} from "../test/helpers/helpers";
+import {increaseBlockTime, tenPow8} from "../test/helpers/helpers";
 import * as deploy from "../test/helpers/deploy";
 
 export class Scenario1Config {
@@ -78,7 +78,7 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
             // params were taken from the InterestStrategy.test.ts
             BigNumber.from(3).mul(10 ** 10),
             BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
-            BigNumber.from(0),
+            c.baseDelta,
         ]
     ) as InterestStrategy;
     c.scenario1.interestStrategy1 = interestStrategy1;
@@ -93,7 +93,7 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
             // params were taken from the InterestStrategy.test.ts
             BigNumber.from(3).mul(10 ** 10),
             BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
-            BigNumber.from(0),
+            c.baseDelta,
         ]
     ) as InterestStrategy;
     c.scenario1.interestStrategy2 = interestStrategy2;

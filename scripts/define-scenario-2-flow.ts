@@ -1,14 +1,22 @@
 import {DeployConfig} from "./config";
 import {BigNumber, Contract, ContractReceipt, ethers as ejs} from "ethers";
-import {PoolRewards, Pool, ReignToken, SvrToken, RewardsVault, UniswapPairOracle, Staking, LiquidityBufferVault, PoolController, LPRewards, GovRewards} from "../typechain";
+import {PoolRewards, Pool, ReignToken, SvrToken, RewardsVault, UniswapPairOracle, Staking,LibRewardsDistribution, LiquidityBufferVault, PoolController, LPRewards, GovRewards} from "../typechain";
 
+import * as deploy from "../test/helpers/deploy";
 import {hour, day} from "../test/helpers/time";
-import { getCurrentUnix, getLatestBlockTimestamp, mineBlocks, moveAtTimestamp, tenPow18} from "../test/helpers/helpers";
+import { getCurrentUnix, getLatestBlockTimestamp, mineBlocks, tenPow8, tenPow18} from "../test/helpers/helpers";
 import ERC20 from "./ContractABIs/ERC20.json"
 
-export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
+/**
+ *  In this Scenario 2 users randomly deposit or Withdraw 100k $ into one of the two pools
+ *  There are 150 Rounds, initial TVL is 10Mio and REIGN price is 4c
+ *  If the deposit fee into a pool is above 10k the user will not deposit
+ *  Base delta is set in config.ts and is -1%
+ */
 
-    const reignPrice = BigNumber.from(40000) //0.04 USDC
+const reignPrice = BigNumber.from(40000) //0.04 USDC
+
+export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
 
     const svrToken = c.svrToken as SvrToken;
     const reignToken = c.reignToken as ReignToken;
@@ -33,15 +41,23 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
         c.sovReignOwnerAcct 
     )
 
+    const baseRewards = 1201923;
+
     console.log(`\n --- SET UP POOLS ---`);
 
     let lastEpoch = await staking.getCurrentEpoch()
-    console.log(lastEpoch.toString())
+    let firstEpoch = lastEpoch;
+
+    let apyCounter = 0;
+    let rewardsCounter = 0;
+
+    let rewardsVaultStart = format((await reignToken.balanceOf(rewardsVault.address)).sub(BigNumber.from(14).mul(BigNumber.from(10).pow(25))),18)
+    let liquidityBufferStart = format(await reignToken.balanceOf(liquidityBuffer.address),18)
+
     
     for(let i=0;  i < lastEpoch.toNumber(); i++){
         await staking.initEpochForTokens([pool1.address, pool2.address], i)
     }
-
 
     await depositMintAndStake(c, "WETH", 5000000)
     await depositMintAndStake(c, "WBTC", 5000000)
@@ -50,7 +66,7 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
     let lastBalance2 = (await reignToken.balanceOf(c.user2Addr))
 
 
-    for(let i=0;  i < 100; i++){
+    for(let i=0;  i < 150; i++){
 
         console.log(`\n --- ROUND ${ i }---`);
 
@@ -70,43 +86,72 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
                 await unstakeBurnAndWithdraw(c, "WBTC", 100000)
             }
         }
-        let pool1Target = (await poolController.getTargetSize(pool1.address)).div(10**5);
-        let pool2Target = (await poolController.getTargetSize(pool2.address)).div(10**5);
-        let pool1Actual = (await pool1.getReserves()).div(10**5);
-        let pool2Actual = (await pool2.getReserves()).div(10**5);
+        let pool1Target = (await poolController.getTargetSize(pool1.address))
+        let pool2Target = (await poolController.getTargetSize(pool2.address))
+        let pool1Actual = (await pool1.getReserves())
+        let pool2Actual = (await pool2.getReserves())
         let pool1Diff = (pool1Target.sub(pool1Actual).mul(1000)).div(pool1Target).toNumber() / 1000
         let pool2Diff = (pool2Target.sub(pool2Actual).mul(1000)).div(pool2Target).toNumber() / 1000
-        console.log(`Pool1: ${pool1Actual.toString()}/${pool1Target}  - ${pool1Diff * 100}% `)
-        console.log(`Pool2: ${pool2Actual.toString()}/${pool2Target}  - ${pool2Diff * 100}% `)
+        console.log(`Pool1: ${format(pool1Actual,18)}/${format(pool1Target,18)}  || ${pool1Diff * 100}% `)
+        console.log(`Pool2: ${format(pool2Actual,8)}/${format(pool2Target,8)}  || ${pool2Diff * 100}% `)
 
-
+    
         let epoch = await staking.getCurrentEpoch()
 
         if (epoch.gt(lastEpoch)){
             pool1Rewards.connect(c.user1Acct).massHarvest()
             pool2Rewards.connect(c.user2Acct).massHarvest()
-            let balanceDiff1 = (await reignToken.balanceOf(c.user1Addr)).sub(lastBalance1)
-            let balanceDiff2 = (await reignToken.balanceOf(c.user2Addr)).sub(lastBalance2)
+            let balance1 = await reignToken.balanceOf(c.user1Addr)
+            let balance2 = await reignToken.balanceOf(c.user2Addr)
+            let balanceDiff1 = (balance1).sub(lastBalance1)
+            let balanceDiff2 = (balance2).sub(lastBalance2)
+            lastBalance1 = balance1
+            lastBalance2 = balance2
 
             let WETHPrice = await oracle1.consult(c.wethAddr,BigNumber.from(10).pow(await weth.decimals()))
             let WBTCPrice = await oracle2.consult(c.wbtcAddr,BigNumber.from(10).pow(await wbtc.decimals()))
 
-            let apy1 = ((balanceDiff1).mul(reignPrice).mul(tenPow18).mul(52)).div(pool1Actual.mul(WETHPrice).div(10**13)).toString()
-            let apy2 = ((balanceDiff2).mul(reignPrice).mul(tenPow18).mul(52)).div(pool2Actual.mul(WBTCPrice).div(10**3)).toString()
+            let apy1 = computeAPY(pool1Actual, balanceDiff1,WETHPrice,18)
+            let apy2 = computeAPY(pool2Actual, balanceDiff2,WBTCPrice,8)
 
-            console.log(`Epoch: ${epoch.toString()} - Pool1 Rewards: ${balanceDiff1.toString()} REIGN  || ${apy1}% APY `)
-            console.log(`Epoch: ${epoch.toString()} - Pool2 Rewards: ${balanceDiff2.toString()} REIGN  || ${apy2}% APY`)
+            apyCounter += apy1;
+            apyCounter += apy2;
+            rewardsCounter += format(balanceDiff1,18);
+            rewardsCounter += format(balanceDiff2,18);
 
-            console.log(`Rewards Left: ${await reignToken.balanceOf(rewardsVault.address)}`)
-            console.log(`Liquidity Buffer Left: ${await reignToken.balanceOf(liquidityBuffer.address)}`)
+            console.log(`Epoch: ${epoch.toString()} - Pool1 Rewards: ${format(balanceDiff1,18)}/${baseRewards} REIGN  || ${apy1}% APY `)
+            console.log(`Epoch: ${epoch.toString()} - Pool2 Rewards: ${format(balanceDiff2,18)}/${baseRewards} REIGN  || ${apy2}% APY`)
+
+            console.log(`Rewards Left: ${format((await reignToken.balanceOf(rewardsVault.address)).sub(BigNumber.from(14).mul(BigNumber.from(10).pow(25))),18)}`)
+            console.log(`Liquidity Buffer Left: ${format(await reignToken.balanceOf(liquidityBuffer.address),18)}`)
 
             lastEpoch = epoch
         }
 
-        mineBlocks(400)
+        mineBlocks(1000)
         
     }
 
+    let epochsElapsed = (await staking.getCurrentEpoch()).sub(firstEpoch).toNumber();
+    let avgAPY = apyCounter / epochsElapsed
+    let avgRewards = rewardsCounter / epochsElapsed
+    let baseRewardsTotal =baseRewards * epochsElapsed
+
+    let rewardsVaultNow = format((await reignToken.balanceOf(rewardsVault.address)).sub(BigNumber.from(14).mul(BigNumber.from(10).pow(25))),18)
+    let liquidityBufferNow = format(await reignToken.balanceOf(liquidityBuffer.address),18)
+    let rewardsDiff = rewardsVaultNow - rewardsVaultStart
+    let liqBufferDiff =  liquidityBufferNow - rewardsVaultStart
+
+
+    console.log(`\n --- RESULTS ---`);
+    console.log(`Parameters: TVL = 10Mio || REIGN Price = 0.04$ || Base Delta -1%`)
+    console.log(`Epochs Elapsed: ${epochsElapsed}`)
+    console.log(`Average APY across all Pools: ${avgAPY} %`)
+    console.log(`Average REIGN Distributed per Epoch: ${avgRewards} / ${baseRewards*2} (inflation target)`)
+    console.log(`REIGN Distributed Total: ${rewardsCounter}`)
+    console.log(`Total Rewards Leaving Vault ${rewardsDiff} vs. target inflation ${baseRewardsTotal*2}`)
+    console.log(`Liquidity Buffer Growth ${liqBufferDiff}`)
+            
     return c;
 }
 
@@ -139,12 +184,17 @@ async function depositMintAndStake(c: DeployConfig, token:string, value:number){
     let WBTCPrice = await oracle2.consult(c.wbtcAddr,BigNumber.from(10).pow(await wbtc.decimals()))
 
     if (token == "WETH"){
-        let depositAmountToken = valueUsdc.div(WETHPrice).mul(tenPow18)
-        let depositFee = await pool1.getDepositFeeReign(depositAmountToken)
-        await reignToken.connect(c.user1Acct).approve(pool1.address, depositFee);
-        console.log(`User1 fee to deposit ${depositFee.toString() } REIGN `)
+        let depositAmountToken = valueUsdc.mul(tenPow18).div(WETHPrice)
+        let depositFee = (await pool1.getDepositFeeReign(depositAmountToken)).mul(reignPrice).div(10**6)
+        let depositFeePerc = format(depositFee,18) / 100000
+        if(depositFeePerc > 0.1){ 
+            console.log(`Skip deposit fee to high: ${depositFeePerc*100}`)   
+            return;
+        }
+        await reignToken.connect(c.user1Acct).approve(pool1.address, await pool1.getDepositFeeReign(depositAmountToken));
+        console.log(`User1 fee to deposit ${format(depositFee,18)} USD || ${depositFeePerc*100} %`)
         await weth.connect(c.user1Acct).approve(pool1.address, depositAmountToken)
-        console.log(`User1 deposit ${depositAmountToken.toString() } WETH `)
+        console.log(`User1 deposit ${depositAmountToken.div(tenPow18).toString() } WETH `)
     
         await pool1.connect(c.user1Acct).mint(c.user1Addr, depositAmountToken)
         let poolLpBalance1 = await pool1.balanceOf(c.user1Addr)
@@ -152,12 +202,17 @@ async function depositMintAndStake(c: DeployConfig, token:string, value:number){
         await staking.connect(c.user1Acct).deposit(pool1.address, poolLpBalance1)
 
     }else{
-        let depositAmountToken = valueUsdc.div(WBTCPrice).mul(BigNumber.from(10).pow(await wbtc.decimals()))
-        let depositFee = await pool2.getDepositFeeReign(depositAmountToken)
-        await reignToken.connect(c.user2Acct).approve(pool2.address, depositFee);
-        console.log(`User2 fee to deposit ${depositFee.toString() } REIGN `)
+        let depositAmountToken = valueUsdc.mul(tenPow8).div(WBTCPrice)
+        let depositFee = (await pool2.getDepositFeeReign(depositAmountToken)).mul(reignPrice).div(10**6)
+        let depositFeePerc = format(depositFee,18) / 100000
+        if(depositFeePerc > 0.1){ 
+            console.log(`Skip deposit fee to high: ${depositFeePerc*100}`)   
+            return;
+        }
+        await reignToken.connect(c.user2Acct).approve(pool2.address, await pool2.getDepositFeeReign(depositAmountToken));
+        console.log(`User2 fee to deposit ${format(depositFee,18) } USD || ${depositFeePerc*100} %`)
         await wbtc.connect(c.user2Acct).approve(pool2.address, depositAmountToken)
-        console.log(`User2 deposit ${depositAmountToken.toString() } WBTC `)
+        console.log(`User2 deposit ${depositAmountToken.div(BigNumber.from(10).pow(await wbtc.decimals())).toString() } WBTC `)
     
         await pool2.connect(c.user2Acct).mint(c.user2Addr, depositAmountToken)
         let poolLpBalance2 = await pool2.balanceOf(c.user2Addr)
@@ -194,24 +249,39 @@ async function unstakeBurnAndWithdraw(c: DeployConfig, token:string, value:numbe
     let WBTCPrice = await oracle2.consult(c.wbtcAddr,BigNumber.from(10).pow(await wbtc.decimals()))
 
     if (token == "WETH"){
-        let withdrawAmountToken = valueUsdc.div(WETHPrice).mul(tenPow18)
-        let withdrawFee = await pool1.getWithdrawFeeReign(withdrawAmountToken)
-        await reignToken.connect(c.user1Acct).approve(pool1.address, withdrawFee);
-        console.log(`User1 fee to withdraw ${withdrawFee.toString() } REIGN `)
+        let withdrawAmountToken = valueUsdc.mul(tenPow18).div(WETHPrice)
+        let withdrawFee = (await pool1.getWithdrawFeeReign(withdrawAmountToken)).mul(reignPrice).div(10**6)
+        let withdrawFeePerc = format(withdrawFee,18) / 100000
+        await reignToken.connect(c.user1Acct).approve(pool1.address, await pool1.getWithdrawFeeReign(withdrawAmountToken));
+        console.log(`User1 fee to withdraw ${format(withdrawFee,18)} USD || ${withdrawFeePerc*100} %`)
 
         await staking.connect(c.user1Acct).withdraw(pool1.address, withdrawAmountToken)
         let poolLpBalance1 = await pool1.balanceOf(c.user1Addr)
         await pool1.connect(c.user1Acct).burn(poolLpBalance1)
-        console.log(`User1 withdraws ${withdrawAmountToken.toString() } WETH `)
+        console.log(`User1 withdraws ${withdrawAmountToken.div(tenPow18).toString() } WETH `)
 
     }else{
-        let withdrawAmountToken = valueUsdc.div(WBTCPrice).mul(BigNumber.from(10).pow(await wbtc.decimals()))
-        let withdrawFee = await pool2.getWithdrawFeeReign(withdrawAmountToken)
-        await reignToken.connect(c.user2Acct).approve(pool2.address, withdrawFee);
-        console.log(`User2 fee to withdraw ${withdrawFee.toString() } REIGN `)
+        let withdrawAmountToken = valueUsdc.mul(tenPow8).div(WBTCPrice)
+        let withdrawFee = (await pool2.getWithdrawFeeReign(withdrawAmountToken)).mul(reignPrice).div(10**6)
+        let withdrawFeePerc = format(withdrawFee,18) / 100000
+        await reignToken.connect(c.user2Acct).approve(pool2.address, await pool2.getWithdrawFeeReign(withdrawAmountToken));
+        console.log(`User2 fee to withdraw ${format(withdrawFee,18)} USD || ${withdrawFeePerc*100} %`)
         await staking.connect(c.user2Acct).withdraw(pool2.address, withdrawAmountToken)
         let poolLpBalance2 = await pool2.balanceOf(c.user2Addr)
         await pool2.connect(c.user2Acct).burn(poolLpBalance2)
-        console.log(`User2 withdraws ${withdrawAmountToken.toString() } WBTC `)
+        console.log(`User2 withdraws ${withdrawAmountToken.div(BigNumber.from(10).pow(await wbtc.decimals())).toString() } WBTC `)
     }
+}
+
+
+function computeAPY(poolSize:BigNumber, rewards:BigNumber, price:BigNumber, decimals:number){
+    let rewardsValue = (rewards).mul(reignPrice).mul(52).div(tenPow18)
+    let poolValue = (poolSize).mul(price).div(BigNumber.from(10).pow(decimals))
+    return(rewardsValue.mul(10000)).div(poolValue).toNumber() / 100
+    
+
+}
+
+function format(value:BigNumber, decimals:number){
+    return value.mul(10000).div(BigNumber.from(10).pow(decimals)).toNumber() / 10000
 }

@@ -36,9 +36,7 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
 
     uint256 private reserve;
     uint256 public BASE_MULTIPLIER = 10**18;
-    uint256 public depositFeeMultiplier = 100000;
-
-    uint256 private unlocked = 1;
+    uint256 public depositFeeMultiplier = 30000000;
 
     uint256 public BASE_SVR_AMOUNT = 10000 * 10**18;
 
