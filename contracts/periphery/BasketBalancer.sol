@@ -34,8 +34,16 @@ contract BasketBalancer is IBasketBalancer {
     address public override reignAddress;
     address public controller;
 
-    event UpdateAllocation(address indexed pool, uint256 indexed allocation);
-    event VoteOnAllocation(address indexed pool, uint256 indexed allocation);
+    event UpdateAllocation(
+        uint128 indexed epoch,
+        address indexed pool,
+        uint256 indexed allocation
+    );
+    event VoteOnAllocation(
+        uint128 indexed epoch,
+        address indexed pool,
+        uint256 indexed allocation
+    );
 
     event NewPool(address indexed pool);
 
@@ -99,7 +107,8 @@ contract BasketBalancer is IBasketBalancer {
     // Note: this is not the actual target value that will be used by the pools,
     // the actual target will be returned by getTargetAllocation and includes update period adjustemnts
     function updateBasketBalance() external override {
-        require(lastEpochUpdate < getCurrentEpoch(), "Epoch is not over");
+        uint128 _epochId = getCurrentEpoch();
+        require(lastEpochUpdate < _epochId, "Epoch is not over");
 
         // This is to prevent flashloan attacks to increase voting power,
         //users can not deposit into staking and initialize epoch in the same block
@@ -119,10 +128,14 @@ contract BasketBalancer is IBasketBalancer {
             // update the previous value
             poolAllocationBefore[allPools[i]] = _previousValue;
 
-            emit UpdateAllocation(allPools[i], poolAllocation[allPools[i]]);
+            emit UpdateAllocation(
+                _epochId,
+                allPools[i],
+                poolAllocation[allPools[i]]
+            );
         }
 
-        lastEpochUpdate = getCurrentEpoch();
+        lastEpochUpdate = _epochId;
         lastEpochEnd = block.timestamp;
     }
 
@@ -169,7 +182,7 @@ contract BasketBalancer is IBasketBalancer {
             )
                 .div(_totalPower);
 
-            emit UpdateAllocation(allPools[i], _votedFor);
+            emit UpdateAllocation(_epoch, allPools[i], _votedFor);
         }
 
         //transaction will revert if allocation is not complete
