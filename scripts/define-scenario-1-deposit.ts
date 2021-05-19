@@ -37,7 +37,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Time warp: go to the next Epoch
     ///////////////////////////
-    let timeWarpInSeconds = day+100
+    let timeWarpInSeconds = c.epochDuration+100
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
     await moveAtTimestamp(Date.now() + timeWarpInSeconds)
 
@@ -163,7 +163,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Time warp: go to the next Epoch
     ///////////////////////////
-    timeWarpInSeconds = day+100
+    timeWarpInSeconds = c.epochDuration+100
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
     await moveAtTimestamp(await getLatestBlockTimestamp() + timeWarpInSeconds)
 

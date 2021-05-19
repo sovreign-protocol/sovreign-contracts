@@ -24,7 +24,7 @@ const REIGN_SUPPLY = BigNumber.from(1000000000).mul(helpers.tenPow18);
 
 export async function deployConfig(): Promise<DeployConfig> {
     const sovReignOwnerAddr: string = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-    const user1Addr: string = '0x0F4ee9631f4be0a63756515141281A3E2B293Bbe'; // WETH whale
+    const user1Addr: string = '0xAaE0633E15200bc9C50d45cD762477D268E126BD'; // WETH whale
     const user2Addr: string = '0xE3DD3914aB28bB552d41B8dFE607355DE4c37A51'; // WBTC whale
     const user3Addr:string = '0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8';// Binance
     const usdcAddr: string = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -59,9 +59,9 @@ export async function deployConfig(): Promise<DeployConfig> {
         // 1st epoch start timestamp (now)
         Math.floor(Date.now() / 1000),
         // epoch's duration (30 minutes from now)
-        86400,
+        604800,
         // base Delta
-        BigNumber.from(-1).mul(helpers.tenPow18),
+        BigNumber.from(30).mul(BigNumber.from(10).pow(17)),
         // rewards amount
         BigNumber.from(610000).mul(helpers.tenPow18)
     )

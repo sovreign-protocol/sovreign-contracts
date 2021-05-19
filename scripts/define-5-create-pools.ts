@@ -76,8 +76,8 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
         'InterestStrategy',
         [
             // params were taken from the InterestStrategy.test.ts
-            BigNumber.from(3).mul(10 ** 10),
-            BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
+            BigNumber.from(30).mul(10 ** 9),
+            BigNumber.from(80).mul(BigNumber.from(10).pow(BigNumber.from(58))),
             c.baseDelta,
         ]
     ) as InterestStrategy;
@@ -91,8 +91,8 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
         'InterestStrategy',
         [
             // params were taken from the InterestStrategy.test.ts
-            BigNumber.from(3).mul(10 ** 10),
-            BigNumber.from(8).mul(BigNumber.from(10).pow(BigNumber.from(59))),
+            BigNumber.from(30).mul(10 ** 9),
+            BigNumber.from(80).mul(BigNumber.from(10).pow(BigNumber.from(58))),
             c.baseDelta,
         ]
     ) as InterestStrategy;
