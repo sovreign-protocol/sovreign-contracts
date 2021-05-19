@@ -107,6 +107,9 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
         let epoch = await staking.getCurrentEpoch()
 
         if (epoch.gt(lastEpoch)){
+
+        console.log(`\n --- EPOCH ENDED ${ epoch }---`);
+
             pool1Rewards.connect(c.user1Acct).massHarvest()
             pool2Rewards.connect(c.user2Acct).massHarvest()
             let balance1 = await reignToken.balanceOf(c.user1Addr)

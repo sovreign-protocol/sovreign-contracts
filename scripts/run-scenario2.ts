@@ -6,7 +6,7 @@ import {controllerSetup} from "./define-3-controller-setup";
 import {activateSoVReign} from "./define-4-activate-SoVReign";
 import {createPools} from "./define-5-create-pools";
 import {createRewards} from "./define-6-create-rewards";
-import {scenario2} from "./define-scenario-2-flow";
+import {scenario2} from "./define-scenario-2-simulate";
 
 deployConfig()
     .then(c => mainnetPreFlight(c))
