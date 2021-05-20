@@ -393,6 +393,21 @@ describe('PoolController', function () {
                 expect(await poolController.getOracle(pool.address)).to.be.eq(newAddress)
             });
         });
+
+        describe('updates depositFeeMultiplier correctly', async function () {
+            it('reverts if not called by DAO', async function () {
+                await expect(
+                    poolController.connect(user).setDepositFeeMultiplier(1234)
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
+            });
+
+            it('sets correct address otherwise', async function () {
+                await expect(
+                    poolController.connect(reignDAO).setDepositFeeMultiplier(1234)
+                ).to.not.be.reverted;
+                expect(await poolController.depositFeeMultiplier()).to.be.eq(1234)
+            });
+        });
     })    
 
     async function depositIntoBothPools () {

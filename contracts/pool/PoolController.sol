@@ -18,6 +18,7 @@ contract PoolController is IPoolController {
     address public override reignToken;
     address public override reignDAO;
     address public override liquidityBuffer;
+    uint256 public override depositFeeMultiplier;
     address public reignTokenOracle;
 
     mapping(address => address) public override getPool;
@@ -144,6 +145,14 @@ contract PoolController is IPoolController {
     function setOracle(address oracle, address pool) external override onlyDAO {
         require(oracle != address(0), "SoVReign: ZERO_ADDRESS");
         getOracle[pool] = oracle;
+    }
+
+    function setDepositFeeMultiplier(uint256 newValue)
+        external
+        override
+        onlyDAO
+    {
+        depositFeeMultiplier = newValue;
     }
 
     /**

@@ -90,7 +90,7 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Time warp
     ///////////////////////////
-    const timeWarpInSeconds = 1 * day
+    const timeWarpInSeconds = 1 * c.epochDuration
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
     await increaseBlockTime(timeWarpInSeconds)
 

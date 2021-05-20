@@ -20,6 +20,8 @@ interface IPoolController {
 
     function setReignToken(address) external;
 
+    function setDepositFeeMultiplier(uint256) external;
+
     function getPool(address) external view returns (address);
 
     function getInterestStrategy(address) external view returns (address);
@@ -41,6 +43,8 @@ interface IPoolController {
     function getTargetSize(address) external view returns (uint256);
 
     function getTargetAllocation(address) external view returns (uint256);
+
+    function depositFeeMultiplier() external view returns (uint256);
 
     function reignDAO() external view returns (address);
 

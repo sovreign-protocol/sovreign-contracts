@@ -37,16 +37,17 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Time warp: go to the next Epoch
     ///////////////////////////
-    let timeWarpInSeconds = c.epochDuration+100
+    let timeWarpInSeconds = day+100
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
     await moveAtTimestamp(Date.now() + timeWarpInSeconds)
 
     await oracle1.update()
     await oracle2.update()
 
-    // we should be in staking epoch 2 now
-    await staking.initEpochForTokens([pool1.address, pool2.address, reignUsdcPair.address], 0)
-    await staking.initEpochForTokens([pool1.address, pool2.address, reignUsdcPair.address], 1)
+    let lastEpoch = await staking.getCurrentEpoch()
+    for(let i=0;  i < lastEpoch.toNumber(); i++){
+        await staking.initEpochForTokens([pool1.address, pool2.address], i)
+    }
 
 
     await balancer.connect(c.user1Acct).updateBasketBalance()
@@ -125,6 +126,8 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
     
     console.log(`\n --- USERS STAKE LP TOKENS ---`)
+
+    
 
 
     ///////////////////////////

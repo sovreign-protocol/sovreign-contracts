@@ -157,7 +157,7 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
     let liqBufferDiff =  liquidityBufferNow - liquidityBufferStart
 
 
-    console.log(`Parameters: TVL = 10Mio || REIGN Price = 0.04$ || Base Delta ${c.baseDelta.mul(100).div(tenPow18).toNumber()/100}%`)
+    console.log(`Parameters: TVL = ${TVL/1000000}Mio || REIGN Price = ${reignPrice/1000000} $ || Base Delta ${c.baseDelta.mul(100).div(tenPow18).toNumber()/100}%`)
     console.log(`Epochs Elapsed: ${epochsElapsed}`)
     console.log(`Average APY across all Pools: ${avgAPY} %`)
     console.log(`Average Delta across Pools: ${deltaCounter/rounds*100} %`)
