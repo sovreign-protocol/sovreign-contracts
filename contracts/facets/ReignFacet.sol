@@ -76,7 +76,7 @@ contract ReignFacet {
 
         _updateStake(ds.userStakeHistory[msg.sender], balances[msg.sender]);
         _increaseEpochBalance(ds.userBalanceHistory[msg.sender], amount);
-        _updateLockedBond(reignStaked().add(amount));
+        _updateLockedReign(reignStaked().add(amount));
 
         address delegatedTo = userDelegatedTo(msg.sender);
         if (delegatedTo != address(0)) {
@@ -116,7 +116,7 @@ contract ReignFacet {
 
         _updateStake(ds.userStakeHistory[msg.sender], balances[msg.sender]);
         _decreaseEpochBalance(ds.userBalanceHistory[msg.sender], amount);
-        _updateLockedBond(reignStaked().sub(amount));
+        _updateLockedReign(reignStaked().sub(amount));
 
         address delegatedTo = userDelegatedTo(msg.sender);
         if (delegatedTo != address(0)) {
@@ -807,8 +807,8 @@ contract ReignFacet {
         }
     }
 
-    // _updateLockedBond stores the new `amount` into the BOND locked history
-    function _updateLockedBond(uint256 amount) internal {
+    // _updateLockedReign stores the new `amount` into the BOND locked history
+    function _updateLockedReign(uint256 amount) internal {
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
         if (
