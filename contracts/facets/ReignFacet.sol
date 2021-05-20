@@ -139,7 +139,7 @@ contract ReignFacet {
         emit Withdraw(msg.sender, amount, balance.sub(amount));
     }
 
-    // lock a user's currently staked balance until timestamp & add the bonus to his voting power
+    // lock a user's currently staked balance until timestamp
     function lock(uint256 timestamp) public {
         require(timestamp > block.timestamp, "Timestamp must be in the future");
         require(timestamp <= block.timestamp + MAX_LOCK, "Timestamp too big");
@@ -416,7 +416,7 @@ contract ReignFacet {
     {
         uint256 epochTime;
         // if initialisedAt[epochId] == 0 then the epoch has not yet been initialized
-        // this guarntees that no deposits or lock updates happend since last epoch and we can safely use the latest checkpoint
+        // this guarantees that no deposits or lock updates happend since last epoch and we can safely use the latest checkpoint
         if (epochId == getEpoch() || initialisedAt[epochId] == 0) {
             epochTime = block.timestamp;
         } else {
