@@ -19,7 +19,7 @@ library LibRewardsDistribution {
     uint256 public constant LP_REWARDS_TOKENS = 40000000 * 10**18;
 
     uint256 public constant HALVING_PERIOD = 62899200; // 104 Weeks in Seconds
-    uint256 public constant EPOCHS_IN_PERIOD = 104;
+    uint256 public constant EPOCHS_IN_PERIOD = 104; // Weeks in 2 years
     uint256 public constant BLOCKS_IN_PERIOD = 2300000 * 2;
     uint256 public constant BLOCKS_IN_EPOCH = 44230;
 

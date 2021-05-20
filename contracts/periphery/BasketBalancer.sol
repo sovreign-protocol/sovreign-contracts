@@ -12,7 +12,7 @@ contract BasketBalancer is IBasketBalancer {
     uint256 public epoch1Start;
     uint256 public epochDuration; // ca. one week in seconds
 
-    uint256 public override FULL_ALLOCATION = 1000000000; // 9 decimals precision
+    uint256 public override FULL_ALLOCATION = 1000000000; // 9 decimals precision, 100%
     uint256 public UPDATE_PERIOD = 172800; // ca. two days in seconds
 
     uint128 public lastEpochUpdate;
@@ -64,6 +64,7 @@ contract BasketBalancer is IBasketBalancer {
 
     // The _newPools and _newAllocation will be set empty for the first deployment but can be used
     // if the BasketBalancer is updated and existing allocation values need to be migrated to a new instance.
+    // The _maxDelta is the max difference of the allocation amount/percentage that user can vote for.
     constructor(
         address[] memory _newPools,
         uint256[] memory _newAllocation,
@@ -105,7 +106,7 @@ contract BasketBalancer is IBasketBalancer {
     // Counts votes and sets the outcome allocation for each pool, can be called by anyone after an epoch ends.
     // The new allocation value is the average of the vote outcome and the current value
     // Note: this is not the actual target value that will be used by the pools,
-    // the actual target will be returned by getTargetAllocation and includes update period adjustemnts
+    // the actual target will be returned by getTargetAllocation and includes update period adjustments
     function updateBasketBalance() external override {
         uint128 _epochId = getCurrentEpoch();
         require(lastEpochUpdate < _epochId, "Epoch is not over");
@@ -121,7 +122,7 @@ contract BasketBalancer is IBasketBalancer {
             uint256 _currentValue = continuousVote[allPools[i]]; // new vote outcome
             uint256 _previousValue = poolAllocation[allPools[i]]; // before this vote
 
-            // the new current value is the average between the 3 values
+            // the new current value is the average between the 2 values
             poolAllocation[allPools[i]] = (_currentValue.add(_previousValue))
                 .div(2);
 
@@ -176,7 +177,7 @@ contract BasketBalancer is IBasketBalancer {
             } else {
                 require(_current - _votedFor <= maxDelta, "Above Max Delta");
             }
-            // if all checkst have passed we update the allocation vote
+            // if all checks have passed, we update the allocation vote
             continuousVote[allPools[i]] = (
                 _current.mul(_remainingPower).add(_votedFor.mul(_votingPower))
             )

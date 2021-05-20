@@ -81,7 +81,7 @@ contract InterestStrategy is InterestStrategyInterface {
     }
 
     // accrueInterest is called every time a user interacts with the pool,
-    // the interest is computed by multipling the blocks elapsed since last update by the output
+    // the interest is computed by multiplying the blocks elapsed since last update by the output
     // of the formula normalised against the set base value.
     //
     // returns true if interest was accrued
@@ -144,8 +144,8 @@ contract InterestStrategy is InterestStrategyInterface {
         }
         // If the value is positive accrue the rewards to current epoch
         else {
-            // To be resiliant to Flashloans beeing used to drop withdraw fee to 0 in a single block
-            // we only make it 0 if negative interest is sustained for more then 1 block
+            // To be resiliant to Flashloans being used to drop withdraw fee to 0 in a single block
+            // we only make it 0 if negative interest is sustained for more than 1 block
             if (negativeOutputLast == 0) {
                 withdrawFeeAccrued = 0;
             }
@@ -211,7 +211,7 @@ contract InterestStrategy is InterestStrategyInterface {
      *   VIEWS
      */
 
-    // Computes the delta between the reserves and the target size as a deciamal
+    // Computes the delta between the reserves and the target size as a decimal
     // Delta is an int256 and can be negative and it is caped in a range between MAX and MIN
     function getDelta(uint256 reserves, uint256 target)
         public
@@ -227,7 +227,7 @@ contract InterestStrategy is InterestStrategyInterface {
     }
 
     // Computes the Y value of the cubic parabola based on delta between reserves and target
-    // The possible positve and negative values are returned through two unit256s
+    // The possible positive and negative values are returned through two unit256s
     function getFormulaOutput(uint256 reserves, uint256 target)
         public
         view

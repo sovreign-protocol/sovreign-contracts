@@ -13,12 +13,13 @@ import "../libraries/UniswapV2OracleLibrary.sol";
 import "../interfaces/IOracle.sol";
 
 /**
-    This contarct has been taken without any change from:
+    This contract has been taken without any change from:
     https://github.com/FraxFinance/frax-solidity/blob/master/contracts/Oracle/UniswapPairOracle.sol
 
+    **DISCLAIMER:**
     There is no test coverage for the Oracle in this repo, as there is coverage in the 
     source repository and the contracts have been battle tested in the wild for a long 
-    enougth time to be deemed as sound and safe
+    enough time to be deemed as sound and safe
  */
 
 // Fixed window oracle that recomputes the average price for the entire period once every period
