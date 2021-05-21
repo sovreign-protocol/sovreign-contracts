@@ -3,6 +3,7 @@ import * as config from './config';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
 import 'hardhat-abi-exporter';
+import 'hardhat-contract-sizer';
 import '@typechain/hardhat';
 import 'solidity-coverage';
 import 'hardhat-gas-reporter';
@@ -25,7 +26,7 @@ const cfg: HardhatUserConfig = {
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 9999,
+                runs: 200,
             },
         },
     },
