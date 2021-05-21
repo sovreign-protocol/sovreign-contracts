@@ -22,9 +22,6 @@ export async function deployDAO(c: DeployConfig): Promise<DeployConfig> {
     const ownershipFacet = await deploy.deployContract('OwnershipFacet');
     console.log(`OwnershipFacet deployed to: ${ownershipFacet.address.toLowerCase()}`);
 
-    const changeRewardsFacet = await deploy.deployContract('ChangeRewardsFacet');
-    console.log(`ChangeRewardsFacet deployed to: ${changeRewardsFacet.address}`);
-
     const epochClockFacet = await deploy.deployContract('EpochClockFacet');
     console.log(`EpochClockFacet deployed to: ${epochClockFacet.address}`);
 
@@ -36,7 +33,7 @@ export async function deployDAO(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     const reignDiamond = await deploy.deployDiamond(
         'ReignDiamond',
-        [cutFacet, loupeFacet, ownershipFacet, changeRewardsFacet, reignFacet, epochClockFacet],
+        [cutFacet, loupeFacet, ownershipFacet, reignFacet, epochClockFacet],
         c.sovReignOwnerAddr,
     );
     c.reignDiamond = reignDiamond;

@@ -1,16 +1,16 @@
 import { ethers } from "hardhat";
 import { BigNumber, Signer } from "ethers";
-import { moveAtEpoch, tenPow18,mineBlocks,setTime,getCurrentUnix, moveAtTimestamp, getLatestBlockTimestamp } from "./helpers/helpers";
+import { moveAtEpoch, tenPow18, setTime, getCurrentUnix, moveAtTimestamp, getLatestBlockTimestamp } from "./helpers/helpers";
 import { deployContract, deployDiamond } from "./helpers/deploy";
 import {diamondAsFacet} from "./helpers/diamond";
 import * as time from './helpers/time';
 import { expect } from "chai";
-import { RewardsVault, ERC20Mock, GovRewards, ReignFacet,ChangeRewardsFacet,EpochClockFacet} from "../typechain";
+import { RewardsVault, ERC20Mock, GovRewards, ReignFacet} from "../typechain";
 
 describe("GovRewards", function () {
     let reignToken: ERC20Mock;
     let yieldFarm: GovRewards;
-    let reign: ReignFacet, changeRewards: ChangeRewardsFacet;
+    let reign: ReignFacet;
     let rewardsVault: RewardsVault;
     let user: Signer
     let flayingParrot: Signer;
@@ -35,14 +35,12 @@ describe("GovRewards", function () {
         const ownershipFacet = await deployContract('OwnershipFacet');
         const reignFacet = await deployContract('ReignFacet');
         const epochClockFacet = await deployContract('EpochClockFacet');
-        const changeRewardsFacet = await deployContract('ChangeRewardsFacet');
         const diamond = await deployDiamond(
             'ReignDiamond',
-            [cutFacet, loupeFacet, ownershipFacet, reignFacet, changeRewardsFacet,epochClockFacet],
+            [cutFacet, loupeFacet, ownershipFacet, reignFacet,epochClockFacet],
             userAddr,
         );
 
-        changeRewards = (await diamondAsFacet(diamond, 'ChangeRewardsFacet')) as ChangeRewardsFacet;
         reign = (await diamondAsFacet(diamond, 'ReignFacet')) as ReignFacet;
         await reign.initReign(reignToken.address, epochStart, epochDuration);
 

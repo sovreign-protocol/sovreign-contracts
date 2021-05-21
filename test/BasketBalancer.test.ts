@@ -43,10 +43,9 @@ describe('BasketBalancer', function () {
         const ownershipFacet = await deploy.deployContract('OwnershipFacet');
         const reignFacet = await deploy.deployContract('ReignFacet');
         const epochClockFacet = await deploy.deployContract('EpochClockFacet');
-        const changeRewardsFacet = await deploy.deployContract('ChangeRewardsFacet');
         const diamond = await deploy.deployDiamond(
             'ReignDiamond',
-            [cutFacet, loupeFacet, ownershipFacet, reignFacet, changeRewardsFacet,epochClockFacet],
+            [cutFacet, loupeFacet, ownershipFacet, reignFacet,epochClockFacet],
             userAddress,
         );
 

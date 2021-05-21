@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { BigNumber, Signer } from 'ethers';
 import * as helpers from './helpers/helpers';
 import { expect } from 'chai';
-import { ReignFacet, ERC20Mock, MulticallMock, ChangeRewardsFacet, EpochClockFacet } from '../typechain';
+import { ReignFacet, ERC20Mock, MulticallMock} from '../typechain';
 import * as time from './helpers/time';
 import * as deploy from './helpers/deploy';
 import {diamondAsFacet} from "./helpers/diamond";
@@ -16,7 +16,7 @@ describe('Reign', function () {
     const duration = 604800;
 
 
-    let reign: ReignFacet, reignToken: ERC20Mock, changeRewards: ChangeRewardsFacet;
+    let reign: ReignFacet, reignToken: ERC20Mock;
 
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
@@ -32,15 +32,13 @@ describe('Reign', function () {
         const loupeFacet = await deploy.deployContract('DiamondLoupeFacet');
         const ownershipFacet = await deploy.deployContract('OwnershipFacet');
         const reignFacet = await deploy.deployContract('ReignFacet');
-        const changeRewardsFacet = await deploy.deployContract('ChangeRewardsFacet');
         const epochClockFacet = await deploy.deployContract('EpochClockFacet');
         const diamond = await deploy.deployDiamond(
             'ReignDiamond',
-            [cutFacet, loupeFacet, ownershipFacet, reignFacet, changeRewardsFacet,epochClockFacet],
+            [cutFacet, loupeFacet, ownershipFacet, reignFacet,epochClockFacet],
             userAddress,
         );
 
-        changeRewards = (await diamondAsFacet(diamond, 'ChangeRewardsFacet')) as ChangeRewardsFacet;
         reign = (await diamondAsFacet(diamond, 'ReignFacet')) as ReignFacet;
         await reign.initReign(reignToken.address, startEpoch, duration);
 
@@ -135,13 +133,6 @@ describe('Reign', function () {
             expect(await reign.balanceOf(multicall.address)).to.equal(amount.mul(3));
         });
 
-        it('does not fail if rewards contract is set to address(0)', async function () {
-            await changeRewards.changeRewardsAddress(helpers.zeroAddress);
-
-            await prepareAccount(user, amount);
-            await expect(reign.connect(user).deposit(amount)).to.not.be.reverted;
-            expect(await reign.balanceOf(userAddress)).to.equal(amount);
-        });
         it("deposit in middle of epoch 1", async function () {
             await prepareAccount(user,amount.mul(10))
             await helpers.moveAtEpoch(startEpoch,duration, 1);
