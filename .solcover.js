@@ -6,6 +6,7 @@ module.exports = {
       'libraries/UniswapV2Library.sol', 
       'libraries/UniswapV2OracleLibrary.sol',
       'periphery/UniswapPairOracle.sol',
+      'periphery/ChainlinkOracleAdapter.sol',
       'periphery/OracleVariants/'
     ],
     istanbulReporter:['html', 'lcov', 'text', 'json']
