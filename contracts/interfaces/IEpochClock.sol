@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.7.6;
-pragma experimental ABIEncoderV2;
 
 interface IEpochClock {
     function getEpochDuration() external view returns (uint256);

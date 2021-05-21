@@ -11,7 +11,6 @@ import "../interfaces/IERC165.sol";
 import "../interfaces/IERC173.sol";
 
 contract ReignDiamond {
-
     constructor(IDiamondCut.FacetCut[] memory _diamondCut, address _owner)
         payable
     {

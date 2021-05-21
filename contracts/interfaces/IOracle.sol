@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.7.6;
-pragma experimental ABIEncoderV2;
 
 // sliding window oracle that uses observations collected over a window to provide moving price averages in the past
 // `windowSize` with a precision of `windowSize / granularity`
