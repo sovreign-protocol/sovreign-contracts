@@ -106,11 +106,11 @@ library LibRewardsDistribution {
      *   LP REWARDS
      */
 
-    function rewardsPerEpochLPRewards(uint256 nrOfEpochs)
+    function rewardsPerEpochLPRewards(uint256 totalAmount, uint256 nrOfEpochs)
         internal
         view
         returns (uint256)
     {
-        return LP_REWARDS_TOKENS / nrOfEpochs;
+        return totalAmount / nrOfEpochs;
     }
 }

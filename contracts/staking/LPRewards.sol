@@ -13,7 +13,6 @@ contract LPRewards {
     using SafeERC20 for IERC20;
 
     // constants
-    uint256 public constant TOTAL_DISTRIBUTED_AMOUNT = 2000000;
     uint256 public constant NR_OF_EPOCHS = 100;
 
     // state variables
@@ -55,16 +54,16 @@ contract LPRewards {
         address depositLP,
         address stakeContract,
         address communityVault,
-        uint256 allocationPerc
+        uint256 totalDistribution
     ) {
         _reignToken = IERC20(reignTokenAddress);
         _depositLP = depositLP;
         _staking = IStaking(stakeContract);
         _communityVault = communityVault;
-        _totalAmountPerEpoch = LibRewardsDistribution
-            .rewardsPerEpochLPRewards(NR_OF_EPOCHS)
-            .mul(allocationPerc)
-            .div(1000);
+        _totalAmountPerEpoch = LibRewardsDistribution.rewardsPerEpochLPRewards(
+            totalDistribution,
+            NR_OF_EPOCHS
+        );
     }
 
     function initialize() public {

@@ -42,7 +42,7 @@ describe('YieldFarm AMM Pool', function () {
             uniLP.address,
             staking.address,
             rewardsVault.address,
-            1000 // Full allocation to this pool
+            distributedAmount // Full allocation to this pool
         ])) as LPRewards;
 
         await yieldFarm.initialize()

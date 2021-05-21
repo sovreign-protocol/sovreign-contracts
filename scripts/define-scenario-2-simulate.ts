@@ -37,6 +37,7 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
     const weth = c.weth as Contract;
     const oracle1 = c.oracle1 as UniswapPairOracle;
     const oracle2 = c.oracle2 as UniswapPairOracle;
+    const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
 
 
     ///////////////////////////
@@ -56,6 +57,10 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
     }
 
 
+    await oracle1.update()
+    await oracle2.update()
+
+
     let apyCounter = 0;
     let rewardsCounter = 0;
     let deltaCounter = 0;
@@ -71,8 +76,19 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
     await depositMintAndStake(c, "WETH", TVL/2)
     await depositMintAndStake(c, "WBTC", TVL/2)
 
+
     //make some rounds of random actions, them mine 3000 blocks
     for(let i = 0;  i < rounds; i++){
+
+        if(await reignTokenOracle.canUpdate()){
+            await reignTokenOracle.update()
+        }
+        if(await oracle1.canUpdate()){
+            await oracle1.update()
+        }
+        if(await oracle2.canUpdate()){
+            await oracle2.update()
+        }
 
         console.log(`\n --- ROUND ${ i }---`);
 
@@ -176,6 +192,7 @@ async function depositMintAndStake(c: DeployConfig, token:string, value:number){
     
     const oracle1 = c.oracle1 as UniswapPairOracle;
     const oracle2 = c.oracle2 as UniswapPairOracle;
+    
 
     const wbtc = c.wbtc as Contract;
     const weth = c.weth as Contract;
@@ -187,13 +204,9 @@ async function depositMintAndStake(c: DeployConfig, token:string, value:number){
 
 
     const staking =c.staking as Staking;
+    console.log(`Oracle: ${(await oracle1.canUpdate())}`)
 
-    if(await oracle1.canUpdate()){
-        await oracle1.update()
-    }
-    if(await oracle2.canUpdate()){
-        await oracle2.update()
-    }
+    
 
     let WETHPrice = await oracle1.consult(c.wethAddr,BigNumber.from(10).pow(await weth.decimals()))
     let WBTCPrice = await oracle2.consult(c.wbtcAddr,BigNumber.from(10).pow(await wbtc.decimals()))
@@ -258,13 +271,6 @@ async function unstakeBurnAndWithdraw(c: DeployConfig, token:string, value:numbe
     const reignToken = c.reignToken as ReignToken;
 
     const staking =c.staking as Staking;
-
-    if(await oracle1.canUpdate()){
-        await oracle1.update()
-    }
-    if(await oracle2.canUpdate()){
-        await oracle2.update()
-    }
 
     let WETHPrice = await oracle1.consult(c.wethAddr,BigNumber.from(10).pow(await weth.decimals()))
     let WBTCPrice = await oracle2.consult(c.wbtcAddr,BigNumber.from(10).pow(await wbtc.decimals()))

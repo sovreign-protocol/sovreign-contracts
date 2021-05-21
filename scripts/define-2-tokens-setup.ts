@@ -223,14 +223,25 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Deploy "LPRewards" contract for SVR/USDC:
     ///////////////////////////
-    const svrLpRewards = (await deploy.deployContract('LPRewards', [reignToken.address, svrPairAddress, staking.address,  rewardsVault.address, 500])) as LPRewards;
+    const svrLpRewards = (await deploy.deployContract('LPRewards', 
+        [
+            reignToken.address, 
+            svrPairAddress, 
+            staking.address,  
+            rewardsVault.address, 
+            lpRewardAllocation.div(2)])) as LPRewards;
     console.log(`LPRewards for Uniswap SVR/USDC LP deployed at: ${svrLpRewards.address}`);
     c.svrLpRewards = svrLpRewards
 
     ///////////////////////////
     // Deploy "LPRewards" contract for REIGN/USDC:
     ///////////////////////////
-    const reignLpRewards = (await deploy.deployContract('LPRewards', [reignToken.address, reignPairAddress, staking.address,  rewardsVault.address, 500])) as LPRewards;
+    const reignLpRewards = (await deploy.deployContract('LPRewards', 
+        [
+            reignToken.address, 
+            reignPairAddress,
+            staking.address, rewardsVault.address,
+            lpRewardAllocation.div(2)])) as LPRewards;
     console.log(`LPRewards for Uniswap REIGN/USDC LP deployed at: ${reignLpRewards.address}`);
     c.reignLpRewards = reignLpRewards
 

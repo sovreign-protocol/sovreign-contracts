@@ -23,6 +23,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     const weth = c.weth as Contract;
     const oracle1 = c.oracle1 as UniswapPairOracle;
     const oracle2 = c.oracle2 as UniswapPairOracle;
+    const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
 
     let reignPairAddress = await uniswapFactory.getPair(reignToken.address, c.usdcAddr)
     let reignUsdcPair = new Contract(
@@ -37,17 +38,13 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Time warp: go to the next Epoch
     ///////////////////////////
-    let timeWarpInSeconds = day+100
+    let timeWarpInSeconds = c.epochDuration+100
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
-    await moveAtTimestamp(Date.now() + timeWarpInSeconds)
+    await moveAtTimestamp(await getLatestBlockTimestamp() + timeWarpInSeconds)
 
     await oracle1.update()
     await oracle2.update()
-
-    let lastEpoch = await staking.getCurrentEpoch()
-    for(let i=0;  i < lastEpoch.toNumber(); i++){
-        await staking.initEpochForTokens([pool1.address, pool2.address], i)
-    }
+    await reignTokenOracle.update()
 
 
     await balancer.connect(c.user1Acct).updateBasketBalance()
@@ -67,6 +64,11 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
 
 
+    await staking.initEpochForTokens([pool1.address, pool2.address,reignPairAddress ], 0)
+    await staking.initEpochForTokens([pool1.address, pool2.address,reignPairAddress ], 1)
+    await staking.initEpochForTokens([pool1.address, pool2.address,reignPairAddress ], 2)
+    console.log((await staking.getCurrentEpoch()).toNumber())
+
     console.log(`\n --- USERS STAKE UNISWAP LP ---`);
 
     let balance = await reignUsdcPair.balanceOf(c.user3Addr)
@@ -81,15 +83,18 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Deposit WETH into Pool
     ///////////////////////////
-    let depositAmountWeth = BigNumber.from(100).mul(tenPow18) // 100 ETH
+    let depositAmountWeth = BigNumber.from(50).mul(tenPow18) // 50 ETH
     await weth.connect(c.user1Acct).approve(pool1.address, depositAmountWeth)
-    console.log(`User1 deposit 100 WETH `)
+    console.log(`User1 deposit 50 WETH `)
+
+    let allowance = await weth.allowance(c.user1Addr,pool1.address)
+    console.log(`User1 allowance'${allowance}'`)
     
 
     ///////////////////////////
     // Mint SVR & LP from WETH Pool
     ///////////////////////////
-    await pool1.mint(c.user1Addr, depositAmountWeth)
+    await pool1.connect(c.user1Acct).mint(c.user1Addr, depositAmountWeth)
     let svrBalance1 = await svrToken.balanceOf(c.user1Addr)
     console.log(`User1 SVR Balance '${svrBalance1}'`)
     let poolLpBalance1 = await  pool1.balanceOf(c.user1Addr)
@@ -108,7 +113,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Mint SVR & LP from WBTC Pools
     ///////////////////////////
-    await pool2.mint(c.user2Addr, depositAmountWbtc)
+    await pool2.connect(c.user2Acct).mint(c.user2Addr, depositAmountWbtc)
     let svrBalance2 = await svrToken.balanceOf(c.user2Addr)
     console.log(`User2 SVR Balance '${svrBalance2}'`)
     let poolLpBalance2 = await pool2.balanceOf(c.user2Addr)
