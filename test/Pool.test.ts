@@ -220,7 +220,7 @@ describe('Pool', function () {
             let reservesAfter = (await pool.getReserves()).add(amount)
 
             let expectedDepositFee = (await interestStrategy.getFormulaOutput(reservesAfter,target))[1]
-            .mul(await pool.depositFeeMultiplier())
+            .mul(await poolController.depositFeeMultiplier())
             .mul(amount)
             .mul(await poolController.getTokenPrice(pool.address))
             .div(await poolController.getReignPrice())

@@ -18,7 +18,7 @@ contract PoolController is IPoolController {
     address public override reignToken;
     address public override reignDAO;
     address public override liquidityBuffer;
-    uint256 public override depositFeeMultiplier;
+    uint256 public override depositFeeMultiplier = 200000000;
     address public reignTokenOracle;
 
     mapping(address => address) public override getPool;
