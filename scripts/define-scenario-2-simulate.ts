@@ -1,6 +1,6 @@
 import {DeployConfig} from "./config";
 import {BigNumber, Contract, ContractReceipt, ethers as ejs} from "ethers";
-import {PoolRewards, Pool, ReignToken, SvrToken, RewardsVault, UniswapPairOracle, Staking,LibRewardsDistribution, LiquidityBufferVault, PoolController, LPRewards, GovRewards} from "../typechain";
+import {PoolRewards, Pool, ReignToken, SvrToken, RewardsVault, ChainlinkOracleAdapter,  UniswapPairOracle, Staking,LibRewardsDistribution, LiquidityBufferVault, PoolController, LPRewards, GovRewards} from "../typechain";
 
 import * as helpers from "../test/helpers/helpers";
 import {hour, day} from "../test/helpers/time";
@@ -36,7 +36,7 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
     const wbtc = c.wbtc as Contract;
     const weth = c.weth as Contract;
     const oracle1 = c.oracle1 as UniswapPairOracle;
-    const oracle2 = c.oracle2 as UniswapPairOracle;
+    const oracle2 = c.oracle2 as ChainlinkOracleAdapter;
     const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
 
 
@@ -58,7 +58,7 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
 
 
     await oracle1.update()
-    await oracle2.update()
+    await reignTokenOracle.update()
 
 
     let apyCounter = 0;
@@ -85,9 +85,6 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
         }
         if(await oracle1.canUpdate()){
             await oracle1.update()
-        }
-        if(await oracle2.canUpdate()){
-            await oracle2.update()
         }
 
         console.log(`\n --- ROUND ${ i }---`);
@@ -191,7 +188,7 @@ async function depositMintAndStake(c: DeployConfig, token:string, value:number){
     let valueUsdc = BigNumber.from(value).mul(BigNumber.from(10).pow(6))
     
     const oracle1 = c.oracle1 as UniswapPairOracle;
-    const oracle2 = c.oracle2 as UniswapPairOracle;
+    const oracle2 = c.oracle2 as ChainlinkOracleAdapter;
     
 
     const wbtc = c.wbtc as Contract;
@@ -260,7 +257,7 @@ async function unstakeBurnAndWithdraw(c: DeployConfig, token:string, value:numbe
     let valueUsdc = BigNumber.from(value).mul(BigNumber.from(10).pow(6))
     
     const oracle1 = c.oracle1 as UniswapPairOracle;
-    const oracle2 = c.oracle2 as UniswapPairOracle;
+    const oracle2 = c.oracle2 as ChainlinkOracleAdapter;
 
     const wbtc = c.wbtc as Contract;
     const weth = c.weth as Contract;

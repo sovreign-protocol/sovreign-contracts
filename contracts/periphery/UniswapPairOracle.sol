@@ -24,10 +24,10 @@ import "../interfaces/IOracle.sol";
 
 // Fixed window oracle that recomputes the average price for the entire period once every period
 // Note that the price average is only guaranteed to be over at least 1 period, but may be over a longer period
-contract UniswapPairOracle {
+contract UniswapPairOracle is IOracle {
     using FixedPoint for *;
 
-    address public owner_address;
+    address public override ownerAddress;
     address timelock_address;
 
     uint256 public PERIOD = 3600; // 1 hour TWAP (time-weighted average price)
@@ -46,7 +46,7 @@ contract UniswapPairOracle {
 
     modifier onlyByOwnerOrGovernance() {
         require(
-            msg.sender == owner_address || msg.sender == timelock_address,
+            msg.sender == ownerAddress || msg.sender == timelock_address,
             "You are not an owner or the governance timelock"
         );
         _;
@@ -56,7 +56,7 @@ contract UniswapPairOracle {
         address factory,
         address tokenA,
         address tokenB,
-        address _owner_address,
+        address _ownerAddress,
         address _timelock_address
     ) {
         IUniswapV2Pair _pair =
@@ -74,12 +74,12 @@ contract UniswapPairOracle {
             "UniswapPairOracle: NO_RESERVES"
         ); // Ensure that there's liquidity in the pair
 
-        owner_address = _owner_address;
+        ownerAddress = _ownerAddress;
         timelock_address = _timelock_address;
     }
 
-    function setOwner(address _owner_address) external onlyByOwnerOrGovernance {
-        owner_address = _owner_address;
+    function setOwner(address _ownerAddress) external onlyByOwnerOrGovernance {
+        ownerAddress = _ownerAddress;
     }
 
     function setTimelock(address _timelock_address)
@@ -143,6 +143,7 @@ contract UniswapPairOracle {
     function consult(address token, uint256 amountIn)
         external
         view
+        override
         returns (uint256 amountOut)
     {
         uint32 blockTimestamp = UniswapV2OracleLibrary.currentBlockTimestamp();

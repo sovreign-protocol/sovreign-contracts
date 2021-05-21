@@ -1,6 +1,6 @@
 import {DeployConfig} from "./config";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
-import {BasketBalancer, InterestStrategy, PoolController, ReignDAO,Pool, ReignFacet, ReignToken, SvrToken} from "../typechain";
+import {BasketBalancer, InterestStrategy, PoolController, ChainlinkOracleAdapter, ReignDAO,Pool, ReignFacet, ReignToken, SvrToken} from "../typechain";
 import * as helpers from "../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../test/helpers/diamond";
 import {deployOracle} from "../test/helpers/oracles";
@@ -109,13 +109,9 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
     let WETHPrice = await oracle1.consult(c.wethAddr,BigNumber.from(10).pow(await weth.decimals()))
     console.log("WETH Oracle price: " + WETHPrice.toString())
 
-    const oracle2 = await deployOracle(
-        c.wbtcAddr,
-        c.usdcAddr,
-        reignDAO.address)
+    const oracle2 = await deploy.deployContract("ChainlinkOracleAdapter", [c.btcChainlinkOracle, reignDAO.address]) as ChainlinkOracleAdapter
     c.oracle2 = oracle2
     console.log("WBTC Oracle deployed at: " + oracle2.address)
-    await oracle2.update()
     let WBTCPrice = await oracle2.consult(c.wbtcAddr,BigNumber.from(10).pow(await wbtc.decimals()))
     console.log("WBTC Oracle price: " + WBTCPrice.toString())
 

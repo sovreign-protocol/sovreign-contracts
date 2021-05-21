@@ -17,6 +17,7 @@ import {
     SvrToken,
     Staking,
     UniswapPairOracle,
+    ChainlinkOracleAdapter,
     PoolRewards
 } from "../typechain";
 
@@ -32,6 +33,7 @@ export async function deployConfig(): Promise<DeployConfig> {
     const wethAddr: string = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
     const uniswapFactoryAddr: string = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
     const uniswapRouterAddr: string = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
+    const btcChainlinkOracle: string = '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c';
     return new DeployConfig(
         sovReignOwnerAddr,
         user1Addr,
@@ -42,6 +44,7 @@ export async function deployConfig(): Promise<DeployConfig> {
         wethAddr,
         uniswapFactoryAddr,
         uniswapRouterAddr,
+        btcChainlinkOracle,
         await getAccount(sovReignOwnerAddr),
         await impersonateAccount(user1Addr),
         await impersonateAccount(user2Addr),
@@ -78,6 +81,7 @@ export class DeployConfig {
     public wethAddr: string;
     public uniswapFactoryAddr: string;
     public uniswapRouterAddr: string;
+    public btcChainlinkOracle: string;
     public sovReignOwnerAcct: SignerWithAddress;
     public user1Acct: Signer;
     public user2Acct: Signer;
@@ -113,7 +117,7 @@ export class DeployConfig {
     public uniswapRouter?: Contract;
     public reignTokenOracle?: UniswapPairOracle;
     public oracle1?: UniswapPairOracle;
-    public oracle2?: UniswapPairOracle;
+    public oracle2?: ChainlinkOracleAdapter;
     public pool1?: Pool;
     public pool2?: Pool;
     public pool1Rewards?: PoolRewards;
@@ -132,6 +136,7 @@ export class DeployConfig {
         wethAddr: string,
         uniswapFactoryAddr: string,
         uniswapRouterAddr: string,
+        btcChainlinkOracle: string,
         sovReignOwnerAcct: SignerWithAddress,
         user1Acct: Signer,
         user2Acct: Signer,
@@ -156,6 +161,7 @@ export class DeployConfig {
         this.wethAddr = wethAddr;
         this.uniswapFactoryAddr = uniswapFactoryAddr;
         this.uniswapRouterAddr = uniswapRouterAddr;
+        this.btcChainlinkOracle = btcChainlinkOracle;
         this.sovReignOwnerAcct = sovReignOwnerAcct;
         this.user1Acct = user1Acct;
         this.user2Acct = user2Acct;

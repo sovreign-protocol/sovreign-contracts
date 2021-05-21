@@ -65,7 +65,7 @@ contract PoolController is IPoolController {
         require(oracle != address(0), "SoVReign: ZERO_ADDRESS");
 
         require(
-            IOracle(oracle).owner_address() == reignDAO,
+            IOracle(oracle).ownerAddress() == reignDAO,
             "Oracle needs to be governed by DAO"
         );
 

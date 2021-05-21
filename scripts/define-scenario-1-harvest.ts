@@ -1,6 +1,6 @@
 import {DeployConfig} from "./config";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
-import {PoolRewards, Pool, ReignToken, SvrToken, BasketBalancer, UniswapPairOracle, Staking, LiquidityBufferVault, PoolController, LPRewards, GovRewards} from "../typechain";
+import {PoolRewards, Pool, ReignToken, SvrToken, BasketBalancer, UniswapPairOracle, ChainlinkOracleAdapter, Staking, LiquidityBufferVault, PoolController, LPRewards, GovRewards} from "../typechain";
 
 import {hour, day} from "../test/helpers/time";
 import { getCurrentUnix, getLatestBlockTimestamp, mineBlocks, moveAtTimestamp, tenPow18} from "../test/helpers/helpers";
@@ -22,7 +22,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     const wbtc = c.wbtc as Contract;
     const weth = c.weth as Contract;
     const oracle1 = c.oracle1 as UniswapPairOracle;
-    const oracle2 = c.oracle2 as UniswapPairOracle;
+    const oracle2 = c.oracle2 as ChainlinkOracleAdapter;
     const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
 
     let reignPairAddress = await uniswapFactory.getPair(reignToken.address, c.usdcAddr)
@@ -43,7 +43,6 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     await moveAtTimestamp(await getLatestBlockTimestamp() + timeWarpInSeconds)
 
     await oracle1.update()
-    await oracle2.update()
     await reignTokenOracle.update()
 
 
@@ -149,7 +148,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     await mineBlocks(8340) // a bit less then 1 day in blocks
 
     await oracle1.update()
-    await oracle2.update()
+    await reignTokenOracle.update()
 
     ///////////////////////////
     // Interact with pool contracts to accrue interest
@@ -176,7 +175,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     await moveAtTimestamp(await getLatestBlockTimestamp() + timeWarpInSeconds)
 
     await oracle1.update()
-    await oracle2.update()
+    await reignTokenOracle.update()
 
 
     console.log(`\n --- USERS HARVEST POOL REWARDS ---`);
