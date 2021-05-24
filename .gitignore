@@ -7,4 +7,5 @@
 abi/
 .idea
 **/coverage
+**/.vscode
 **/coverage.json
