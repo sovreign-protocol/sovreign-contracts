@@ -1,10 +1,20 @@
-import {DeployConfig} from "./config";
-import {BigNumber, Contract, ethers as ejs} from "ethers";
-import {PoolRewards, Pool, ReignToken, SvrToken, BasketBalancer, UniswapPairOracle, ChainlinkOracleAdapter, Staking, LiquidityBufferVault, PoolController, LPRewards, GovRewards} from "../typechain";
+import {DeployConfig} from "../config";
+import {BigNumber, Contract} from "ethers";
+import {
+        PoolRewards,
+        Pool,
+        ReignToken,
+        SvrToken,
+        BasketBalancer,
+        UniswapPairOracle,
+        ChainlinkOracleAdapter,
+        Staking, 
+        LPRewards,
+        GovRewards
+    } from "../../typechain";
 
-import {hour, day} from "../test/helpers/time";
-import { getCurrentUnix, getLatestBlockTimestamp, mineBlocks, moveAtTimestamp, tenPow18} from "../test/helpers/helpers";
-import ERC20 from "./ContractABIs/ERC20.json"
+import {getLatestBlockTimestamp, mineBlocks, moveAtTimestamp, tenPow18} from "../../test/helpers/helpers";
+import ERC20 from "../deployment/ContractABIs/ERC20.json"
 
 export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 

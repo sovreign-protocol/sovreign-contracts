@@ -1,5 +1,11 @@
-import {DeployConfig} from "./config";
-import * as deploy from "../test/helpers/deploy";
+import {DeployConfig} from "../config";
+import {BigNumber, Contract} from "ethers";
+
+import {hour} from "../../test/helpers/time";
+import {deployOracle} from "../../test/helpers/oracles";
+import {increaseBlockTime,  tenPow18} from "../../test/helpers/helpers";
+import * as deploy from "../../test/helpers/deploy";
+
 import {
     GovRewards, 
     LiquidityBufferVault,
@@ -10,12 +16,7 @@ import {
     SvrToken,
     RewardsVault,
     LibRewardsDistribution,
-} from "../typechain";
-import {BigNumber, Contract} from "ethers";
-import * as helpers from "../test/helpers/governance-helpers";
-import {hour} from "../test/helpers/time";
-import {deployOracle} from "../test/helpers/oracles";
-import {increaseBlockTime,  tenPow18} from "../test/helpers/helpers";
+} from "../../typechain";
 
 
 export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {

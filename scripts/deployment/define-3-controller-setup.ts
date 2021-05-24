@@ -1,5 +1,5 @@
-import {DeployConfig} from "./config";
-import * as deploy from "../test/helpers/deploy";
+import {DeployConfig} from "../config";
+import * as deploy from "../../test/helpers/deploy";
 import {
     BasketBalancer,
     LiquidityBufferVault,
@@ -8,10 +8,10 @@ import {
     ReignToken,
     SvrToken,
     UniswapPairOracle,
-} from "../typechain";
-import {BigNumber, Contract} from "ethers";
-import {day, hour} from "../test/helpers/time";
-import {increaseBlockTime} from "../test/helpers/helpers";
+} from "../../typechain";
+import {Contract} from "ethers";
+import {day} from "../../test/helpers/time";
+import {increaseBlockTime} from "../../test/helpers/helpers";
 
 
 

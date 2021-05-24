@@ -1,4 +1,5 @@
-import {DeployConfig} from "./config";
+import {DeployConfig} from "../config";
+import {BigNumber, Contract} from "ethers";
 import {
     GovRewards,
     LPRewards,
@@ -6,13 +7,11 @@ import {
     ReignFacet,
     ReignToken,
     Staking
-} from "../typechain";
-import {diamondAsFacet} from "../test/helpers/diamond";
-import {getUnixTimestamp} from "../test/helpers/time";
-import {BigNumber, Contract} from "ethers";
-import * as helpers from "../test/helpers/governance-helpers";
-import {day, hour} from "../test/helpers/time";
-import {increaseBlockTime} from "../test/helpers/helpers";
+} from "../../typechain";
+import * as helpers from "../../test/helpers/governance-helpers";
+import {diamondAsFacet} from "../../test/helpers/diamond";
+import {getUnixTimestamp} from "../../test/helpers/time";
+import {increaseBlockTime} from "../../test/helpers/helpers";
 
 
 export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {

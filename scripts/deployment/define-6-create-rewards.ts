@@ -1,10 +1,19 @@
-import {DeployConfig} from "./config";
+import {DeployConfig} from "../config";
 import {ethers as ejs, Contract} from "ethers";
-import {LibRewardsDistribution, PoolRewards, Staking, PoolController, ReignDAO,Pool, ReignToken, RewardsVault, LiquidityBufferVault} from "../typechain";
+import {
+    LibRewardsDistribution,
+    LiquidityBufferVault,
+    PoolRewards, 
+    Staking, 
+    PoolController, 
+    ReignDAO,Pool, 
+    ReignToken, 
+    RewardsVault, 
+    } from "../../typechain";
 
-import {day, hour, minute} from "../test/helpers/time";
-import {increaseBlockTime} from "../test/helpers/helpers";
-import * as deploy from "../test/helpers/deploy";
+import {hour, minute} from "../../test/helpers/time";
+import {increaseBlockTime} from "../../test/helpers/helpers";
+import * as deploy from "../../test/helpers/deploy";
 
 
 export async function createRewards(c: DeployConfig): Promise<DeployConfig> {

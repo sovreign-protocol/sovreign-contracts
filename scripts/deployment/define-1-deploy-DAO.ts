@@ -1,9 +1,10 @@
-import {DeployConfig} from "./config";
-import * as deploy from "../test/helpers/deploy";
+import {DeployConfig} from "../config";
+
+import * as deploy from "../../test/helpers/deploy";
+
 import {
     ReignDAO,
-} from "../typechain";
-import { getCurrentUnix } from "../test/helpers/helpers";
+} from "../../typechain";
 
 
 export async function deployDAO(c: DeployConfig): Promise<DeployConfig> {

@@ -1,12 +1,21 @@
-import {DeployConfig} from "./config";
+import {DeployConfig} from "../config";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
-import {BasketBalancer, InterestStrategy, PoolController, ChainlinkOracleAdapter, ReignDAO,Pool, ReignFacet, ReignToken, SvrToken} from "../typechain";
-import * as helpers from "../test/helpers/governance-helpers";
-import {diamondAsFacet} from "../test/helpers/diamond";
-import {deployOracle} from "../test/helpers/oracles";
-import {day, hour, minute} from "../test/helpers/time";
-import {increaseBlockTime, tenPow8} from "../test/helpers/helpers";
-import * as deploy from "../test/helpers/deploy";
+import {
+    BasketBalancer, 
+    InterestStrategy, 
+    PoolController, 
+    ChainlinkOracleAdapter, 
+    ReignDAO,
+    Pool, 
+    ReignFacet, 
+    ReignToken 
+} from "../../typechain";
+import * as helpers from "../../test/helpers/governance-helpers";
+import {diamondAsFacet} from "../../test/helpers/diamond";
+import {deployOracle} from "../../test/helpers/oracles";
+import {hour, minute} from "../../test/helpers/time";
+import {increaseBlockTime} from "../../test/helpers/helpers";
+import * as deploy from "../../test/helpers/deploy";
 
 export class Scenario1Config {
 

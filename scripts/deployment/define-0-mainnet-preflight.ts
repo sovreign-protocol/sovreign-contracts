@@ -1,6 +1,6 @@
-import {DeployConfig} from "./config";
+import {DeployConfig} from "../config";
+import {Contract} from "ethers";
 
-import {BigNumber, Contract} from "ethers";
 import UniswapV2Factory from "./ContractABIs/UniswapV2Factory.json"
 import UniswapV2Router from "./ContractABIs/UniswapV2Router.json"
 import ERC20 from "./ContractABIs/ERC20.json"
