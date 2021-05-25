@@ -34,6 +34,7 @@ export async function deployConfig(): Promise<DeployConfig> {
     const uniswapFactoryAddr: string = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
     const uniswapRouterAddr: string = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
     const btcChainlinkOracle: string = '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c';
+    const wethChainlinkOracle: string = '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c';
     return new DeployConfig(
         sovReignOwnerAddr,
         user1Addr,
@@ -45,6 +46,7 @@ export async function deployConfig(): Promise<DeployConfig> {
         uniswapFactoryAddr,
         uniswapRouterAddr,
         btcChainlinkOracle,
+        wethChainlinkOracle,
         await getAccount(sovReignOwnerAddr),
         await impersonateAccount(user1Addr),
         await impersonateAccount(user2Addr),
@@ -82,6 +84,7 @@ export class DeployConfig {
     public uniswapFactoryAddr: string;
     public uniswapRouterAddr: string;
     public btcChainlinkOracle: string;
+    public wethChainlinkOracle:string;
     public sovReignOwnerAcct: SignerWithAddress;
     public user1Acct: Signer;
     public user2Acct: Signer;
@@ -137,6 +140,7 @@ export class DeployConfig {
         uniswapFactoryAddr: string,
         uniswapRouterAddr: string,
         btcChainlinkOracle: string,
+        wethChainlinkOracle: string,
         sovReignOwnerAcct: SignerWithAddress,
         user1Acct: Signer,
         user2Acct: Signer,
@@ -162,6 +166,7 @@ export class DeployConfig {
         this.uniswapFactoryAddr = uniswapFactoryAddr;
         this.uniswapRouterAddr = uniswapRouterAddr;
         this.btcChainlinkOracle = btcChainlinkOracle;
+        this.wethChainlinkOracle = wethChainlinkOracle;
         this.sovReignOwnerAcct = sovReignOwnerAcct;
         this.user1Acct = user1Acct;
         this.user2Acct = user2Acct;
