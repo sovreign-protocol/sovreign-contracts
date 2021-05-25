@@ -1,5 +1,5 @@
 import {deployConfig} from "./config";
-import {mainnetPreFlight} from "./deployment/define-0-mainnet-preflight";
+import {contractsPreFlight} from "./deployment/define-0-mainnet-preflight";
 import {deployDAO} from "./deployment/define-1-deploy-DAO";
 import {tokenSetup} from "./deployment/define-2-tokens-setup";
 import {controllerSetup} from "./deployment/define-3-controller-setup";
@@ -9,7 +9,7 @@ import {createRewards} from "./deployment/define-6-create-rewards";
 import {scenario1} from "./scenarios/scenario-1-harvest";
 
 deployConfig()
-    .then(c => mainnetPreFlight(c))
+    .then(c => contractsPreFlight(c))
     .then(c => deployDAO(c))
     .then(c => tokenSetup(c))
     .then(c => controllerSetup(c))

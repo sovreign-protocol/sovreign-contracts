@@ -29,9 +29,9 @@ export async function deployConfig(): Promise<DeployConfig> {
         btcChainlinkOracle,
         wethChainlinkOracle,
         await getAccount(sovReignOwnerAddr),
-        await impersonateAccount(user1Addr),
-        await impersonateAccount(user2Addr),
-        await impersonateAccount(user3Addr),
+        await getAccount(user1Addr),
+        await getAccount(user2Addr),
+        await getAccount(user3Addr),
         // Total REIGN token amount to be minted
         BigNumber.from(1000000000).mul(helpers.tenPow18),
         // REIGN token amount to 'sovReignOwnerAddr'

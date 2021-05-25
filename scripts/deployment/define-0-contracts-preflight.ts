@@ -6,8 +6,8 @@ import UniswapV2Router from "./ContractABIs/UniswapV2Router.json"
 import ERC20 from "./ContractABIs/ERC20.json"
 
 
-export async function mainnetPreFlight(c: DeployConfig): Promise<DeployConfig> {
-    console.log(`\n --- CONNECTING TO MAINNET CONTRACTS ---`);
+export async function contractsPreFlight(c: DeployConfig): Promise<DeployConfig> {
+    console.log(`\n --- CONNECTING TO CONTRACTS ---`);
 
     ///////////////////////////
     // Connect "usdc" contract:
