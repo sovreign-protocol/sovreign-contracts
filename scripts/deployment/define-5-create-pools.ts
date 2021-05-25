@@ -109,6 +109,7 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
     console.log(`InterestStrategy2 deployed at: ${interestStrategy2.address.toLowerCase()}`);
 
     const oracle1 = await deployOracle(
+        c,
         c.wethAddr,
         c.usdcAddr,
         reignDAO.address)

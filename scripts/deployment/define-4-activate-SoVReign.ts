@@ -86,13 +86,6 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     console.log(`ReignDAO activate()`)
     await reignDAO.connect(c.sovReignOwnerAcct).activate()
 
-    // TODO: remove and add as a definition
-    ///////////////////////////
-    // Time warp
-    ///////////////////////////
-    const timeWarpInSeconds = 1 * c.epochDuration
-    console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
-    await increaseBlockTime(timeWarpInSeconds)
 
     return c;
 }

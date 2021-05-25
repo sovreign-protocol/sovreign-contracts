@@ -2,6 +2,7 @@ import {DeployConfig} from "../config";
 import * as deploy from "../../test/helpers/deploy";
 import {
     BasketBalancer,
+    ERC20,
     LiquidityBufferVault,
     PoolController,
     ReignDAO,
@@ -11,6 +12,7 @@ import {
 } from "../../typechain";
 import {Contract} from "ethers";
 import {day} from "../../test/helpers/time";
+import {deployOracle} from "../../test/helpers/oracles";
 import {increaseBlockTime} from "../../test/helpers/helpers";
 
 
@@ -23,11 +25,18 @@ export async function controllerSetup(c: DeployConfig): Promise<DeployConfig> {
     const reignDiamond = c.reignDiamond as Contract;
     const reignDAO = c.reignDAO as ReignDAO;
     const svrToken = c.svrToken as SvrToken;
+    const usdc = c.usdc as ERC20;
     const reignToken = c.reignToken as ReignToken;
-    const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
+    //const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
     const liquidityBufferVault = c.liquidityBufferVault as LiquidityBufferVault;
     
 
+     ///////////////////////////
+    // Deploy an Oracle for the REIGN/USDC Pair
+    ///////////////////////////
+    let reignTokenOracle = await deployOracle(c, reignToken.address, usdc.address, reignDAO.address)
+    c.reignTokenOracle = reignTokenOracle
+    console.log(`Deployed Oracle for for REIGN/USDC at: '${reignTokenOracle.address}'`);
 
 
     ///////////////////////////
@@ -83,13 +92,7 @@ export async function controllerSetup(c: DeployConfig): Promise<DeployConfig> {
     console.log(`BasketBalancer controller set: '${poolController.address.toLowerCase()}' (PoolController contract)`);
 
 
-    // TODO: remove and add as a definition
-    ///////////////////////////
-    // Time warp
-    ///////////////////////////
-    const timeWarpInSeconds = 1 * day
-    console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
-    await increaseBlockTime(timeWarpInSeconds)
+
 
     return c;
 }
