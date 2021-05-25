@@ -3,7 +3,7 @@ import {BigNumber, Contract} from "ethers";
 
 import {hour} from "../../test/helpers/time";
 import {deployOracle} from "../../test/helpers/oracles";
-import {increaseBlockTime,  tenPow18} from "../../test/helpers/helpers";
+import {increaseBlockTime, tenPow18, tenPow6, waitFor} from "../../test/helpers/helpers";
 import * as deploy from "../../test/helpers/deploy";
 
 import {
@@ -20,8 +20,11 @@ import {
 
 
 export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
+
+    // this hurts, but, oh well, that's life...
+    let tx;
+
     console.log(`\n --- DEPLOY TOKENS ---`);
-    
 
     const usdc = c.usdc as Contract;
     const reignDiamond = c.reignDiamond as Contract;
@@ -136,25 +139,48 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Create a pair for SVR/USDC
     ///////////////////////////
-    await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(svrToken.address, usdc.address)
-    let svrPairAddress = await uniswapFactory.getPair(svrToken.address, usdc.address)
+    tx = await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(svrToken.address, usdc.address)
+    await tx.wait()
+    let svrPairAddress;
+    // wait until the pair is really created and available
+    waitFor(
+        async () => {
+            svrPairAddress = await uniswapFactory.getPair(svrToken.address, usdc.address)
+            return !(svrPairAddress as string).toString().startsWith('0x00')
+        },
+        () => console.log(`Created pair: between '${svrToken.address}' and '${usdc.address}'`),
+        20000
+    );
     console.log(`Deployed a Uniswap pair for SVR/USDC: '${svrPairAddress}'`);
 
     ///////////////////////////
     // Create a pair for REIGN/USDC
     ///////////////////////////
-    await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(reignToken.address, usdc.address)
-    let reignPairAddress = await uniswapFactory.getPair(reignToken.address, usdc.address)
+    tx = await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(reignToken.address, usdc.address)
+    await tx.wait()
+    let reignPairAddress;
+    // wait until the pair is really created and available
+    waitFor(
+        async () => {
+            reignPairAddress = await uniswapFactory.getPair(reignToken.address, usdc.address)
+            return !(reignPairAddress as string).toString().startsWith('0x00')
+        },
+        () => console.log(`Created pair: between '${reignToken.address}' and '${usdc.address}'`),
+        20000
+    );
     console.log(`Deployed a Uniswap pair for REIGN/USDC: '${reignPairAddress}'`);
 
+    // TODO: remove and add as a definition
     ///////////////////////////
     // Deposit liquidity into the REIGN/USDC pair 
     ///////////////////////////
-    let depositAmountReign = BigNumber.from(1000000).mul(tenPow18)
-    let depositAmountUsdc = BigNumber.from(1000000).mul(BigNumber.from(10).pow(6))
-    await reignToken.connect(c.user3Acct).approve(uniswapRouter.address, depositAmountReign)
-    await usdc.connect(c.user3Acct).approve(uniswapRouter.address, depositAmountUsdc)
-    await uniswapRouter.connect(c.user3Acct).addLiquidity(
+    let depositAmountReign = BigNumber.from(10000).mul(tenPow18)
+    let depositAmountUsdc = BigNumber.from(10000).mul(tenPow6)
+    tx = await reignToken.connect(c.user3Acct).approve(uniswapRouter.address, depositAmountReign)
+    await tx.wait();
+    tx = await usdc.connect(c.user3Acct).approve(uniswapRouter.address, depositAmountUsdc);
+    await tx.wait();
+    tx = await uniswapRouter.connect(c.user3Acct).addLiquidity(
             reignToken.address,
             usdc.address,
             depositAmountReign,
@@ -164,27 +190,32 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
             c.user3Addr,
             Date.now() + 1000
         )
+    await tx.wait();
+    console.log(`Liquidity added: '${reignPairAddress}'`);
 
+    // TODO: remove and add as a definition
     ///////////////////////////
-    //Make a swap to create the REIGN/USDC price
+    // Make a swap to create the REIGN/USDC price
     ///////////////////////////
-    await reignToken.connect(c.user3Acct).approve(uniswapRouter.address, tenPow18)
-    await uniswapRouter.connect(c.user3Acct).swapExactTokensForTokens(
+    tx = await reignToken.connect(c.user3Acct).approve(uniswapRouter.address, tenPow18)
+    await tx.wait();
+    tx = await uniswapRouter.connect(c.user3Acct).swapExactTokensForTokens(
         tenPow18,
         1,
         [reignToken.address, usdc.address],
         c.sovReignOwnerAddr,
         Date.now() + 1000
     )
+    await tx.wait();
 
     ///////////////////////////
     // Deploy an Oracle for the REIGN/USDC Pair
     ///////////////////////////
-    let reignTokenOracle = await deployOracle(reignToken.address, usdc.address,
-        reignDAO.address)
+    let reignTokenOracle = await deployOracle(reignToken.address, usdc.address, reignDAO.address)
     c.reignTokenOracle = reignTokenOracle
     console.log(`Deployed Oracle for for REIGN/USDC at: '${reignTokenOracle.address}'`);
 
+    // TODO: remove and add as a definition
     ///////////////////////////
     // Make a swap to update the REIGN/USDC price
     ///////////////////////////
@@ -197,6 +228,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
         Date.now() + 1000
     )
 
+    // TODO: remove and add as a definition
     ///////////////////////////
     // Time warp until oracle can be updated
     ///////////////////////////
@@ -204,6 +236,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Time warping in '${updatePeriod}' seconds...`)
     await increaseBlockTime(updatePeriod)
 
+    // TODO: remove and add as a definition
     ///////////////////////////
     // Update Oracle and get Price
     ///////////////////////////

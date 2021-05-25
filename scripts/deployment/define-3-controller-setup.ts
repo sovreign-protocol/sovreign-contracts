@@ -83,7 +83,7 @@ export async function controllerSetup(c: DeployConfig): Promise<DeployConfig> {
     console.log(`BasketBalancer controller set: '${poolController.address.toLowerCase()}' (PoolController contract)`);
 
 
-
+    // TODO: remove and add as a definition
     ///////////////////////////
     // Time warp
     ///////////////////////////

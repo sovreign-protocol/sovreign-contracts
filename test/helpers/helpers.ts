@@ -8,6 +8,7 @@ export const stakingEpochStart = 1603065600;
 export const stakingEpochDuration = 604800;
 export const tenPow18 = BigNumber.from(10).pow(18);
 export const tenPow8 = BigNumber.from(10).pow(8);
+export const tenPow6 = BigNumber.from(10).pow(6);
 export const baseAdjustment = BigNumber.from(1).mul(tenPow18)
 
 
@@ -77,4 +78,14 @@ export async function setAutomine(val: boolean) {
 
 export function addMinutes(date: Date, minutes: number): Date {
     return new Date(date.getTime() + (minutes * 60000));
+}
+
+export function waitFor(condition: any, callback: any, timeout: number) {
+    if(!condition()) {
+        console.log('Waiting...');
+        window.setTimeout(waitFor.bind(null, condition, callback), timeout); /* this checks the flag every 100 milliseconds*/
+    } else {
+        console.log('Done!');
+        callback();
+    }
 }
