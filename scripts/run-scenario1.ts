@@ -1,5 +1,5 @@
 import {deployConfig} from "./config";
-import {contractsPreFlight} from "./deployment/define-0-mainnet-preflight";
+import {contractsPreFlight} from "./deployment/define-0-contracts-preflight";
 import {deployDAO} from "./deployment/define-1-deploy-DAO";
 import {tokenSetup} from "./deployment/define-2-tokens-setup";
 import {controllerSetup} from "./deployment/define-3-controller-setup";
