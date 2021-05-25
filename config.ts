@@ -12,6 +12,14 @@ const defaultAccount = {
     accountsBalance: "10000000000000000000000"
 }
 
+const defaultAccountRinkeby = {
+    mnemonic: "cave grief nephew there cry isolate find brief burst into mesh catch",
+    initialIndex: 0,
+    path: "m/44'/60'/0'/0",
+    count: 20,
+    accountsBalance: "10000000000000000000000"
+}
+
 export const networks: NetworksUserConfig = {
     // Needed for `solidity-coverage`
     coverage: {
@@ -23,6 +31,15 @@ export const networks: NetworksUserConfig = {
         url: 'http://localhost:7545',
         chainId: 5777,
         accounts: defaultAccount,
+        gas: 'auto',
+        gasPrice: 20000000000, // 1 gwei
+        gasMultiplier: 1.5,
+    },
+
+    rinkeby: {
+        url: 'http://localhost:7545',
+        chainId: 5777,
+        accounts: defaultAccountRinkeby,
         gas: 'auto',
         gasPrice: 20000000000, // 1 gwei
         gasMultiplier: 1.5,
