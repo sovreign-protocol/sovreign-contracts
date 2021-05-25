@@ -13,9 +13,9 @@ export async function mainnetPreFlight(c: DeployConfig): Promise<DeployConfig> {
     // Connect "usdc" contract:
     ///////////////////////////
     const usdc = new Contract(
-        c.usdcAddr, 
+        c.usdcAddr,
         ERC20,
-        c.sovReignOwnerAcct 
+        c.sovReignOwnerAcct
     )
     c.usdc = usdc
     console.log(`USDC connected at: ${usdc.address.toLowerCase()}`);

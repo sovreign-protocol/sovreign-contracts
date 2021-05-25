@@ -25,7 +25,6 @@ export const networks: NetworksUserConfig = {
     coverage: {
         url: 'http://localhost:8555',
     },
-    
 
     ganache: {
         url: 'http://localhost:7545',
@@ -37,12 +36,9 @@ export const networks: NetworksUserConfig = {
     },
 
     rinkeby: {
-        url: 'http://localhost:7545',
-        chainId: 5777,
+        url: 'https://eth-rinkeby.alchemyapi.io/v2/5m00FPenbnL1ct1wJBK8lNalEVyvhePf',
         accounts: defaultAccountRinkeby,
-        gas: 'auto',
-        gasPrice: 20000000000, // 1 gwei
-        gasMultiplier: 1.5,
+        gas: 'auto'
     },
 
     hardhat: {
