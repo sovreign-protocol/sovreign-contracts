@@ -21,7 +21,7 @@ contract LPRewards {
     uint256 public epochStart; // init from staking contract
     uint128 public lastInitializedEpoch;
 
-    uint256 private _totalAmountPerEpoch;
+    uint256 public totalAmountPerEpoch;
 
     uint256[] private _sizeAtEpoch = new uint256[](NR_OF_EPOCHS + 1);
 
@@ -60,7 +60,7 @@ contract LPRewards {
         _depositLP = depositLP;
         _staking = IStaking(stakeContract);
         _communityVault = communityVault;
-        _totalAmountPerEpoch = LibRewardsDistribution.rewardsPerEpochLPRewards(
+        totalAmountPerEpoch = LibRewardsDistribution.rewardsPerEpochLPRewards(
             totalDistribution,
             NR_OF_EPOCHS
         );
@@ -159,7 +159,7 @@ contract LPRewards {
         // compute and return user total reward.
         // For optimization reasons the transfer have been moved to an upper layer (i.e. massHarvest needs to do a single transfer)
         return
-            _totalAmountPerEpoch
+            totalAmountPerEpoch
                 .mul(_getUserBalancePerEpoch(msg.sender, epochId))
                 .div(_sizeAtEpoch[epochId]);
     }
