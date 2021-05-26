@@ -76,9 +76,11 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
         .approve(reignDiamond.address, amountStakedSoVReignOwner);
 
     console.log(`SoVReignOwner deposits '${amountStakedSoVReignOwner}' to ReignDiamond`)
-    await reignDiamondFacet
+    let tx = await reignDiamondFacet
         .connect(c.sovReignOwnerAcct)
         .deposit(amountStakedSoVReignOwner);
+
+    await tx.wait() 
 
     ///////////////////////////
     // Activate the "ReignDAO"

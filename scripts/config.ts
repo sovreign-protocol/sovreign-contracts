@@ -34,7 +34,7 @@ export async function deployConfig(): Promise<DeployConfig> {
     const uniswapFactoryAddr: string = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
     const uniswapRouterAddr: string = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
     const btcChainlinkOracle: string = '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c';
-    const wethChainlinkOracle: string = '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c';
+    const wethChainlinkOracle: string = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419';
     return new DeployConfig(
         sovReignOwnerAddr,
         user1Addr,
@@ -119,7 +119,7 @@ export class DeployConfig {
     public uniswapFactory?: Contract;
     public uniswapRouter?: Contract;
     public reignTokenOracle?: UniswapPairOracle;
-    public oracle1?: UniswapPairOracle;
+    public oracle1?: ChainlinkOracleAdapter;
     public oracle2?: ChainlinkOracleAdapter;
     public pool1?: Pool;
     public pool2?: Pool;

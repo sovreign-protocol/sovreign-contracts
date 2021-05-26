@@ -31,7 +31,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     const pool2Rewards = c.pool2Rewards as PoolRewards;
     const wbtc = c.wbtc as Contract;
     const weth = c.weth as Contract;
-    const oracle1 = c.oracle1 as UniswapPairOracle;
+    const oracle1 = c.oracle1 as ChainlinkOracleAdapter;
     const oracle2 = c.oracle2 as ChainlinkOracleAdapter;
     const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
 
@@ -52,7 +52,6 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
     await moveAtTimestamp(await getLatestBlockTimestamp() + timeWarpInSeconds)
 
-    await oracle1.update()
     await reignTokenOracle.update()
 
 
@@ -157,7 +156,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
     await mineBlocks(8340) // a bit less then 1 day in blocks
 
-    await oracle1.update()
+    
     await reignTokenOracle.update()
 
     ///////////////////////////
@@ -184,7 +183,6 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
     await moveAtTimestamp(await getLatestBlockTimestamp() + timeWarpInSeconds)
 
-    await oracle1.update()
     await reignTokenOracle.update()
 
 

@@ -108,16 +108,11 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
     c.scenario1.interestStrategy2 = interestStrategy2;
     console.log(`InterestStrategy2 deployed at: ${interestStrategy2.address.toLowerCase()}`);
 
-    const oracle1 = await deployOracle(
-        c,
-        c.wethAddr,
-        c.usdcAddr,
-        reignDAO.address)
+    const oracle1 = await deploy.deployContract("ChainlinkOracleAdapter", [c.wethChainlinkOracle, reignDAO.address]) as ChainlinkOracleAdapter
     c.oracle1 = oracle1
-    console.log("WETH Oracle deployed at: " + oracle1.address)
-    await oracle1.update()
+    console.log("WBTC Oracle deployed at: " + oracle1.address)
     let WETHPrice = await oracle1.consult(c.wethAddr,BigNumber.from(10).pow(await weth.decimals()))
-    console.log("WETH Oracle price: " + WETHPrice.toString())
+    console.log("WBTC Oracle price: " + WETHPrice.toString())
 
     const oracle2 = await deploy.deployContract("ChainlinkOracleAdapter", [c.btcChainlinkOracle, reignDAO.address]) as ChainlinkOracleAdapter
     c.oracle2 = oracle2

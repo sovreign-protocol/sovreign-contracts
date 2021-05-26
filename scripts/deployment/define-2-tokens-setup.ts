@@ -1,9 +1,5 @@
 import {DeployConfig} from "../config";
 import {BigNumber, Contract} from "ethers";
-
-import {hour} from "../../test/helpers/time";
-import {deployOracle} from "../../test/helpers/oracles";
-import {increaseBlockTime, tenPow18, tenPow6, waitFor} from "../../test/helpers/helpers";
 import * as deploy from "../../test/helpers/deploy";
 
 import {
@@ -31,7 +27,6 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     const reignDiamond = c.reignDiamond as Contract;
     const reignDAO = c.reignDAO as ReignDAO;
     const uniswapFactory = c.uniswapFactory as Contract;
-    const uniswapRouter = c.uniswapRouter as Contract;
 
     const tokenDistribution = await deploy.deployContract('LibRewardsDistribution' ) as LibRewardsDistribution;
    
@@ -144,18 +139,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     await tx.wait()
     let svrPairAddress = await  uniswapFactory.getPair(svrToken.address, usdc.address)
     console.log(`Deployed a Uniswap pair for SVR/USDC: '${ svrPairAddress}'`);
-    /*
-    // wait until the pair is really created and available
-    waitFor(
-        () => {
-            svrPairAddress = uniswapFactory.getPair(svrToken.address, usdc.address)
-            return !(svrPairAddress as string).toString().startsWith('0x00')
-        },
-        () => console.log(`Created pair: between '${svrToken.address}' and '${usdc.address}'`),
-        20000
-    );
-    console.log(`Deployed a Uniswap pair for SVR/USDC: '${svrPairAddress}'`);
-    */
+
 
     ///////////////////////////
     // Create a pair for REIGN/USDC
@@ -164,27 +148,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     await tx.wait()
     let reignPairAddress = await  uniswapFactory.getPair(reignToken.address, usdc.address)
     console.log(`Deployed a Uniswap pair for REIGN/USDC: '${ reignPairAddress}'`);
-    /*
-    // wait until the pair is really created and available
-    waitFor(
-        () => {
-            uniswapFactory.getPair(reignToken.address, usdc.address).then(
-                (reignPairAddress: string )=> {
-                    return !(reignPairAddress as string).toString().startsWith('0x00')
-                }
-            )
-            
-        },
-        () => console.log(`Created pair: between '${reignToken.address}' and '${usdc.address}'`),
-        20000
-    );
-    console.log(`Deployed a Uniswap pair for REIGN/USDC: '${ reignPairAddress}'`);
-    */
-
-
     
-
-
 
     console.log(`\n --- PREPARE REWARDS  ---`);
 
@@ -251,31 +215,6 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
 
 
 
-
-    console.log(`\n --- TRANSFER OWNERSHIP ---`);
-
-
-    ///////////////////////////
-    // Renounce Ownership in "ReignToken"
-    ///////////////////////////
-    // set owner to zeroAddress:
-    await reignToken.connect(c.sovReignOwnerAcct).setOwner(reignDAO.address)
-    console.log(`ReignToken owner set: '${reignDAO.address.toLowerCase()}' (Zero Address)`);
-
-    ///////////////////////////
-    // Transfer Ownership from Vaults to Diamond
-    ///////////////////////////
-    await rewardsVault.connect(c.sovReignOwnerAcct).transferOwnership(reignDAO.address)
-    console.log(`Rewards Vault owner set: '${reignDAO.address.toLowerCase()}' (Reign DAO)`);
-
-    await devVault.connect(c.sovReignOwnerAcct).transferOwnership(reignDAO.address)
-    console.log(`Dev Vault owner set: '${reignDAO.address.toLowerCase()}' (Reign DAO)`);
-
-    await treasurySaleVault.connect(c.sovReignOwnerAcct).transferOwnership(reignDAO.address)
-    console.log(`Treasury Sale Vault owner set: '${reignDAO.address.toLowerCase()}' (Reign DAO)`);
-
-    await liquidityBufferVault.connect(c.sovReignOwnerAcct).transferOwnership(reignDAO.address)
-    console.log(`Liquidity Buffer Vault owner set: '${reignDAO.address.toLowerCase()}' (Reign DAO)`);
 
     return c;
 }

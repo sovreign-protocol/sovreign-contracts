@@ -58,5 +58,5 @@ export const networks: NetworksUserConfig = {
 // Use to verify contracts on Etherscan
 // https://buidler.dev/plugins/nomiclabs-buidler-etherscan.html
 export const etherscan: EtherscanConfig = {
-    apiKey: 'YOUR-ETHERSCAN-API-KEY',
+    apiKey: '2ZMJ7KEB5C5I9RP6X5AF2D5ZXMEAVSGBMD',
 };

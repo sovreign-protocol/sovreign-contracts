@@ -26,13 +26,8 @@ export async function uniswapSetup(c: DeployConfig): Promise<DeployConfig> {
     let tx;
 
     const usdc = c.usdc as Contract;
-    const reignDiamond = c.reignDiamond as Contract;
-    const reignDAO = c.reignDAO as ReignDAO;
-    const uniswapFactory = c.uniswapFactory as Contract;
     const uniswapRouter = c.uniswapRouter as Contract;
-    const svrToken = c.svrToken as SvrToken;
     const reignToken = c.reignToken as ReignToken;
-    const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
 
 
     console.log(`\n --- PREPARE UNISWAP POOLS ---`);
@@ -63,38 +58,7 @@ export async function uniswapSetup(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Liquidity added to REIGN Pair`);
 
 
-    /*
-    ///////////////////////////
-    // Make a swap to create the REIGN/USDC price
-    ///////////////////////////
-    tx = await reignToken.connect(c.user3Acct).approve(uniswapRouter.address, tenPow18)
-    await tx.wait();
-    tx = await uniswapRouter.connect(c.user3Acct).swapExactTokensForTokens(
-        tenPow18,
-        1,
-        [reignToken.address, usdc.address],
-        c.sovReignOwnerAddr,
-        Date.now() + 1000
-    )
-    await tx.wait();
-    console.log(`Made a swap in Pool`);
 
-
-
-    ///////////////////////////
-    // Time warp until oracle can be updated
-    ///////////////////////////
-    const updatePeriod = 1 * hour
-    console.log(`Time warping in '${updatePeriod}' seconds...`)
-    await increaseBlockTime(updatePeriod)
-
-    ///////////////////////////
-    // Update Oracle and get Price
-    ///////////////////////////
-    await reignTokenOracle.update();
-    let firstPrice = await reignTokenOracle.consult(reignToken.address,tenPow18);
-    console.log(`First Price for REIGN/USDC: '${firstPrice}'`);
-    */
 
 
     return c;

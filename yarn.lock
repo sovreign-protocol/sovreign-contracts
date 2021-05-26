@@ -539,10 +539,10 @@
   "resolved" "https://registry.npmjs.org/@nomiclabs/hardhat-ethers/-/hardhat-ethers-2.0.1.tgz"
   "version" "2.0.1"
 
-"@nomiclabs/hardhat-etherscan@^2.0.0":
-  "integrity" "sha512-8TNUFsO5DpAfwNlXMDhcEtFAMOYsVNaQL2vq5vuCD45kUKBgL8H21++zOk231ha9D7LQWBMCIg7A7iPxw6Jwmg=="
-  "resolved" "https://registry.npmjs.org/@nomiclabs/hardhat-etherscan/-/hardhat-etherscan-2.1.1.tgz"
-  "version" "2.1.1"
+"@nomiclabs/hardhat-etherscan@^2.1.2":
+  "integrity" "sha512-SExzaBuHlnmHw0HKkElHITzdvhUQmlIRc2tlaywzgvPbh7WoI24nYqZ4N0CO+JXSDgRpFycvQNA8zRaCqjuqUg=="
+  "resolved" "https://registry.npmjs.org/@nomiclabs/hardhat-etherscan/-/hardhat-etherscan-2.1.2.tgz"
+  "version" "2.1.2"
   dependencies:
     "@ethersproject/abi" "^5.0.2"
     "@ethersproject/address" "^5.0.2"
@@ -5019,7 +5019,7 @@
     "eth-gas-reporter" "^0.2.20"
     "sha1" "^1.1.1"
 
-"hardhat@^2.0.0", "hardhat@^2.2.1":
+"hardhat@^2.0.0", "hardhat@^2.0.4", "hardhat@^2.2.1":
   "integrity" "sha512-8s7MtGXdh0NDwQKdlA8m8QdloVIN1+hv5aFpn0G5Ljj9vfNY9kUoc0a9pMboeGbd9WrS+XrZs5YlsPgQjaW/Tg=="
   "resolved" "https://registry.npmjs.org/hardhat/-/hardhat-2.2.1.tgz"
   "version" "2.2.1"
