@@ -8,7 +8,8 @@ import {
     ReignDAO,
     ReignToken,
     SvrToken,
-    UniswapPairOracle,
+    OracleREIGNUSD,
+    OracleETHUSD
 } from "../../typechain";
 import {Contract} from "ethers";
 import {day} from "../../test/helpers/time";
@@ -25,16 +26,34 @@ export async function controllerSetup(c: DeployConfig): Promise<DeployConfig> {
     const reignDiamond = c.reignDiamond as Contract;
     const reignDAO = c.reignDAO as ReignDAO;
     const svrToken = c.svrToken as SvrToken;
+    const weth = c.weth as ERC20;
     const usdc = c.usdc as ERC20;
     const reignToken = c.reignToken as ReignToken;
     //const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
     const liquidityBufferVault = c.liquidityBufferVault as LiquidityBufferVault;
     
 
-     ///////////////////////////
-    // Deploy an Oracle for the REIGN/USDC Pair
     ///////////////////////////
-    let reignTokenOracle = await deployOracle(c, reignToken.address, usdc.address, reignDAO.address)
+    // Deploy an Oracle for the REIGN/USD Pair
+    ///////////////////////////
+    let wethOracle =  await deploy.deployContract("Oracle_ETH_USD",
+    [
+        c.wethChainlinkOracle,
+        reignDAO.address,
+
+    ]
+    ) as OracleETHUSD
+
+    
+    let reignTokenOracle = await deploy.deployContract("Oracle_REIGN_USD",
+    [
+        c.uniswapFactoryAddr,
+        reignToken.address,
+        weth.address,
+        reignDAO.address,
+        wethOracle.address
+    ]
+        ) as OracleREIGNUSD
     c.reignTokenOracle = reignTokenOracle
     console.log(`Deployed Oracle for for REIGN/USDC at: '${reignTokenOracle.address}'`);
 

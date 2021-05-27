@@ -7,6 +7,9 @@ interface ChainlinkOracle {
     function latestAnswer() external view returns (int256);
 }
 
+/**
+    This contarct wraps the chanlink oracle to make it compliant with our oracle interface 
+ */
 contract ChainlinkOracleAdapter is IOracle {
     address public override ownerAddress;
     address public oracleAddress;
@@ -16,6 +19,12 @@ contract ChainlinkOracleAdapter is IOracle {
         ownerAddress = _ownerAddress;
     }
 
+    function setOracleSource(address _oracleAddress) public {
+        require(msg.sender == ownerAddress);
+        oracleAddress = _oracleAddress;
+    }
+
+    //Paramteres are not needed - just return the price from the oracle
     function consult(address tokenIn, uint256 amountIn)
         external
         view

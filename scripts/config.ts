@@ -16,7 +16,7 @@ import {
     RewardsVault,
     SvrToken,
     Staking,
-    UniswapPairOracle,
+    OracleREIGNUSD,
     ChainlinkOracleAdapter,
     PoolRewards
 } from "../typechain";
@@ -118,7 +118,7 @@ export class DeployConfig {
     public poolController?: PoolController;
     public uniswapFactory?: Contract;
     public uniswapRouter?: Contract;
-    public reignTokenOracle?: UniswapPairOracle;
+    public reignTokenOracle?: OracleREIGNUSD;
     public oracle1?: ChainlinkOracleAdapter;
     public oracle2?: ChainlinkOracleAdapter;
     public pool1?: Pool;

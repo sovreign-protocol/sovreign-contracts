@@ -26,6 +26,7 @@ export async function uniswapSetup(c: DeployConfig): Promise<DeployConfig> {
     let tx;
 
     const usdc = c.usdc as Contract;
+    const weth = c.weth as Contract;
     const uniswapRouter = c.uniswapRouter as Contract;
     const reignToken = c.reignToken as ReignToken;
 
@@ -36,26 +37,26 @@ export async function uniswapSetup(c: DeployConfig): Promise<DeployConfig> {
 
 
     ///////////////////////////
-    // Deposit liquidity into the REIGN/USDC pair 
+    // Deposit liquidity into the REIGN/WETH pair 
     ///////////////////////////
-    let depositAmountReign = BigNumber.from(10000).mul(tenPow18)
-    let depositAmountUsdc = BigNumber.from(10000).mul(tenPow6)
-    tx = await reignToken.connect(c.user3Acct).approve(uniswapRouter.address, depositAmountReign)
+    let depositAmountReign = BigNumber.from(1000000).mul(tenPow18)
+    let depositAmountWeth = BigNumber.from(1000).mul(tenPow18)
+    tx = await reignToken.connect(c.user1Acct).approve(uniswapRouter.address, depositAmountReign)
     await tx.wait();
-    tx = await usdc.connect(c.user3Acct).approve(uniswapRouter.address, depositAmountUsdc);
+    tx = await weth.connect(c.user1Acct).approve(uniswapRouter.address, depositAmountWeth);
     await tx.wait();
-    tx = await uniswapRouter.connect(c.user3Acct).addLiquidity(
+    tx = await uniswapRouter.connect(c.user1Acct).addLiquidity(
             reignToken.address,
-            usdc.address,
+            weth.address,
             depositAmountReign,
-            depositAmountUsdc,
+            depositAmountWeth,
             1,
             1,
-            c.user3Addr,
+            c.user1Addr,
             Date.now() + 1000
         )
     await tx.wait();
-    console.log(`Liquidity added to REIGN Pair`);
+    console.log(`Liquidity added to REIGN/WETH Pair`);
 
 
 

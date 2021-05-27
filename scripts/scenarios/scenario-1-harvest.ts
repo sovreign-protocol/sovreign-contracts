@@ -35,8 +35,9 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     const oracle2 = c.oracle2 as ChainlinkOracleAdapter;
     const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
 
-    let reignPairAddress = await uniswapFactory.getPair(reignToken.address, c.usdcAddr)
-    let reignUsdcPair = new Contract(
+    let reignPairAddress = await uniswapFactory.getPair(reignToken.address, c.wethAddr)
+
+    let reignUsdPair = new Contract(
         reignPairAddress, 
         ERC20,
         c.sovReignOwnerAcct 
@@ -79,10 +80,10 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
     console.log(`\n --- USERS STAKE UNISWAP LP ---`);
 
-    let balance = await reignUsdcPair.balanceOf(c.user3Addr)
-    await reignUsdcPair.connect(c.user3Acct).approve(staking.address, balance)
-    await staking.connect(c.user3Acct).deposit(reignPairAddress, balance)
-    console.log(`User3 Staked ${balance} REIGN/USDC LP `);
+    let balance = await reignUsdPair.balanceOf(c.user1Addr)
+    await reignUsdPair.connect(c.user1Acct).approve(staking.address, balance)
+    await staking.connect(c.user1Acct).deposit(reignPairAddress, balance)
+    console.log(`User1 Staked ${balance} REIGN/WETH LP `);
 
 
 

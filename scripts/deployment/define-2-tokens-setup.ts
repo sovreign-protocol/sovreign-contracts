@@ -142,12 +142,12 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
 
 
     ///////////////////////////
-    // Create a pair for REIGN/USDC
+    // Create a pair for REIGN/WETH
     ///////////////////////////
-    tx = await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(reignToken.address, usdc.address)
+    tx = await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(reignToken.address, c.wethAddr)
     await tx.wait()
-    let reignPairAddress = await  uniswapFactory.getPair(reignToken.address, usdc.address)
-    console.log(`Deployed a Uniswap pair for REIGN/USDC: '${ reignPairAddress}'`);
+    let reignPairAddress = await  uniswapFactory.getPair(reignToken.address, c.wethAddr)
+    console.log(`Deployed a Uniswap pair for REIGN/WETH: '${ reignPairAddress}'`);
     
 
     console.log(`\n --- PREPARE REWARDS  ---`);
@@ -173,7 +173,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     c.svrLpRewards = svrLpRewards
 
     ///////////////////////////
-    // Deploy "LPRewards" contract for REIGN/USDC:
+    // Deploy "LPRewards" contract for REIGN/USD:
     ///////////////////////////
     const reignLpRewards = (await deploy.deployContract('LPRewards', 
         [
@@ -181,7 +181,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
             reignPairAddress,
             staking.address, rewardsVault.address,
             lpRewardAllocation.div(2)])) as LPRewards;
-    console.log(`LPRewards for Uniswap REIGN/USDC LP deployed at: ${reignLpRewards.address}`);
+    console.log(`LPRewards for Uniswap REIGN/WETH LP deployed at: ${reignLpRewards.address}`);
     c.reignLpRewards = reignLpRewards
 
 

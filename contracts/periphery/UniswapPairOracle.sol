@@ -6,11 +6,10 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../libraries/UniswapV2Library.sol";
 import "../libraries/UniswapV2OracleLibrary.sol";
 
-import "../interfaces/IOracle.sol";
+import "../interfaces/IOracleUpdateable.sol";
 
 /**
     This contract has been taken without any change from:
@@ -24,12 +23,10 @@ import "../interfaces/IOracle.sol";
 
 // Fixed window oracle that recomputes the average price for the entire period once every period
 // Note that the price average is only guaranteed to be over at least 1 period, but may be over a longer period
-contract UniswapPairOracle is IOracle {
+contract UniswapPairOracle is IOracleUpdateable {
     using FixedPoint for *;
 
     address public override ownerAddress;
-    address timelock_address;
-
     uint256 public PERIOD = 3600; // 1 hour TWAP (time-weighted average price)
     uint256 public CONSULT_LENIENCY = 120; // Used for being able to consult past the period end
     bool public ALLOW_STALE_CONSULTS = true; // If false, consult() will fail if the TWAP is stale
@@ -44,11 +41,8 @@ contract UniswapPairOracle is IOracle {
     FixedPoint.uq112x112 public price0Average;
     FixedPoint.uq112x112 public price1Average;
 
-    modifier onlyByOwnerOrGovernance() {
-        require(
-            msg.sender == ownerAddress || msg.sender == timelock_address,
-            "You are not an owner or the governance timelock"
-        );
+    modifier onlyOwner() {
+        require(msg.sender == ownerAddress, "You are not an owner ");
         _;
     }
 
@@ -56,8 +50,7 @@ contract UniswapPairOracle is IOracle {
         address factory,
         address tokenA,
         address tokenB,
-        address _ownerAddress,
-        address _timelock_address
+        address _ownerAddress
     ) {
         IUniswapV2Pair _pair =
             IUniswapV2Pair(UniswapV2Library.pairFor(factory, tokenA, tokenB));
@@ -75,46 +68,35 @@ contract UniswapPairOracle is IOracle {
         ); // Ensure that there's liquidity in the pair
 
         ownerAddress = _ownerAddress;
-        timelock_address = _timelock_address;
     }
 
-    function setOwner(address _ownerAddress) external onlyByOwnerOrGovernance {
+    function setOwner(address _ownerAddress) external onlyOwner {
         ownerAddress = _ownerAddress;
     }
 
-    function setTimelock(address _timelock_address)
-        external
-        onlyByOwnerOrGovernance
-    {
-        timelock_address = _timelock_address;
-    }
-
-    function setPeriod(uint256 _period) external onlyByOwnerOrGovernance {
+    function setPeriod(uint256 _period) external onlyOwner {
         PERIOD = _period;
     }
 
-    function setConsultLeniency(uint256 _consult_leniency)
-        external
-        onlyByOwnerOrGovernance
-    {
+    function setConsultLeniency(uint256 _consult_leniency) external onlyOwner {
         CONSULT_LENIENCY = _consult_leniency;
     }
 
     function setAllowStaleConsults(bool _allow_stale_consults)
         external
-        onlyByOwnerOrGovernance
+        onlyOwner
     {
         ALLOW_STALE_CONSULTS = _allow_stale_consults;
     }
 
     // Check if update() can be called instead of wasting gas calling it
-    function canUpdate() public view returns (bool) {
+    function canUpdate() public view override returns (bool) {
         uint32 blockTimestamp = UniswapV2OracleLibrary.currentBlockTimestamp();
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // Overflow is desired
         return (timeElapsed >= PERIOD);
     }
 
-    function update() external {
+    function update() external override {
         (
             uint256 price0Cumulative,
             uint256 price1Cumulative,
