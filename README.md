@@ -1,6 +1,6 @@
 ![Build and Test](https://github.com/dialecticch/sovreign-contracts/actions/workflows/build.yml/badge.svg?branch=master)
 
-# SoVReign Contracts
+# 👑 SoVReign: Contracts 👑
 
 This repo has all smart contracts used by SoVReign.
 
