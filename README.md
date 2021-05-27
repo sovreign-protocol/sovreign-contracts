@@ -17,11 +17,11 @@ The `./contracts` folder has the following structure:
 - `./tokens/`: contains the SVR and REIGN Token contracts
 - `./vesting/`: contains vesting contracts for the team and early investors
 
-# solc
+## solc
 
 This project is using the solidity compiler version 0.7.6
 
-# Dependencies
+## Dependencies
 
 - node v14.14
 - hardhat v2.
@@ -29,44 +29,49 @@ This project is using the solidity compiler version 0.7.6
 - docker
 - docker-compose
 
-# Commands
+## Commands
 
-## Install dependencies
+### Install dependencies
 
 ```shell script
 yarn install
 ```
 
-## Compile
+### Compile
 
 ```shell script
 yarn compile
 ```
 
-## Test
+### Test
 
 ```shell script
 yarn test
 ```
 
-## Test Single
+### Test Single
 
 ```shell script
 yarn test ./test/<TestName>.test.ts
 ```
 
-## Coverage
+### Coverage
 
 ```shell script
 yarn coverage
 ```
 
-# Deployment
+## Deployment
+
+> **IMPORTANT:**
+> 
+> By default, the env variable `MAINNET_ALCHEMY_ENABLED` is set to `true` in `.env` file. It means that 
+> hardhat uses mainnet forking for running the scripts and tests. 
 
 - Just deploy and set-up all contracts:
 
 ```shell script
-hardhat run scripts/run-deploy-all.ts
+npx hardhat run scripts/run-deploy-all.ts
 ```
 
 - Run the `scenario1`:
@@ -81,7 +86,7 @@ npx hardhat run ./scripts/run-scenario1.ts
 npx hardhat run ./scripts/run-scenario2.ts
 ```
 
-# Run Remix-IDE and point to your local folder
+## Run Remix-IDE and point to your local folder
 
 ```shell script
 docker-compose up
@@ -90,8 +95,12 @@ docker-compose up
 Go to [http://localhost:8080](http://localhost:8080), and choose
 `--connect to localhost--` in the "Workspaces" dropdown menu within "File Explorers".
 
-# References or Useful Links
+## License
 
-- Diamond Standard for upgradeability
-  - Started from the reference implementation [here](https://github.com/mudgen/diamond-1) which was refactored
-  - The features of this repo are on a single facet in [BarnFacet.sol](./contracts/facets/BarnFacet.sol)
+Licensed under the Apache2 License.
+
+See [LICENSE](LICENSE) for more information.
+
+---
+
+Made with :heart: by [SovReign Team](https://sovreign.org)
