@@ -10,7 +10,7 @@ abstract contract Parameters {
     uint256 public acceptanceThreshold = 60;
     uint256 public minQuorum = 40;
 
-    uint256 constant ACTIVATION_THRESHOLD = 400_000 * 10**18;
+    uint256 constant ACTIVATION_THRESHOLD = 4_000_000 * 10**18;
     uint256 constant PROPOSAL_MAX_ACTIONS = 10;
 
     modifier onlyDAO() {
