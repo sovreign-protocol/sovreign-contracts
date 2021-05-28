@@ -2,6 +2,9 @@
 pragma solidity 0.7.6;
 
 abstract contract Parameters {
+    // These values are set very low in the beginnign to allow the DAO to quickly interveen in case of
+    // maliscious attacks or other problems.
+    // Once the DAO has reched a more mature stage these will be voted to be 3-4 days each
     uint256 public warmUpDuration = 1 hours;
     uint256 public activeDuration = 1 hours;
     uint256 public queueDuration = 1 hours;
