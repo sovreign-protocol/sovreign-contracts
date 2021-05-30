@@ -95,6 +95,18 @@ docker-compose up
 Go to [http://localhost:8080](http://localhost:8080), and choose
 `--connect to localhost--` in the "Workspaces" dropdown menu within "File Explorers".
 
+## Acknowledgement
+
+This repository was composed being based on the following repositories:
+
+- [BarnBridge/BarnBridge-DAO](https://github.com/BarnBridge/BarnBridge-DAO), more specifically from [this commit](https://github.com/BarnBridge/BarnBridge-DAO/tree/efbcc08282279c15a6d82908618f9279e14f22a2).
+- [BarnBridge/BarnBridge-Barn](https://github.com/BarnBridge/BarnBridge-Barn), more specifically from [this commit](https://github.com/BarnBridge/BarnBridge-Barn/tree/1634b6b011f7ca1134ab66ef04c69217e1fa609e).
+- [BarnBridge/BarnBridge-YieldFarming](https://github.com/BarnBridge/BarnBridge-YieldFarming), more specifically from [this commit](https://github.com/BarnBridge/BarnBridge-YieldFarming/tree/848330d25d2544c179a107584293bce03b71d13c).
+
+We're pretty thankful for their hard work! 👏 🚀
+
+Modifications from the original work can be found in subsequent commits on this repository, made by the [SovReign Team](https://sovreign.org). 🙏
+
 ## License
 
 Licensed under the Apache2 License.
