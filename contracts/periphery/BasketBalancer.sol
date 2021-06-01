@@ -106,7 +106,7 @@ contract BasketBalancer is IBasketBalancer {
     // The new allocation value is the average of the vote outcome and the current value
     // Note: this is not the actual target value that will be used by the pools,
     // the actual target will be returned by getTargetAllocation and includes update period adjustments
-    function updateBasketBalance() external override {
+    function updateBasketBalance() public override {
         uint128 _epochId = getCurrentEpoch();
         require(lastEpochUpdate < _epochId, "Epoch is not over");
 
@@ -150,6 +150,10 @@ contract BasketBalancer is IBasketBalancer {
         require(reign.balanceOf(msg.sender) > 0, "Not allowed to vote");
 
         uint128 _epoch = getCurrentEpoch();
+
+        if (lastEpochUpdate < _epoch) {
+            updateBasketBalance();
+        }
 
         require(
             votedInEpoch[msg.sender][_epoch] == false,

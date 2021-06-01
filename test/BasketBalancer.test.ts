@@ -359,8 +359,8 @@ describe('BasketBalancer', function () {
             await reign.connect(user).deposit(100);
             await reign.connect(flyingParrot).deposit(200);
 
+            // this updates the balance
             await balancer.connect(user).updateAllocationVote(pools, [450000000,550000000]);
-            await balancer.updateBasketBalance();
 
             await expect(balancer.updateBasketBalance()).to.be.revertedWith("Epoch is not over")
 
