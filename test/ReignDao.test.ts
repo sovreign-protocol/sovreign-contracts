@@ -27,7 +27,7 @@ describe('ReignDAO', function () {
         Abrogated
     }
 
-    const amount = BigNumber.from(28000).mul(BigNumber.from(10).pow(18));
+    const amount = BigNumber.from(280000).mul(BigNumber.from(10).pow(18));
     before(async function () {
         await setupSigners();
         reign = await helpers.deployReign();
@@ -71,13 +71,13 @@ describe('ReignDAO', function () {
         });
 
         it('activates if threshold is met', async function () {
-            await reign.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
+            await reign.setBondStaked(BigNumber.from(4000000).mul(helpers.tenPow18));
             await expect(reignDAO.activate()).to.not.be.reverted;
             expect(await reignDAO.isActive()).to.be.true;
         });
 
         it('activates through proposal when threshold is met', async function () {
-            await reign.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
+            await reign.setBondStaked(BigNumber.from(4000000).mul(helpers.tenPow18));
             
             await reign.setVotingPower(userAddress, amount.div(5));
             await reign.setVotingPower(await voter1.getAddress(), amount.div(20));
@@ -88,7 +88,7 @@ describe('ReignDAO', function () {
         });
 
         it('reverts if already activated', async function () {
-            await reign.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
+            await reign.setBondStaked(BigNumber.from(4000000).mul(helpers.tenPow18));
             await reignDAO.activate();
 
             await expect(reignDAO.activate()).to.be.revertedWith('DAO already active');
@@ -100,7 +100,7 @@ describe('ReignDAO', function () {
             await expect(
                 createTestProposal()
             ).to.be.revertedWith("DAO not yet active");
-            await reign.setBondStaked(BigNumber.from(400000).mul(helpers.tenPow18));
+            await reign.setBondStaked(BigNumber.from(4000000).mul(helpers.tenPow18));
             await reignDAO.activate();
             await reign.setBondStaked(0);
         });
