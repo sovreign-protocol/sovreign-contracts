@@ -83,7 +83,8 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
 
         uint256 depositFee = getDepositFeeReign(amount);
 
-        if (depositFee > 0) {
+        // only if deposit fee is above 0.1 REIGN take it
+        if (depositFee > 10**17) {
             IERC20 _reignToken = IERC20(reignToken);
             require(
                 _reignToken.allowance(msg.sender, address(this)) >= depositFee,
