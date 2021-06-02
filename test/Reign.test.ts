@@ -1292,6 +1292,7 @@ describe('Reign', function () {
         return BigNumber.from(expiryTs - ts)
             .mul(helpers.tenPow18)
             .div(time.year*2)
+            .div(2)
             .add(helpers.tenPow18);
     }
 

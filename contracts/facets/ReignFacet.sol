@@ -840,7 +840,7 @@ contract ReignFacet {
 
         return
             BASE_STAKE_MULTIPLIER.add(
-                diff.mul(BASE_STAKE_MULTIPLIER).div(MAX_LOCK)
+                (diff.mul(BASE_STAKE_MULTIPLIER).div(MAX_LOCK)).div(2)
             );
     }
 

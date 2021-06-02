@@ -68,7 +68,7 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     // "SoVReignOwner" stakes ReignToken to "ReignDiamond"
     // This is required to "activate" the ReignDAO
     ///////////////////////////
-    const amountStakedSoVReignOwner = BigNumber.from(400_000).mul(helpers.tenPow18);
+    const amountStakedSoVReignOwner = BigNumber.from(4_000_000).mul(helpers.tenPow18);
 
     console.log(`SoVReignOwner approves addr '${reignDiamond.address}' to transfer '${amountStakedSoVReignOwner}'`)
     await reignToken

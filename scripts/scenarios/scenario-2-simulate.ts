@@ -95,13 +95,13 @@ export async function scenario2(c: DeployConfig): Promise<DeployConfig> {
         const action = Math.random();
 
         if(token > 0.5){
-            if(action > (0.5 - (await getDelta(c,"WETH"))*2)){
+            if(action > (0.5 - (await getDelta(c,"WETH")))){
                 await depositMintAndStake(c, "WETH", amount)
             }else{
                 await unstakeBurnAndWithdraw(c, "WETH", amount)
             }
         }else{
-            if(action > (0.5 - (await getDelta(c,"WBTC"))*2)){
+            if(action > (0.5 - (await getDelta(c,"WBTC")))){
                 await depositMintAndStake(c, "WBTC", amount)
             }else{
                 await unstakeBurnAndWithdraw(c, "WBTC", amount)

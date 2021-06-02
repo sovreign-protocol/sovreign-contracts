@@ -274,6 +274,7 @@ describe("GovRewards", function () {
         return BigNumber.from(expiryTs - ts)
             .mul(tenPow18)
             .div(time.year*2)
+            .div(2)
             .add(tenPow18);
     }
 
