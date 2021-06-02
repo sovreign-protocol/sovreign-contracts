@@ -210,11 +210,9 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
 
     // Burnd SVR tokens using the minting/burn formula
     function _burnSvr(address from, uint256 amount) internal {
-        uint256 _svrSupply = IMintBurnErc20(svrToken).totalSupply();
-        uint256 _TVL = controller.getPoolsTVL();
-        uint256 _price = controller.getTokenPrice(address(this));
-        uint256 _amountSvr =
-            amount.mul(_price).mul(_svrSupply).div(_TVL).div(10**tokenDecimals);
+        uint256 _amountSvr = amountSvrForAmountLp(amount);
+
+        require(IERC20(svrToken).balanceOf(from) >= amount, "Not Enougth SVR");
 
         IMintBurnErc20(svrToken).burnFrom(from, _amountSvr);
 
@@ -244,6 +242,20 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
 
     function getTokenBalance() public view override returns (uint256 _balance) {
         _balance = IERC20(token).balanceOf(address(this));
+    }
+
+    function amountSvrForAmountLp(uint256 _amount)
+        public
+        view
+        override
+        returns (uint256 _amountSvr)
+    {
+        uint256 _svrSupply = IMintBurnErc20(svrToken).totalSupply();
+        uint256 _TVL = controller.getPoolsTVL();
+        uint256 _price = controller.getTokenPrice(address(this));
+        _amountSvr = _amount.mul(_price).mul(_svrSupply).div(_TVL).div(
+            10**tokenDecimals
+        );
     }
 
     // get the deposit fee to be paid to deposit a given amount of liquidity

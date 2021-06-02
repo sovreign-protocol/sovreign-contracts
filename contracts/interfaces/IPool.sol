@@ -27,6 +27,8 @@ interface IPool {
 
     function getTokenBalance() external view returns (uint256 reserve);
 
+    function amountSvrForAmountLp(uint256) external view returns (uint256);
+
     function feeIn() external view returns (uint256);
 
     function feeOut() external view returns (uint256);
