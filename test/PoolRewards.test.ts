@@ -56,7 +56,7 @@ describe("YieldFarm Liquidity Pool", function () {
         controller = (await deployContract("PoolControllerMock",[interest.address, balancer.address ])) as PoolControllerMock;
 
         staking = (await deployContract("Staking")) as Staking;
-        await staking.initialize(epochClock.address)
+        await staking.initialize(epochClock.address,  await creator.getAddress())
 
         rewardsVault = (await deployContract("RewardsVault", [reignToken.address])) as RewardsVault;
         liquidityBuffer = (await deployContract("LiquidityBufferVault", [reignToken.address])) as LiquidityBufferVault;

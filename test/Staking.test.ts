@@ -3,11 +3,12 @@ import { BigNumber, BigNumberish, Signer } from "ethers";
 import { moveAtEpoch, setTime, tenPow18, getCurrentUnix } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
-import { ERC20Mock, Staking, EpochClockMock } from "../typechain";
+import { PoolErc20Mock, ERC20Mock, Staking, EpochClockMock } from "../typechain";
 
 describe("Staking", function () {
     let staking: Staking;
-    let erc20Mock: ERC20Mock;
+    let erc20Mock: PoolErc20Mock;
+    let underlyingToken: ERC20Mock;
     let creator: Signer, owner: Signer, user: Signer;
     let ownerAddr: string, userAddr: string;
     let epochClock:EpochClockMock
@@ -18,6 +19,8 @@ describe("Staking", function () {
 
     const epochStart = Math.floor(Date.now() / 1000) + 1000;
     const epochDuration = 604800;
+
+    const liquidationFee = 100000; // 10%
 
 
     let snapshotId: any;
@@ -32,9 +35,12 @@ describe("Staking", function () {
 
         epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
         staking = (await deployContract("Staking")) as Staking;
-        await staking.initialize(epochClock.address)
+        await staking.initialize(epochClock.address, ownerAddr)
 
-        erc20Mock = (await deployContract("ERC20Mock")) as ERC20Mock;
+        underlyingToken = (await deployContract("ERC20Mock")) as ERC20Mock;
+
+
+        erc20Mock = (await deployContract("PoolErc20Mock", [underlyingToken.address])) as PoolErc20Mock;
 
         
     });
@@ -54,17 +60,19 @@ describe("Staking", function () {
 
         it("Can not initialize twice", async function () {
             await expect(
-                staking.initialize(epochClock.address)
+                staking.initialize(epochClock.address, ownerAddr)
             ).to.be.revertedWith("Can only be initialized once");
         });
     })
 
     describe("Deposit", function () {
-        it("Reverts if amount is <= 0", async function () {
+        it("If deposit is 0 just set liquidation fee", async function () {
             await expect(
                 staking.connect(user).deposit(erc20Mock.address, 0)
-            ).to.be.revertedWith("Staking: Amount must be > 0");
+            ).to.not.be.reverted;
 
+            expect( await staking.liquidationFee(userAddr)).to.be.eq(liquidationFee)
+            expect( await staking.balanceOf(userAddr,erc20Mock.address )).to.be.eq(0)
             expect( await staking.epoch1Start()).to.be.eq(epochStart)
         });
 
@@ -411,6 +419,76 @@ describe("Staking", function () {
             });
         });
     });
+
+    describe("Liquidation", function () {
+        beforeEach(async function () {
+            await erc20Mock.mint(userAddr, amount.mul(10));
+            await erc20Mock.mint(ownerAddr, amount.mul(10));
+            await underlyingToken.mint(ownerAddr, amount.mul(10));
+            await erc20Mock.connect(user).approve(staking.address, amount.mul(10));
+            await erc20Mock.connect(owner).approve(staking.address, amount.mul(10));
+        });
+
+        it("allows user to set liquidation fee", async function () {
+            await deposit(user, amount);
+            expect(await staking.liquidationFee(userAddr)).to.be.eq(liquidationFee);
+
+            await staking.connect(user).setLiquidationFee(liquidationFee/2);
+            expect(await staking.liquidationFee(userAddr)).to.be.eq(liquidationFee/2);
+        })
+
+        it("reverts if user sets liquidation fee above max", async function () {
+            await deposit(user, amount);
+            await expect(
+                staking.connect(user).setLiquidationFee(liquidationFee*2)
+            ).to.be.revertedWith("Liquidation fee above max value")
+        })
+
+        it("allows DAO to set Max Liquidation fee", async function () {
+            await expect(
+                staking.connect(owner).setMaxLiquidationFee(liquidationFee*2)
+            ).to.not.be.reverted
+
+            expect(await staking.maxLiquidationFee()).to.be.eq(liquidationFee*2);
+        })
+
+        it("reverts if user sets  Max Liquidation fee", async function () {
+            await expect(
+                staking.connect(user).setMaxLiquidationFee(liquidationFee*2)
+            ).to.be.revertedWith("Only DAO can call this")
+        })
+
+        it("allows user to liquidate a position", async function () {
+
+            await deposit(user, amount);
+
+            let balanceBeforeLiquidation = await erc20Mock.balanceOf(ownerAddr);
+
+            expect(
+                await underlyingToken.balanceOf(userAddr)
+            ).to.be.eq(0);
+
+
+            await underlyingToken.connect(owner).approve(staking.address, amount.mul(10));
+
+            await expect(
+                staking.connect(owner).liquidate(userAddr, erc20Mock.address, amount)
+            ).to.not.be.reverted
+            
+            // stake was removed
+            expect(await staking.balanceOf(userAddr, erc20Mock.address)).to.be.eq(0);
+
+            //fee was transferred
+            expect(
+                await underlyingToken.balanceOf(userAddr)
+            ).to.be.eq(amount.mul(100000).div(1000000));
+            
+            // lp tokens where received
+            expect(
+                await erc20Mock.balanceOf(ownerAddr)
+            ).to.be.eq(balanceBeforeLiquidation.add(amount));
+        })
+    })
 
     describe("Epoch logic", function () {
         beforeEach(async function () {
