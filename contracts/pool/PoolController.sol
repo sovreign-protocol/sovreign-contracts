@@ -16,6 +16,7 @@ contract PoolController is IPoolController {
     IEpochClock private clock;
     address public override svrToken;
     address public override reignToken;
+    address public override poolRouter;
     address public override reignDAO;
     address public override liquidityBuffer;
     uint256 public override depositFeeMultiplier = 200000000;
@@ -44,6 +45,7 @@ contract PoolController is IPoolController {
         address _reignTokenOracle,
         address _reignDAO,
         address _reignDiamond,
+        address _poolRouter,
         address _liquidityBuffer
     ) {
         basketBalancer = IBasketBalancer(_basketBalancer);
@@ -51,6 +53,7 @@ contract PoolController is IPoolController {
         reignTokenOracle = _reignTokenOracle;
         reignToken = _reignToken;
         reignDAO = _reignDAO;
+        poolRouter = _poolRouter;
         clock = IEpochClock(_reignDiamond);
         liquidityBuffer = _liquidityBuffer;
     }
@@ -126,6 +129,11 @@ contract PoolController is IPoolController {
     function setReignToken(address _reignToken) external override onlyDAO {
         require(_reignToken != address(0), "SoVReign: ZERO_ADDRESS");
         reignToken = _reignToken;
+    }
+
+    function setPoolRouter(address _poolRouter) external override onlyDAO {
+        require(_poolRouter != address(0), "SoVReign: ZERO_ADDRESS");
+        poolRouter = _poolRouter;
     }
 
     function setReignTokenOracle(address _reignTokenOracle) external onlyDAO {

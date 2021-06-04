@@ -61,7 +61,14 @@ describe('PoolController', function () {
         
         poolController = (
             await deploy.deployContract('PoolController', [
-                balancer.address, svr.address, reign.address,oracle.address, reignDaoAddress, epochClock.address, liquidityBufferAddress
+                balancer.address, 
+                svr.address, 
+                reign.address,
+                oracle.address, 
+                reignDaoAddress, 
+                epochClock.address, 
+                userAddress,
+                liquidityBufferAddress
             ])
         ) as PoolController; 
 
@@ -391,6 +398,27 @@ describe('PoolController', function () {
                     poolController.connect(reignDAO).setOracle(newAddress, pool.address)
                 ).to.not.be.reverted;
                 expect(await poolController.getOracle(pool.address)).to.be.eq(newAddress)
+            });
+        });
+
+        describe('updates PoolRouter address correctly', async function () {
+            it('reverts if not called by DAO', async function () {
+                await expect(
+                    poolController.connect(user).setPoolRouter(newAddress)
+                ).to.be.revertedWith('SoVReign: FORBIDDEN');
+            });
+
+            it('reverts if called with Zero Address', async function () {
+                await expect(
+                    poolController.connect(reignDAO).setPoolRouter(helpers.zeroAddress)
+                ).to.be.revertedWith('SoVReign: ZERO_ADDRESS');
+            });
+
+            it('sets correct address otherwise', async function () {
+                await expect(
+                    poolController.connect(reignDAO).setPoolRouter(newAddress)
+                ).to.not.be.reverted;
+                expect(await poolController.poolRouter()).to.be.eq(newAddress)
             });
         });
 

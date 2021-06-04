@@ -33,15 +33,17 @@ interface IPool {
 
     function feeOut() external view returns (uint256);
 
-    function premiumFactor() external view returns (uint256);
-
     function mint(address to, uint256 amount)
         external
         returns (uint256 liquidity);
+
+    function mintRouter(address to) external returns (uint256 liquidity);
 
     function burn(uint256 amount) external returns (bool);
 
     function skim(address to) external;
 
     function initialize(address) external;
+
+    function getDepositFeeReign(uint256) external view returns (uint256);
 }

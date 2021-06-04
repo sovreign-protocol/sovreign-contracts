@@ -20,6 +20,8 @@ interface IPoolController {
 
     function setReignToken(address) external;
 
+    function setPoolRouter(address) external;
+
     function setDepositFeeMultiplier(uint256) external;
 
     function getPool(address) external view returns (address);
@@ -53,6 +55,8 @@ interface IPoolController {
     function svrToken() external view returns (address);
 
     function reignToken() external view returns (address);
+
+    function poolRouter() external view returns (address);
 
     function getBasketBalancer() external view returns (address);
 }

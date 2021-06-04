@@ -74,7 +74,14 @@ describe('Pool', function () {
 
         poolController = (
             await deploy.deployContract('PoolController', [
-                balancer.address, svr.address, reign.address,oracle.address, reignDAOAddress, epochClock.address, liquidityBufferAddress
+                balancer.address, 
+                svr.address, 
+                reign.address,
+                oracle.address, 
+                reignDAOAddress, 
+                epochClock.address, 
+                happyPirateAddress, // happy pirate is the router today!
+                liquidityBufferAddress
             ])
         ) as PoolController; 
 
@@ -295,12 +302,32 @@ describe('Pool', function () {
             await expect(pool.mint(userAddress, amountBN)).to.be.revertedWith("Insufficient Liquidity Minted")
         });
 
-        it('mints the correct amount of LP Tokens', async function () {
+        it('mints the correct amount of LP Tokens through mint', async function () {
             let amount = await depositToPool(100000,pool)
 
             expect(await underlying1.balanceOf(pool.address)).to.be.eq(amount)
             let expected_amount_lp = amount.sub(await pool.MINIMUM_LIQUIDITY())
             expect(await pool.balanceOf(userAddress)).to.be.eq(expected_amount_lp)
+        });
+
+        it('mints the correct amount of LP Tokens through mintRouter', async function () {
+            let amountBN = BigNumber.from(100000).mul(decimalsFactor);
+            
+            await underlying1.connect(user).transfer(pool.address,amountBN);
+            await pool.connect(happyPirate).mintRouter(userAddress);
+       
+            expect(await underlying1.balanceOf(pool.address)).to.be.eq(amountBN)
+            let expected_amount_lp = amountBN.sub(await pool.MINIMUM_LIQUIDITY())
+            expect(await pool.balanceOf(userAddress)).to.be.eq(expected_amount_lp)
+        });
+
+        it('reverts if mintRouter is called from other account', async function () {
+            let amountBN = BigNumber.from(100000).mul(decimalsFactor);
+            
+            await underlying1.connect(user).transfer(pool.address,amountBN);
+            await  expect(
+                pool.connect(user).mintRouter(userAddress)
+            ).to.be.revertedWith("Only Router contract can call")
         });
 
         it('mints the base amount of Svr for an empty pool', async function () {
@@ -468,6 +495,7 @@ describe('Pool', function () {
         let depositFee = await poolUsed.getDepositFeeReign(amountBN);
 
         await reign.connect(user).approve(poolUsed.address, depositFee); 
+
         if (poolUsed == pool){
             await underlying1.connect(user).approve(poolUsed.address,amountBN);
             await poolUsed.mint(userAddress, amountBN);

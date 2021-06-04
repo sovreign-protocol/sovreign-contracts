@@ -20,9 +20,6 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
     bytes4 private constant SELECTOR =
         bytes4(keccak256(bytes("transfer(address,uint256)")));
 
-    // premium to be paid to incentivized to tak take our
-    // REIGN instead of going to secondary market
-    uint256 public override premiumFactor = 11 * 10**17;
     uint256 public override feeIn = 2 * 10**15;
     uint256 public override feeOut = 2 * 10**15;
 
@@ -66,14 +63,13 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
         liquidityBuffer = controller.liquidityBuffer();
     }
 
-    //receive liquidity: mint LP tokens and mint SVR tokens
+    //Pull tokens from approved user mint LP tokens and mint SVR tokens
     function mint(address to, uint256 amount)
         external
         override
         nonReentrant
         returns (uint256 liquidity)
     {
-        require(amount > 0, "Can only issue positive amounts");
         require(
             IERC20(token).allowance(msg.sender, address(this)) >= amount,
             "Insufficient allowance"
@@ -93,33 +89,25 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
             _reignToken.safeTransferFrom(msg.sender, treasury, depositFee);
         }
 
-        uint256 _totalSupply = totalSupply; // gas savings
-        if (_totalSupply == 0) {
-            liquidity = amount.sub(MINIMUM_LIQUIDITY);
-            _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
-        } else {
-            liquidity = amount;
-        }
-        require(liquidity > 0, "Insufficient Liquidity Minted");
+        return _deposit(to, amount);
+    }
 
-        uint256 _reserve = getReserves();
+    // This allows users to go through a multi-deposit router, the deposit fee will be taken by that contarct
+    // here we do not use transferFrom, instead the router will transfer the funds from the user to the pool
+    function mintRouter(address to)
+        external
+        override
+        nonReentrant
+        returns (uint256 liquidity)
+    {
+        address router = controller.poolRouter();
+        require(msg.sender == router, "Only Router contract can call");
 
-        //Mint LP Tokens
-        _mint(to, liquidity);
+        //get amount deposited
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        uint256 amount = balance.sub(getReserves());
 
-        //store new balance in reserve
-        _updateReserves();
-
-        //mint SVR tokens based on new balance
-        _mintSvr(to, amount);
-
-        //Dont accrue on first pay in
-        if (_reserve != 0) {
-            //accrue interest based on new balance
-            _accrueInterest();
-        }
-
-        emit MintLP(to, liquidity);
+        return _deposit(to, amount);
     }
 
     //burns LP tokens,burns SVR tokens and returns liquidity to user
@@ -177,6 +165,42 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
     /**
         INTERNAL
      */
+
+    //receive liquidity: mint LP tokens and mint SVR tokens
+    function _deposit(address to, uint256 amount)
+        internal
+        returns (uint256 liquidity)
+    {
+        require(amount > 0, "Can only issue positive amounts");
+
+        uint256 _totalSupply = totalSupply; // gas savings
+        if (_totalSupply == 0) {
+            liquidity = amount.sub(MINIMUM_LIQUIDITY);
+            _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
+        } else {
+            liquidity = amount;
+        }
+        require(liquidity > 0, "Insufficient Liquidity Minted");
+
+        uint256 _reserve = getReserves();
+
+        //Mint LP Tokens
+        _mint(to, liquidity);
+
+        //store new balance in reserve
+        _updateReserves();
+
+        //mint SVR tokens based on new balance
+        _mintSvr(to, amount);
+
+        //Dont accrue on first pay in
+        if (_reserve != 0) {
+            //accrue interest based on new balance
+            _accrueInterest();
+        }
+
+        emit MintLP(to, liquidity);
+    }
 
     // ERC20 transfer that can revert
     function _safeTransfer(address to, uint256 value) internal {
@@ -259,7 +283,12 @@ contract Pool is IPool, PoolErc20, ReentrancyGuard {
     }
 
     // get the deposit fee to be paid to deposit a given amount of liquidity
-    function getDepositFeeReign(uint256 amount) public view returns (uint256) {
+    function getDepositFeeReign(uint256 amount)
+        public
+        view
+        override
+        returns (uint256)
+    {
         uint256 _target = controller.getTargetSize(address(this));
         uint256 _reserves = getReserves();
 
