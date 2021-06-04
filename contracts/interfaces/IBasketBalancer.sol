@@ -13,4 +13,6 @@ interface IBasketBalancer {
     function updateBasketBalance() external;
 
     function reignAddress() external view returns (address);
+
+    function getPools() external view returns (address[] memory);
 }

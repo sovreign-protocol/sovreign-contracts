@@ -298,7 +298,7 @@ describe('BasketBalancer', function () {
         });
         
 
-        it('sets correct basket balance after update period', async function () {
+        it('sets correct basket balance ', async function () {
             await reign.connect(user).deposit(100);
             await reign.connect(flyingParrot).deposit(200);
             await reign.connect(happyPirate).deposit(300);
@@ -313,7 +313,6 @@ describe('BasketBalancer', function () {
             
             await awaitUntilNextEpoch();
             await balancer.updateBasketBalance();
-            await awaitUpdatePeriod();
             
             // New target is the average with the previous one  
             // (481111110 + 500000000 ) / 2 = 490555555
@@ -323,35 +322,7 @@ describe('BasketBalancer', function () {
 
         });
 
-        it('sets correct basket balance during update period', async function () {
-            await reign.connect(user).deposit(100);
-            await reign.connect(flyingParrot).deposit(200);
-            await reign.connect(happyPirate).deposit(300);
-
-
-            // voting power reflects after epoch is over
-            await awaitUntilNextEpoch();
-            await balancer.getCurrentEpoch()
-            await balancer.updateBasketBalance();
-
-            await balancer.connect(user).updateAllocationVote(pools, [480000000,520000000]);
-            await balancer.connect(flyingParrot).updateAllocationVote(pools, [450000000,550000000])      
-            await awaitUntilNextEpoch();
-            await balancer.getCurrentEpoch()
-            await balancer.updateBasketBalance();
-
-            //let half of the period elapse, allocation should be half-way updated
-            await helpers.moveAtTimestamp((await balancer.lastEpochEnd()).toNumber() + (172800/2))
-
-            // Half way during update period 
-            // 500000000 - (500000000 - 490555555) / 2 = 495277778
-            // 500000000 + (509444444 - 500000000) / 2 = 504722222
-            //this sometimes fails if there is a 1 block discrepancy, due to 'moveAtTimestamp' mining
-            expect(await balancer.getTargetAllocation(pools[0])).to.equal(BigNumber.from(495277778)); 
-            expect(await balancer.getTargetAllocation(pools[1])).to.equal(BigNumber.from(504722222));
-
-        });
-
+        
         
         it('can not update twice in same epoch', async function () {
             awaitUntilNextEpoch()

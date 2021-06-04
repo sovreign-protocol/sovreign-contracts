@@ -377,6 +377,10 @@ contract ERC20Mock is ERC20("ERC20Mock", "MCK", 8) {
         _mint(user, amount);
     }
 
+    function burn(address user, uint256 amount) public {
+        _burn(user, amount);
+    }
+
     function transferFrom(
         address sender,
         address recipient,

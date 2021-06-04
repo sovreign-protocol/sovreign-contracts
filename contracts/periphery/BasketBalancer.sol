@@ -257,29 +257,7 @@ contract BasketBalancer is IBasketBalancer {
         override
         returns (uint256)
     {
-        uint256 timeElapsed = block.timestamp - lastEpochEnd;
-        if (
-            timeElapsed < UPDATE_PERIOD ||
-            poolAllocationBefore[pool] == poolAllocation[pool]
-        ) {
-            if (poolAllocationBefore[pool] > poolAllocation[pool]) {
-                return
-                    poolAllocationBefore[pool].sub(
-                        timeElapsed.mul(
-                            poolAllocationBefore[pool].sub(poolAllocation[pool])
-                        ) / UPDATE_PERIOD
-                    );
-            } else {
-                return
-                    poolAllocationBefore[pool].add(
-                        timeElapsed.mul(
-                            poolAllocation[pool].sub(poolAllocationBefore[pool])
-                        ) / UPDATE_PERIOD
-                    );
-            }
-        } else {
-            return poolAllocation[pool];
-        }
+        return poolAllocation[pool];
     }
 
     //Returns the id of the current epoch derived from block.timestamp
@@ -287,7 +265,7 @@ contract BasketBalancer is IBasketBalancer {
         return reign.getCurrentEpoch();
     }
 
-    function getPools() external view returns (address[] memory) {
+    function getPools() external view override returns (address[] memory) {
         return allPools;
     }
 

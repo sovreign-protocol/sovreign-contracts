@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "../interfaces/IReign.sol";
+import "../interfaces/IBasketBalancer.sol";
 import "./ReignDiamond.sol";
 import "./Bridge.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -89,8 +90,11 @@ contract ReignDAO is Bridge {
     mapping(uint256 => AbrogationProposal) public abrogationProposals;
     mapping(address => uint256) public latestProposalIds;
     IReign reign;
+    IBasketBalancer basketBalancer;
     bool isInitialized;
     bool public isActive;
+
+    address smartPool;
 
     event ProposalCreated(uint256 indexed proposalId);
     event Vote(
@@ -126,11 +130,17 @@ contract ReignDAO is Bridge {
     receive() external payable {}
 
     // executed only once
-    function initialize(address reignAddr) public {
+    function initialize(
+        address _reignAddr,
+        address _basketBalancer,
+        address _smartPool
+    ) public {
         require(isInitialized == false, "Contract already initialized.");
-        require(reignAddr != address(0), "reign must not be 0x0");
+        require(_reignAddr != address(0), "reign must not be 0x0");
 
-        reign = IReign(reignAddr);
+        reign = IReign(_reignAddr);
+        basketBalancer = IBasketBalancer(_basketBalancer);
+        smartPool = _smartPool;
         isInitialized = true;
     }
 
@@ -142,6 +152,29 @@ contract ReignDAO is Bridge {
         );
 
         isActive = true;
+    }
+
+    function triggerWeightUpdate() public {
+        if (!isActive) {
+            require(
+                reign.reignStaked() >= ACTIVATION_THRESHOLD,
+                "DAO not yet active"
+            );
+            isActive = true;
+        }
+
+        // this will revert if epoch is not over
+        basketBalancer.updateBasketBalance();
+
+        // get etsablished weights
+        address[] memory pools = basketBalancer.getPools();
+        uint256[] memory weights = new uint256[](pools.length);
+        for (uint256 i = 0; i < pools.length; i++) {
+            weights[i] = basketBalancer.getTargetAllocation(pools[i]);
+        }
+
+        //update weights graduall in smartPool
+        updateWeights(smartPool, weights);
     }
 
     function propose(

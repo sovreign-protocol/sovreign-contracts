@@ -10,6 +10,8 @@ abstract contract Parameters {
     uint256 public queueDuration = 1 hours;
     uint256 public gracePeriodDuration = 1 hours;
 
+    uint256 public gradualWeightUpdate = 2 days;
+
     uint256 public acceptanceThreshold = 60;
     uint256 public minQuorum = 40;
 
@@ -23,6 +25,10 @@ abstract contract Parameters {
 
     function setWarmUpDuration(uint256 period) public onlyDAO {
         warmUpDuration = period;
+    }
+
+    function setGradualWeightUpdate(uint256 period) public onlyDAO {
+        gradualWeightUpdate = period;
     }
 
     function setActiveDuration(uint256 period) public onlyDAO {

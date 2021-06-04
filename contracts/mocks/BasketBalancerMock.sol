@@ -72,7 +72,7 @@ contract BasketBalancerMock is IBasketBalancer {
         return allPools.length;
     }
 
-    function getPools() public view returns (address[] memory) {
+    function getPools() public view override returns (address[] memory) {
         return allPools;
     }
 }

@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.7.6;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/ISmartPool.sol";
 import "../interfaces/IWrapSVR.sol";
+import "../interfaces/IMintBurnErc20.sol";
 
-contract PoolRouter {
-    ISmartPool smartPool;
+contract RouterMock {
+    IMintBurnErc20 underlyingToken;
+    IMintBurnErc20 smartPool;
+    address reignDao;
     address wrappingContract;
 
     constructor(address _smartPool, address _wrappingContract) {
-        smartPool = ISmartPool(_smartPool);
+        smartPool = IMintBurnErc20(_smartPool);
         wrappingContract = _wrappingContract;
     }
 
@@ -23,15 +22,15 @@ contract PoolRouter {
         uint256 liquidationFee
     ) public {
         // pull underlying token here
-        IERC20(tokenIn).transferFrom(msg.sender, address(this), tokenAmountIn);
-        IERC20(tokenIn).approve(address(smartPool), tokenAmountIn);
+        IMintBurnErc20(tokenIn).transferFrom(
+            msg.sender,
+            address(this),
+            tokenAmountIn
+        );
 
         // swap underlying token for LP
-        smartPool.joinswapExternAmountIn(
-            tokenIn,
-            tokenAmountIn,
-            minPoolAmountOut
-        );
+        IMintBurnErc20(tokenIn).burn(address(this), tokenAmountIn);
+        smartPool.mint(address(this), minPoolAmountOut);
 
         // deposit LP for sender and mint SVR to sender
         uint256 balance = smartPool.balanceOf(address(this));
@@ -51,8 +50,8 @@ contract PoolRouter {
             poolAmountIn
         );
 
-        //swaps LP for underlying
-        smartPool.exitswapPoolAmountIn(tokenOut, poolAmountIn, minAmountOut);
+        IMintBurnErc20(tokenOut).mint(address(this), minAmountOut);
+        smartPool.burn(address(this), poolAmountIn);
 
         //transfer underlying to sender
         uint256 balance = IERC20(tokenOut).balanceOf(address(this));
@@ -72,8 +71,8 @@ contract PoolRouter {
             poolAmountIn
         );
 
-        //swaps LP for underlying
-        smartPool.exitswapPoolAmountIn(tokenOut, poolAmountIn, minAmountOut);
+        IMintBurnErc20(tokenOut).mint(address(this), minAmountOut);
+        smartPool.burn(address(this), poolAmountIn);
 
         //transfer underlying to sender
         uint256 balance = IERC20(tokenOut).balanceOf(address(this));

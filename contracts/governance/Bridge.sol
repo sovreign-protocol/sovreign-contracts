@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "./Parameters.sol";
+import "../interfaces/ISmartPool.sol";
 
 abstract contract Bridge is Parameters {
     mapping(bytes32 => bool) public queuedTransactions;
@@ -67,6 +68,14 @@ abstract contract Bridge is Parameters {
         require(success, string(returnData));
 
         return returnData;
+    }
+
+    function updateWeights(address target, uint256[] memory weights) internal {
+        ISmartPool(target).updateWeightsGradually(
+            weights,
+            block.number,
+            block.number + gradualWeightUpdate // plus 2 days
+        );
     }
 
     function _getTxHash(

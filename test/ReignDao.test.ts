@@ -32,7 +32,7 @@ describe('ReignDAO', function () {
         await setupSigners();
         reign = await helpers.deployReign();
         reignDAO = await helpers.deployReignDAO();
-        await reignDAO.initialize(reign.address);
+        await reignDAO.initialize(reign.address, helpers.ZERO_ADDRESS, helpers.ZERO_ADDRESS);
 
         warmUpDuration = (await reignDAO.warmUpDuration()).toNumber();
         activeDuration = (await reignDAO.activeDuration()).toNumber();
