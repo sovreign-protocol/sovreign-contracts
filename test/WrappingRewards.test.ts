@@ -54,8 +54,7 @@ describe("Wrapping Rewards", function () {
             epochClock.address,  
             await creator.getAddress(), 
             balancerLP.address,
-            await router.address, 
-            reignToken.address
+            await router.address
         )
 
 

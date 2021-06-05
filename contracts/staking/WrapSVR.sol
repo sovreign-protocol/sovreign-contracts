@@ -23,9 +23,6 @@ contract WrapSVR is PoolErc20, ReentrancyGuard {
     //balancer LP Token
     address balancerLP;
 
-    //the Reign Tokens
-    address reignToken;
-
     // the percentage fee the holder want's to get for liquidation, 6 decimals of precision
     mapping(address => uint256) public liquidationFee;
 
@@ -78,8 +75,7 @@ contract WrapSVR is PoolErc20, ReentrancyGuard {
         address _epochClock,
         address _reignDao,
         address _balancerLP,
-        address _poolRouter,
-        address _reignToken
+        address _poolRouter
     ) public {
         require(epoch1Start == 0, "Can only be initialized once");
         epoch1Start = IEpochClock(_epochClock).getEpoch1Start();
@@ -87,7 +83,6 @@ contract WrapSVR is PoolErc20, ReentrancyGuard {
         reignDao = _reignDao;
         balancerLP = _balancerLP;
         poolRouter = _poolRouter;
-        reignToken = _reignToken;
     }
 
     /*
@@ -234,44 +229,52 @@ contract WrapSVR is PoolErc20, ReentrancyGuard {
 
     function liquidate(
         address liquidator,
+        address tokenOut,
         address lpOwner,
         uint256 amount
     ) public nonReentrant {
         require(msg.sender == poolRouter, "Only Router can do this");
 
-        // liquidation fee is paid in reign tokens, it is set by lpOwner at deposit
+        // liquidation fee is paid in tokenOut tokens, it is set by lpOwner at deposit
         uint256 liquidationFeeAmount =
             amount.mul(liquidationFee[lpOwner]).div(1000000);
 
         require(
-            IERC20(reignToken).allowance(liquidator, address(this)) >=
+            IERC20(tokenOut).allowance(liquidator, address(this)) >=
                 liquidationFeeAmount,
             "Insuffiecient allowance for liquidation Fee"
         );
 
         // transfer liquidation fee from liquidator to original owner
-        IERC20(reignToken).transferFrom(
+        IERC20(tokenOut).transferFrom(
             liquidator,
             lpOwner,
             liquidationFeeAmount
         );
 
         // burn liquidators SVR and withdraw lpOwnser's tokens to router
-        withdraw(liquidator, lpOwner, amount);
+        _withdraw(liquidator, lpOwner, amount);
 
         emit Liquidate(liquidator, lpOwner, liquidationFeeAmount, amount);
     }
 
-    /*
-     * Removes the deposit of the user and sends the amount of `tokenAddress` back to the `user`
-     */
     function withdraw(
         address svrHolder,
         address lpOwner,
         uint256 amount
     ) public nonReentrant {
         require(msg.sender == poolRouter, "Only Router can do this");
+        _withdraw(svrHolder, lpOwner, amount);
+    }
 
+    /*
+     * Removes the deposit of the user and sends the amount of `tokenAddress` back to the `user`
+     */
+    function _withdraw(
+        address svrHolder,
+        address lpOwner,
+        uint256 amount
+    ) internal {
         require(balances[lpOwner] >= amount, "Wrapper: balance too small");
 
         // burn SVR from svrHolder

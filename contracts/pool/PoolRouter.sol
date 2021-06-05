@@ -66,8 +66,10 @@ contract PoolRouter {
         uint256 minAmountOut
     ) public {
         //burns SVR from sender and recieve LP to here
+        // also pay the liquidation fee in tokenOut ot liquidatedUser
         IWrapSVR(wrappingContract).liquidate(
             msg.sender,
+            tokenOut,
             liquidatedUser,
             poolAmountIn
         );

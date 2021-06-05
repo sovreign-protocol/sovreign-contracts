@@ -16,6 +16,7 @@ interface IWrapSVR {
 
     function liquidate(
         address liquidator,
+        address tokenOut,
         address from,
         uint256 amount
     ) external;

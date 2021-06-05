@@ -67,6 +67,7 @@ contract RouterMock {
         //burns SVR from sender and recieve LP to here
         IWrapSVR(wrappingContract).liquidate(
             msg.sender,
+            tokenOut,
             liquidatedUser,
             poolAmountIn
         );

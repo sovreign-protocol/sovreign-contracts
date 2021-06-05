@@ -7,7 +7,6 @@ import { ERC20Mock, WrapSVR, EpochClockMock } from "../typechain";
 
 describe("WrapSVR", function () {
     let wrapper: WrapSVR;
-    let reignToken: ERC20Mock;
     let balancerLP: ERC20Mock;
     let underlyingToken: ERC20Mock;
     let creator: Signer, owner: Signer, user:Signer, newUser: Signer;
@@ -37,14 +36,12 @@ describe("WrapSVR", function () {
         epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
         wrapper = (await deployContract("WrapSVR")) as WrapSVR;
         balancerLP = (await deployContract("ERC20Mock")) as ERC20Mock;
-        reignToken = (await deployContract("ERC20Mock")) as ERC20Mock;
 
         await wrapper.initialize(
             epochClock.address,  
             ownerAddr, 
             balancerLP.address,
-            userAddr, 
-            reignToken.address
+            userAddr,
         )
 
         underlyingToken = (await deployContract("ERC20Mock")) as ERC20Mock;
@@ -127,8 +124,7 @@ describe("WrapSVR", function () {
                     epochClock.address,  
                     ownerAddr, 
                     balancerLP.address,
-                    userAddr, 
-                    reignToken.address
+                    userAddr,
                 )
             ).to.be.revertedWith("Can only be initialized once");
         });
@@ -531,18 +527,27 @@ describe("WrapSVR", function () {
 
             await deposit(user, amount);
 
-            let balanceBeforeLiquidation = await balancerLP.balanceOf(ownerAddr);
+
+            let balanceBeforeLiquidation = await balancerLP.balanceOf(userAddr);
+
+            let userSVRBalance = await wrapper.balanceOf(userAddr);
+            wrapper.connect(user).transfer(ownerAddr, userSVRBalance)
 
             expect(
                 await underlyingToken.balanceOf(userAddr)
             ).to.be.eq(0);
 
-
+            // "owner" account liquidated "user" account for amount paying fee in underlying
             await underlyingToken.connect(owner).approve(wrapper.address, amount.mul(10));
 
             await expect(
-                wrapper.connect(owner).liquidate(userAddr, balancerLP.address, amount)
-            ).to.not.be.reverted
+                wrapper.connect(user).liquidate(
+                    ownerAddr, 
+                    underlyingToken.address, 
+                    userAddr, 
+                    amount
+                )
+            )
             
             // stake was removed
             expect(await wrapper.balanceLocked(userAddr)).to.be.eq(0);
@@ -550,11 +555,11 @@ describe("WrapSVR", function () {
             //fee was transferred
             expect(
                 await underlyingToken.balanceOf(userAddr)
-            ).to.be.eq(amount.mul(100000).div(1000000));
+            ).to.be.eq(amount.mul(100000).div(1000000));//10% of amount was transferred
             
-            // lp tokens where received
+            // lp tokens where received by who called the liquidate method
             expect(
-                await balancerLP.balanceOf(ownerAddr)
+                await balancerLP.balanceOf(userAddr)
             ).to.be.eq(balanceBeforeLiquidation.add(amount));
         })
     })
@@ -662,47 +667,40 @@ describe("WrapSVR", function () {
 
         it("multiple users deposit", async function () {
             await setTime(getCurrentUnix() + 15);
-            await deposit(owner, amount);
+            await deposit(user, amount);
+            await deposit(user, amount);
             await deposit(user, amount);
 
-            expect(await getEpochPoolSize(1)).to.be.equal(amount.mul(2).toString());
-            expect(await getEpochUserBalance(ownerAddr, 1)).to.be.equal(amount.toString());
-            expect(await getEpochUserBalance(userAddr, 1)).to.be.equal(amount.toString());
+            expect(await getEpochPoolSize(1)).to.be.equal(amount.mul(3).toString());
+            expect(await getEpochUserBalance(userAddr, 1)).to.be.equal(amount.mul(3).toString());
         });
 
         it("multiple users deposit epoch 0 then 1 withdraw epoch 1", async function () {
             await setTime(getCurrentUnix() + 15);
-            await deposit(owner, amount);
             await deposit(user, amount);
 
-            expect(await getEpochPoolSize(1)).to.be.equal(amount.mul(2).toString());
-            expect(await getEpochUserBalance(ownerAddr, 1)).to.be.equal(amount.toString());
+            expect(await getEpochPoolSize(1)).to.be.equal(amount.toString());
             expect(await getEpochUserBalance(userAddr, 1)).to.be.equal(amount.toString());
 
             await moveAtEpoch(epochStart, epochDuration, 1);
             await withdraw(user, amount);
 
-            expect(await getEpochPoolSize(1)).to.be.equal(amount.toString());
-            expect(await getEpochUserBalance(ownerAddr, 1)).to.be.equal(amount.toString());
+            expect(await getEpochPoolSize(1)).to.be.equal("0");
             expect(await getEpochUserBalance(userAddr, 1)).to.be.equal("0");
         });
 
         it("multiple users deposit epoch 0 then 1 withdraw epoch 2", async function () {
             await setTime(getCurrentUnix() + 15);
-            await deposit(owner, amount);
             await deposit(user, amount);
 
-            expect(await getEpochPoolSize(1)).to.be.equal(amount.mul(2).toString());
-            expect(await getEpochUserBalance(ownerAddr, 1)).to.be.equal(amount.toString());
+            expect(await getEpochPoolSize(1)).to.be.equal(amount.toString());
             expect(await getEpochUserBalance(userAddr, 1)).to.be.equal(amount.toString());
 
             await moveAtEpoch(epochStart, epochDuration, 2);
             await withdraw(user, amount);
 
-            expect(await getEpochPoolSize(1)).to.be.equal(amount.mul(2).toString());
-            expect(await getEpochPoolSize(2)).to.be.equal(amount.toString());
-            expect(await getEpochUserBalance(ownerAddr, 1)).to.be.equal(amount.toString());
-            expect(await getEpochUserBalance(ownerAddr, 2)).to.be.equal(amount.toString());
+            expect(await getEpochPoolSize(1)).to.be.equal(amount.toString());
+            expect(await getEpochPoolSize(2)).to.be.equal("0");
             expect(await getEpochUserBalance(userAddr, 1)).to.be.equal(amount.toString());
             expect(await getEpochUserBalance(userAddr, 2)).to.be.equal("0");
             expect(await getEpochUserBalance(userAddr, 3)).to.be.equal("0");
@@ -908,26 +906,6 @@ describe("WrapSVR", function () {
                 wrapper.connect(user).emergencyWithdraw()
             ).to.be.revertedWith("At least 10 epochs must pass without success");
         });
-
-        it("Reverts if user has balance, more than 10 epochs passed but somebody else did a withdraw",
-            async function () {
-                await deposit(user, amount);
-                await deposit(owner, amount);
-
-                await moveAtEpoch(epochStart, epochDuration, 5);
-                await wrapper.initEpochForTokens(2);
-                await wrapper.initEpochForTokens(3);
-                await wrapper.initEpochForTokens(4);
-
-                await withdraw(owner, amount);
-
-                await moveAtEpoch(epochStart, epochDuration, 11);
-
-                await expect(
-                    wrapper.connect(user).emergencyWithdraw()
-                ).to.be.revertedWith("At least 10 epochs must pass without success");
-            }
-        );
 
         it("Works if more than 10 epochs passed with no withdraw", async function () {
             await deposit(user, amount);
