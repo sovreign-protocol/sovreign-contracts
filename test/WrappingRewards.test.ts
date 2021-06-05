@@ -5,7 +5,7 @@ import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
 import { 
         RewardsVault, ERC20Mock, WrapSVR, WrappingRewards, 
-        RouterMock, ReignBalancerMock,
+        SmartPoolMock, ReignBalancerMock,
         BasketBalancerMock, EpochClockMock, PoolRouter
     } from "../typechain";
 
@@ -13,8 +13,8 @@ describe("Wrapping Rewards", function () {
     let wrapper: WrapSVR;
     let reignToken: ERC20Mock;
     let underlyingToken: ERC20Mock;
-    let balancerLP: ERC20Mock;
-    let router:RouterMock;
+    let smartPool:SmartPoolMock;
+    let router:PoolRouter;
     let wrappingRewards: WrappingRewards;
     let basketBalancer: BasketBalancerMock;
     let rewardsVault: RewardsVault;
@@ -41,19 +41,19 @@ describe("Wrapping Rewards", function () {
 
         reignToken = (await deployContract("ERC20Mock")) as ERC20Mock;
         underlyingToken = (await deployContract("ERC20Mock")) as ERC20Mock;
-        balancerLP = (await deployContract("ERC20Mock")) as ERC20Mock;
 
         reignMock = (await deployContract("ReignBalancerMock")) as ReignBalancerMock;
         basketBalancer = (await deployContract("BasketBalancerMock", [[],[],await reignMock.address])) as BasketBalancerMock;
         
         wrapper = (await deployContract("WrapSVR", [])) as WrapSVR;
     
-        router = (await deployContract("RouterMock", [balancerLP.address, wrapper.address])) as RouterMock;
+        smartPool = (await deployContract("SmartPoolMock",)) as SmartPoolMock;
+        router = (await deployContract("PoolRouter", [smartPool.address, wrapper.address])) as PoolRouter;
 
         await wrapper.initialize(
             epochClock.address,  
             await creator.getAddress(), 
-            balancerLP.address,
+            smartPool.address,
             await router.address
         )
 
@@ -62,7 +62,7 @@ describe("Wrapping Rewards", function () {
 
         wrappingRewards = (await deployContract("WrappingRewards", [
             reignToken.address,
-            balancerLP.address,
+            smartPool.address,
             basketBalancer.address,
             wrapper.address,
             rewardsVault.address
@@ -168,6 +168,12 @@ describe("Wrapping Rewards", function () {
             await moveAtTimestamp(epochStart)
             await moveAtEpoch(epochStart, epochDuration, 3)
             await wrappingRewards.connect(user).harvest(1)
+            expect(await reignToken.balanceOf(await user.getAddress())).to.equal(0)
+        })
+        it('it should massHarvest 0 if no deposit in an epoch', async function () {
+            await moveAtTimestamp(epochStart)
+            await moveAtEpoch(epochStart, epochDuration, 3)
+            await wrappingRewards.connect(user).massHarvest()
             expect(await reignToken.balanceOf(await user.getAddress())).to.equal(0)
         })
         it('harvests rewards for user only once', async function () {

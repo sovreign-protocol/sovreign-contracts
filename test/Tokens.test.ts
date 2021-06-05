@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import * as helpers from './helpers/helpers';
 
 import { 
-    PoolControllerMock,ReignToken
+    ReignToken
 } from '../typechain';
 import * as deploy from './helpers/deploy';
 import { prependOnceListener } from 'process';
@@ -16,16 +16,9 @@ describe('Token', function () {
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
 
-    let controller: PoolControllerMock;
-
 
     before(async function () {
         await setupSigners();
-
-        controller = (await deploy.deployContract('PoolControllerMock', 
-                [helpers.zeroAddress, helpers.zeroAddress]
-            )) as PoolControllerMock;
-   
     });
 
     beforeEach(async function() {

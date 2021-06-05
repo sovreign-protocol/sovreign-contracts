@@ -164,7 +164,7 @@ contract WrappingRewards {
     // gets the total amount of rewards accrued to a pool during an epoch
     function getRewardsForEpoch(uint128 epochId) public view returns (uint256) {
         uint256 epochRewards =
-            LibRewardsDistribution.poolRewardsPerEpochTotal(epochStart);
+            LibRewardsDistribution.wrappingRewardsPerEpochTotal(epochStart);
         return epochRewards;
     }
 

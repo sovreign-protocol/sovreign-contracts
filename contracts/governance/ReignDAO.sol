@@ -94,8 +94,6 @@ contract ReignDAO is Bridge {
     bool isInitialized;
     bool public isActive;
 
-    address smartPool;
-
     event ProposalCreated(uint256 indexed proposalId);
     event Vote(
         uint256 indexed proposalId,
@@ -140,7 +138,7 @@ contract ReignDAO is Bridge {
 
         reign = IReign(_reignAddr);
         basketBalancer = IBasketBalancer(_basketBalancer);
-        smartPool = _smartPool;
+        setSmartPoolInitial(_smartPool);
         isInitialized = true;
     }
 
@@ -173,8 +171,8 @@ contract ReignDAO is Bridge {
             weights[i] = basketBalancer.getTargetAllocation(pools[i]);
         }
 
-        //update weights graduall in smartPool
-        updateWeights(smartPool, weights);
+        //update weights gradually in smartPool
+        updateWeights(weights);
     }
 
     function propose(

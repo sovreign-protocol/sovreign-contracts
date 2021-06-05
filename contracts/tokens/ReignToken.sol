@@ -2,7 +2,6 @@
 pragma solidity 0.7.6;
 
 import "../interfaces/IERC20.sol";
-import "../interfaces/IPoolController.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract ReignToken is IERC20 {

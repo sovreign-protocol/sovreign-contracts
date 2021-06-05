@@ -38,16 +38,8 @@ abstract contract Bridge is Parameters {
         bytes memory data,
         uint256 eta
     ) internal returns (bytes memory) {
+        // reignDAO.execute already checks that the proposal is in grace period
         bytes32 txHash = _getTxHash(target, value, signature, data, eta);
-
-        require(
-            block.timestamp >= eta,
-            "executeTransaction: Transaction hasn't surpassed time lock."
-        );
-        require(
-            block.timestamp <= eta + gracePeriodDuration,
-            "executeTransaction: Transaction is stale."
-        );
 
         queuedTransactions[txHash] = false;
 
@@ -70,8 +62,8 @@ abstract contract Bridge is Parameters {
         return returnData;
     }
 
-    function updateWeights(address target, uint256[] memory weights) internal {
-        ISmartPool(target).updateWeightsGradually(
+    function updateWeights(uint256[] memory weights) internal {
+        ISmartPool(smartPool).updateWeightsGradually(
             weights,
             block.number,
             block.number + gradualWeightUpdate // plus 2 days

@@ -4,11 +4,11 @@ pragma solidity 0.7.6;
 import "../interfaces/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-abstract contract PoolErc20 is IERC20 {
+abstract contract SvrToken is IERC20 {
     using SafeMath for uint256;
 
-    string public constant override name = "SoVReign Pool";
-    string public constant override symbol = "SVR-LP";
+    string public constant override name = "Store Of Value Reserve Token";
+    string public constant override symbol = "SVR";
     uint8 public override decimals = 18;
     uint256 public override totalSupply = 0;
     mapping(address => uint256) public override balanceOf;

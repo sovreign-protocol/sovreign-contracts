@@ -5,9 +5,9 @@ pragma solidity ^0.7.6;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/IEpochClock.sol";
-import "../pool/PoolErc20.sol";
+import "../tokens/SvrToken.sol";
 
-contract WrapSVR is PoolErc20, ReentrancyGuard {
+contract WrapSVR is SvrToken, ReentrancyGuard {
     using SafeMath for uint256;
 
     uint128 private constant BASE_MULTIPLIER = uint128(1 * 10**18);
@@ -229,33 +229,15 @@ contract WrapSVR is PoolErc20, ReentrancyGuard {
 
     function liquidate(
         address liquidator,
-        address tokenOut,
         address lpOwner,
         uint256 amount
     ) public nonReentrant {
         require(msg.sender == poolRouter, "Only Router can do this");
 
-        // liquidation fee is paid in tokenOut tokens, it is set by lpOwner at deposit
-        uint256 liquidationFeeAmount =
-            amount.mul(liquidationFee[lpOwner]).div(1000000);
-
-        require(
-            IERC20(tokenOut).allowance(liquidator, address(this)) >=
-                liquidationFeeAmount,
-            "Insuffiecient allowance for liquidation Fee"
-        );
-
-        // transfer liquidation fee from liquidator to original owner
-        IERC20(tokenOut).transferFrom(
-            liquidator,
-            lpOwner,
-            liquidationFeeAmount
-        );
-
         // burn liquidators SVR and withdraw lpOwnser's tokens to router
         _withdraw(liquidator, lpOwner, amount);
 
-        emit Liquidate(liquidator, lpOwner, liquidationFeeAmount, amount);
+        emit Liquidate(liquidator, lpOwner, liquidationFee[lpOwner], amount);
     }
 
     function withdraw(

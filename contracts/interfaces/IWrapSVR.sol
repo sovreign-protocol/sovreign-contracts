@@ -16,10 +16,11 @@ interface IWrapSVR {
 
     function liquidate(
         address liquidator,
-        address tokenOut,
         address from,
         uint256 amount
     ) external;
+
+    function liquidationFee(address) external view returns (uint256);
 
     function getEpochId(uint256 timestamp) external view returns (uint256); // get epoch id
 

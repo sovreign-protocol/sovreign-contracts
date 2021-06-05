@@ -4,9 +4,7 @@ pragma solidity ^0.7.6;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "../interfaces/InterestStrategyInterface.sol";
 import "../interfaces/IEpochClock.sol";
-import "../interfaces/IPool.sol";
 
 contract Staking is ReentrancyGuard {
     using SafeMath for uint256;

@@ -1,13 +1,16 @@
 import { ethers } from 'hardhat';
 import { BigNumber, ethers as ejs, Signer } from 'ethers';
 import * as helpers from './helpers/governance-helpers';
-import { moveAtTimestamp } from './helpers/helpers';
+import { moveAtTimestamp, zeroAddress } from './helpers/helpers';
+import { deployContract } from "./helpers/deploy";
 import { expect } from 'chai';
-import {ReignDAOReignMock, ReignDAO} from '../typechain';
+import {ReignDAOReignMock, ReignDAO, BasketBalancerMock, SmartPoolMock} from '../typechain';
 
 describe('ReignDAO', function () {
 
     let reignDAO: ReignDAO, reign: ReignDAOReignMock;
+    let basketBalancer: BasketBalancerMock;
+    let smartPool: SmartPoolMock;
     let user: Signer, userAddress: string;
     let voter1: Signer, voter2: Signer, voter3: Signer;
     let snapshotId: any;
@@ -32,7 +35,17 @@ describe('ReignDAO', function () {
         await setupSigners();
         reign = await helpers.deployReign();
         reignDAO = await helpers.deployReignDAO();
-        await reignDAO.initialize(reign.address, helpers.ZERO_ADDRESS, helpers.ZERO_ADDRESS);
+
+        basketBalancer = (await deployContract("BasketBalancerMock", [
+            ["0x0000000000000000000000000000000000000001","0x0000000000000000000000000000000000000002"],
+            [20,80],
+            await reign.address]
+            )) as BasketBalancerMock;
+
+        smartPool = (await deployContract("SmartPoolMock")) as SmartPoolMock;
+        
+
+        await reignDAO.initialize(reign.address, basketBalancer.address, smartPool.address);
 
         warmUpDuration = (await reignDAO.warmUpDuration()).toNumber();
         activeDuration = (await reignDAO.activeDuration()).toNumber();
@@ -87,6 +100,13 @@ describe('ReignDAO', function () {
             expect(await reignDAO.isActive()).to.be.true;
         });
 
+        it('activates through weightUpdate when threshold is met', async function () {
+            await reign.setBondStaked(BigNumber.from(4000000).mul(helpers.tenPow18));
+            
+            await reignDAO.triggerWeightUpdate();
+            expect(await reignDAO.isActive()).to.be.true;
+        });
+
         it('reverts if already activated', async function () {
             await reign.setBondStaked(BigNumber.from(4000000).mul(helpers.tenPow18));
             await reignDAO.activate();
@@ -94,6 +114,21 @@ describe('ReignDAO', function () {
             await expect(reignDAO.activate()).to.be.revertedWith('DAO already active');
         });
     });
+
+    describe('updateWeights', function () {
+        it('calls', async function () {
+            await reign.setBondStaked(BigNumber.from(4000000).mul(helpers.tenPow18));
+            await reignDAO.activate();
+
+            await reignDAO.triggerWeightUpdate();
+
+            expect(await smartPool.calledWeightsUpdate()).to.be.eq(1)
+        });
+
+        it('reverts if smart pool is set through initial', async function () {
+            await expect(reignDAO.setSmartPoolInitial( reignDAO.address)).to.be.revertedWith("Can only initialize smartPool address once")
+        });
+    })
 
     describe('propose', function () {
         before(async function () {
@@ -507,14 +542,18 @@ describe('ReignDAO', function () {
                 reignDAO.address,
                 reignDAO.address,
                 reignDAO.address,
+                reignDAO.address,
+                reignDAO.address,
             ];
-            const values = [0, 0, 0, 0, 0, 0];
+            const values = [0, 0, 0, 0, 0, 0, 0, 0];
             const signatures = ['setWarmUpDuration(uint256)',
                 'setActiveDuration(uint256)',
                 'setQueueDuration(uint256)',
                 'setGracePeriodDuration(uint256)',
                 'setAcceptanceThreshold(uint256)',
                 'setMinQuorum(uint256)',
+                'setGradualWeightUpdate(uint256)',
+                'setSmartPoolAddress(address)',
             ];
 
             const period = (await reignDAO.gracePeriodDuration()).toNumber() * 25;
@@ -525,6 +564,8 @@ describe('ReignDAO', function () {
                 ejs.utils.defaultAbiCoder.encode(['uint256'], [period]),
                 ejs.utils.defaultAbiCoder.encode(['uint256'], [51]),
                 ejs.utils.defaultAbiCoder.encode(['uint256'], [51]),
+                ejs.utils.defaultAbiCoder.encode(['uint256'], [51]),
+                ejs.utils.defaultAbiCoder.encode(['address'], [zeroAddress]),
             ];
 
             await reignDAO.connect(user)
@@ -554,6 +595,8 @@ describe('ReignDAO', function () {
             expect(await reignDAO.gracePeriodDuration()).to.be.equal(period);
             expect(await reignDAO.acceptanceThreshold()).to.be.equal(51);
             expect(await reignDAO.minQuorum()).to.be.equal(51);
+            expect(await reignDAO.gradualWeightUpdate()).to.be.equal(51);
+            expect(await reignDAO.smartPool()).to.be.equal(zeroAddress);
         });
 
         it('proposer cancel proposal', async function () {

@@ -3,11 +3,11 @@ import { BigNumber, BigNumberish, Signer } from "ethers";
 import { moveAtEpoch, setTime, tenPow18, getCurrentUnix } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
-import { PoolErc20Mock, ERC20Mock, Staking, EpochClockMock } from "../typechain";
+import { ERC20Mock, Staking, EpochClockMock } from "../typechain";
 
 describe("Staking", function () {
     let staking: Staking;
-    let erc20Mock: PoolErc20Mock;
+    let erc20Mock: ERC20Mock;
     let underlyingToken: ERC20Mock;
     let creator: Signer, owner: Signer, user: Signer;
     let ownerAddr: string, userAddr: string;
@@ -40,7 +40,7 @@ describe("Staking", function () {
         underlyingToken = (await deployContract("ERC20Mock")) as ERC20Mock;
 
 
-        erc20Mock = (await deployContract("PoolErc20Mock", [underlyingToken.address])) as PoolErc20Mock;
+        erc20Mock = (await deployContract("ERC20Mock")) as ERC20Mock;
 
         
     });

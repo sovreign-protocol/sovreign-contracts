@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import { BigNumber, BigNumberish, Signer } from "ethers";
-import { moveAtEpoch, setTime, tenPow18, getCurrentUnix } from "./helpers/helpers";
+import { moveAtEpoch, setTime, tenPow18, getCurrentUnix, zeroAddress } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
 import { ERC20Mock, WrapSVR, EpochClockMock } from "../typechain";
@@ -59,61 +59,11 @@ describe("WrapSVR", function () {
         await ethers.provider.send("evm_revert", [snapshotId]);
     });
 
-    /*
 
-    describe('ERC-20', async function () {
-
-        it('transfers amounts correctly', async function () {
-            await depositToPool(100000,pool)
-            let transfers = BigNumber.from(10)
-            await pool.connect(user).transfer(newUserAddr,transfers);
-            expect(await pool.balanceOf(newUserAddr)).to.be.eq(transfers)
-        })
-
-        it('reverts if transfers more then balance', async function () {
-            await depositToPool(100000,pool)
-            let transfers = (await pool.balanceOf(userAddress)).add(1000)
-            await expect(
-                pool.connect(user).transfer(newUserAddr,transfers)
-            ).to.be.revertedWith("SafeMath: subtraction overflow")
-        })
-
-        it('set allowance amounts correctly', async function () {
-            await depositToPool(100000,pool)
-            let allow = BigNumber.from(10)
-            await pool.connect(user).approve(newUserAddr,allow);
-            expect(await pool.allowance(userAddress,newUserAddr)).to.be.eq(allow)
-        })
-
-        it('makes TransferFrom correctly', async function () {
-            await depositToPool(100000,pool)
-            let allow = BigNumber.from(10)
-            await pool.connect(user).approve(newUserAddr,allow);
-            await pool.connect(newUser).transferFrom(userAddress,happyPirateAddress, allow);
-            expect(await pool.balanceOf(happyPirateAddress)).to.be.eq(allow);
-        })
-
-        it('reverts if transferFrom is above allowance', async function () {
-            await depositToPool(100000,pool)
-            let allow = BigNumber.from(10)
-            await pool.connect(user).approve(newUserAddr,allow);
-            await expect(
-                pool.connect(user).transferFrom(userAddress,happyPirateAddress,allow.add(1))
-            ).to.be.revertedWith("SafeMath: subtraction overflow")
-        })
-
-        it('TransferFrom reduces allowance', async function () {
-            await depositToPool(100000,pool)
-            let allow = BigNumber.from(10)
-            await pool.connect(user).approve(newUserAddr,allow);
-            await pool.connect(newUser).transferFrom(userAddress,happyPirateAddress, allow.sub(5));
-            expect(await pool.allowance(userAddress,newUserAddr)).to.be.eq(allow.sub(5))
-        })
-    })
-    */
+    
 
 
-    describe("Deposit", function () {
+    describe("General", function () {
         it("Can deploy successfully", async function () {
             expect(wrapper.address).to.not.equal(0);
         });
@@ -130,6 +80,56 @@ describe("WrapSVR", function () {
         });
     })
 
+    describe('ERC-20', async function () {
+
+        it('transfers amounts correctly', async function () {
+            await deposit(user, amount)
+            let transfers = BigNumber.from(10)
+            await wrapper.connect(user).transfer(newUserAddr,transfers);
+            expect(await wrapper.balanceOf(newUserAddr)).to.be.eq(transfers)
+        })
+
+        it('reverts if transfers more then balance', async function () {
+            await deposit(user, amount)
+            let transfers = (await wrapper.balanceOf(userAddr)).add(1000)
+            await expect(
+                wrapper.connect(user).transfer(newUserAddr,transfers)
+            ).to.be.revertedWith("SafeMath: subtraction overflow")
+        })
+
+        it('set allowance amounts correctly', async function () {
+            await deposit(user, amount)
+            let allow = BigNumber.from(10)
+            await wrapper.connect(user).approve(newUserAddr,allow);
+            expect(await wrapper.allowance(userAddr,newUserAddr)).to.be.eq(allow)
+        })
+
+        it('makes TransferFrom correctly', async function () {
+            await deposit(user, amount)
+            let allow = BigNumber.from(10)
+            await wrapper.connect(user).approve(newUserAddr,allow);
+            await wrapper.connect(newUser).transferFrom(userAddr,newUserAddr, allow);
+            expect(await wrapper.balanceOf(newUserAddr)).to.be.eq(allow);
+        })
+
+        it('reverts if transferFrom is above allowance', async function () {
+            await deposit(user, amount)
+            let allow = BigNumber.from(10)
+            await wrapper.connect(user).approve(newUserAddr,allow);
+            await expect(
+                wrapper.connect(user).transferFrom(userAddr,newUserAddr,allow.add(1))
+            ).to.be.revertedWith("SafeMath: subtraction overflow")
+        })
+
+        it('TransferFrom reduces allowance', async function () {
+            await deposit(user, amount)
+            let allow = BigNumber.from(10)
+            await wrapper.connect(user).approve(newUserAddr,allow);
+            await wrapper.connect(newUser).transferFrom(userAddr,newUserAddr, allow.sub(5));
+            expect(await wrapper.allowance(userAddr,newUserAddr)).to.be.eq(allow.sub(5))
+        })
+    })
+
     describe("Deposit", function () {
         it("If deposit is 0 just set liquidation fee", async function () {
             await expect(
@@ -139,6 +139,19 @@ describe("WrapSVR", function () {
             expect( await wrapper.liquidationFee(userAddr)).to.be.eq(liquidationFee)
             expect( await wrapper.balanceLocked(userAddr)).to.be.eq(0)
             expect( await wrapper.epoch1Start()).to.be.eq(epochStart)
+        });
+        
+        it("reverts if user sets liquidation fee above max", async function () {
+            await expect(
+                wrapper.connect(user).deposit(userAddr, 0, 200000)
+            ).to.be.revertedWith("Liquidation fee above max value")
+        })
+
+        it("Can not deposit if is not Router", async function () {
+            await expect(
+                wrapper.connect(owner).deposit(ownerAddr, 0, 100000)
+            ).to.be.revertedWith("Only Router can do this");
+
         });
 
         it("Reverts if amount > allowance", async function () {
@@ -346,6 +359,24 @@ describe("WrapSVR", function () {
             ).to.be.revertedWith("Wrapper: balance too small");
         });
 
+        it("Can not withdraw if is not Router", async function () {
+            await expect(
+                wrapper.connect(owner).withdraw(ownerAddr,ownerAddr, amount)
+            ).to.be.revertedWith("Only Router can do this");
+        });
+
+        it("Can not withdraw if has not necessary SVRs", async function () {
+            await balancerLP.mint(userAddr, amount);
+            await balancerLP.connect(user).approve(wrapper.address, amount);
+            await wrapper.connect(user).deposit(userAddr, amount,100000);
+
+            await wrapper.connect(user).transfer(zeroAddress, amount);
+
+            await expect(
+                wrapper.connect(user).withdraw(userAddr,userAddr, amount)
+            ).to.be.revertedWith("Insuffiecient SVR Balance");
+        });
+
         it("Sets the balance of the user to 0", async function () {
             // set-up the balance sheet
             await balancerLP.mint(userAddr, amount);
@@ -488,10 +519,13 @@ describe("WrapSVR", function () {
     describe("Liquidation", function () {
         beforeEach(async function () {
             await balancerLP.mint(userAddr, amount.mul(10));
-            await balancerLP.mint(ownerAddr, amount.mul(10));
-            await underlyingToken.mint(ownerAddr, amount.mul(10));
             await balancerLP.connect(user).approve(wrapper.address, amount.mul(10));
-            await balancerLP.connect(owner).approve(wrapper.address, amount.mul(10));
+        });
+
+        it("Can not liquidate if is not Router", async function () {
+            await expect(
+                wrapper.connect(owner).liquidate(ownerAddr, ownerAddr, amount)
+            ).to.be.revertedWith("Only Router can do this");
         });
 
         it("allows user to set liquidation fee", async function () {
@@ -533,29 +567,17 @@ describe("WrapSVR", function () {
             let userSVRBalance = await wrapper.balanceOf(userAddr);
             wrapper.connect(user).transfer(ownerAddr, userSVRBalance)
 
-            expect(
-                await underlyingToken.balanceOf(userAddr)
-            ).to.be.eq(0);
-
-            // "owner" account liquidated "user" account for amount paying fee in underlying
-            await underlyingToken.connect(owner).approve(wrapper.address, amount.mul(10));
 
             await expect(
                 wrapper.connect(user).liquidate(
                     ownerAddr, 
-                    underlyingToken.address, 
                     userAddr, 
                     amount
                 )
-            )
+            ).to.not.be.reverted;
             
             // stake was removed
             expect(await wrapper.balanceLocked(userAddr)).to.be.eq(0);
-
-            //fee was transferred
-            expect(
-                await underlyingToken.balanceOf(userAddr)
-            ).to.be.eq(amount.mul(100000).div(1000000));//10% of amount was transferred
             
             // lp tokens where received by who called the liquidate method
             expect(
@@ -994,6 +1016,7 @@ describe("WrapSVR", function () {
     
 
     async function deposit(u: Signer, x: BigNumber) {
+        await balancerLP.connect(u).approve(wrapper.address, x);
         return await wrapper.connect(u).deposit(userAddr, x, 100000);
     }
 
