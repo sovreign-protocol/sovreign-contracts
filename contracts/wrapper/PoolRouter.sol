@@ -3,9 +3,8 @@ pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/ISmartPool.sol";
 import "../interfaces/IWrapSVR.sol";
+import "../interfaces/ISmartPool.sol";
 
 contract PoolRouter {
     using SafeMath for uint256;

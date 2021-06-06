@@ -4,12 +4,11 @@ import * as deploy from "../../test/helpers/deploy";
 
 import {
     GovRewards, 
-    LiquidityBufferVault,
     ReignDAO,
     Staking,
     LPRewards,
     ReignToken,
-    SvrToken,
+    WrapSVR,
     RewardsVault,
     LibRewardsDistribution,
 } from "../../typechain";
@@ -23,14 +22,14 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
 
     console.log(`\n --- DEPLOY TOKENS ---`);
 
-    const usdc = c.usdc as Contract;
+    const dai = c.dai as Contract;
     const reignDiamond = c.reignDiamond as Contract;
     const reignDAO = c.reignDAO as ReignDAO;
     const uniswapFactory = c.uniswapFactory as Contract;
 
+
     const tokenDistribution = await deploy.deployContract('LibRewardsDistribution' ) as LibRewardsDistribution;
    
-
     ///////////////////////////
     // Deploy "ReignToken" contract:
     ///////////////////////////
@@ -38,12 +37,14 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     c.reignToken = reignToken;
     console.log(`ReignToken deployed at: ${reignToken.address.toLowerCase()}`);
 
+
     ///////////////////////////
-    // Deploy "SVR Token" contract:
+    // Deploy "WrapSVR" contract:
     ///////////////////////////
-    const svrToken = await deploy.deployContract('SvrToken', [c.sovReignOwnerAddr]) as SvrToken;
-    c.svrToken = svrToken;
-    console.log(`SvrToken deployed at: ${svrToken.address.toLowerCase()}`);
+    const wrapSVR = await deploy.deployContract('WrapSVR') as WrapSVR;
+    c.wrapSVR = wrapSVR;
+    console.log(`WrapSVR deployed at: ${wrapSVR.address.toLowerCase()}`);
+
 
 
     console.log(`\n --- DEPLOY VAULTS ---`);
@@ -69,12 +70,6 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     c.treasurySaleVault = treasurySaleVault;
     console.log(`Treasury Sale Vault deployed at: ${treasurySaleVault.address.toLowerCase()}`);
 
-    ///////////////////////////
-    // Deploy "LiquidityBufferVault" contract:
-    ///////////////////////////
-    const liquidityBufferVault = await deploy.deployContract('LiquidityBufferVault', [reignToken.address]) as LiquidityBufferVault;
-    c.liquidityBufferVault = liquidityBufferVault;
-    console.log(`LiquidityBufferVault deployed at: ${liquidityBufferVault.address.toLowerCase()}`);
 
 
     console.log(`\n --- DISTRIBUTE REIGN ---`);
@@ -94,7 +89,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     console.log(`ReignToken minted: '${teamAllocation.div(6).toString()}' to addr '${c.user3Addr.toLowerCase()}' (User3 address)`);
    
     // Rewards Vault
-    const poolRewardAllocation = await tokenDistribution.POOL_TOKENS()
+    const poolRewardAllocation = await tokenDistribution.WRAPPING_TOKENS()
     await reignToken.connect(c.sovReignOwnerAcct).mint(rewardsVault.address, poolRewardAllocation)
     console.log(`ReignToken minted: '${poolRewardAllocation.toString()}' to addr '${rewardsVault.address.toLowerCase()}' (RewardsVault contract)`);
     
@@ -123,22 +118,8 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     await reignToken.connect(c.sovReignOwnerAcct).mint(treasurySaleVault.address, treasurySaleAllocation)
     console.log(`ReignToken minted: '${treasurySaleAllocation.toString()}' to addr '${treasurySaleVault.address.toLowerCase()}' (TreasurySale contract)`);
 
-    // Liquidity Buffer 
-    const liquidityBufferAllocation = await tokenDistribution.LIQUIDITY_BUFFER()
-    await reignToken.connect(c.sovReignOwnerAcct).mint(liquidityBufferVault.address, liquidityBufferAllocation)
-    console.log(`ReignToken minted: '${liquidityBufferAllocation.toString()}' to addr '${liquidityBufferVault.address.toLowerCase()}' (LiquidityBuffer contract)`);
-    
-
 
     console.log(`\n --- DEPLOY UNISWAP POOLS ---`);
-
-    ///////////////////////////
-    // Create a pair for SVR/USDC
-    ///////////////////////////
-    tx = await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(svrToken.address, usdc.address)
-    await tx.wait()
-    let svrPairAddress = await  uniswapFactory.getPair(svrToken.address, usdc.address)
-    console.log(`Deployed a Uniswap pair for SVR/USDC: '${ svrPairAddress}'`);
 
 
     ///////////////////////////
@@ -148,6 +129,15 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     await tx.wait()
     let reignPairAddress = await  uniswapFactory.getPair(reignToken.address, c.wethAddr)
     console.log(`Deployed a Uniswap pair for REIGN/WETH: '${ reignPairAddress}'`);
+
+
+    ///////////////////////////
+    // Create a pair for SVR/USDC
+    ///////////////////////////
+    tx = await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(wrapSVR.address, c.usdcAddr)
+    await tx.wait()
+    let svrPairAddress = await  uniswapFactory.getPair(wrapSVR.address, c.daiAddr)
+    console.log(`Deployed a Uniswap pair for SVR/USDC: '${ svrPairAddress}'`);
     
 
     console.log(`\n --- PREPARE REWARDS  ---`);
@@ -160,7 +150,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Staking contract deployed at: ${staking.address}`);
 
     ///////////////////////////
-    // Deploy "LPRewards" contract for SVR/USDC:
+    // Deploy "LPRewards" contract for SVR/dai:
     ///////////////////////////
     const svrLpRewards = (await deploy.deployContract('LPRewards', 
         [
@@ -169,7 +159,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
             staking.address,  
             rewardsVault.address, 
             lpRewardAllocation.div(2)])) as LPRewards;
-    console.log(`LPRewards for Uniswap SVR/USDC LP deployed at: ${svrLpRewards.address}`);
+    console.log(`LPRewards for Uniswap SVR/dai LP deployed at: ${svrLpRewards.address}`);
     c.svrLpRewards = svrLpRewards
 
     ///////////////////////////

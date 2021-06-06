@@ -2,19 +2,16 @@ import {DeployConfig} from "../config";
 import {BigNumber, Contract} from "ethers";
 
 import {hour} from "../../test/helpers/time";
-import {deployOracle} from "../../test/helpers/oracles";
 import {increaseBlockTime, tenPow18, tenPow6, waitFor} from "../../test/helpers/helpers";
 import * as deploy from "../../test/helpers/deploy";
 
 import {
     GovRewards, 
-    LiquidityBufferVault,
     ReignDAO,
     Staking,
     LPRewards,
     ReignToken,
-    UniswapPairOracle,
-    SvrToken,
+    WrapSVR,
     RewardsVault,
     LibRewardsDistribution,
 } from "../../typechain";

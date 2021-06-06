@@ -3,18 +3,19 @@ import * as deploy from "../../test/helpers/deploy";
 import {
     BasketBalancer,
     ERC20,
-    LiquidityBufferVault,
-    PoolController,
     ReignDAO,
     ReignToken,
-    SvrToken,
-    OracleREIGNUSD,
-    OracleETHUSD
+    WrapSVR,
+    
 } from "../../typechain";
-import {Contract} from "ethers";
+import {BigNumber, Contract, ethers as ejs} from "ethers";
 import {day} from "../../test/helpers/time";
-import {deployOracle} from "../../test/helpers/oracles";
-import {increaseBlockTime} from "../../test/helpers/helpers";
+import {increaseBlockTime, tenPow18} from "../../test/helpers/helpers";
+
+
+import SmartPool from "./ContractABIs/SmartPool.json"
+
+import bFactory from "./ContractABIs/bFactory.json"
 
 
 
@@ -25,38 +26,12 @@ export async function controllerSetup(c: DeployConfig): Promise<DeployConfig> {
 
     const reignDiamond = c.reignDiamond as Contract;
     const reignDAO = c.reignDAO as ReignDAO;
-    const svrToken = c.svrToken as SvrToken;
+    const wrapSVR = c.wrapSVR as WrapSVR;
     const weth = c.weth as ERC20;
+    const wbtc = c.wbtc as ERC20;
     const usdc = c.usdc as ERC20;
     const reignToken = c.reignToken as ReignToken;
-    //const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
-    const liquidityBufferVault = c.liquidityBufferVault as LiquidityBufferVault;
-    
-
-    ///////////////////////////
-    // Deploy an Oracle for the REIGN/USD Pair
-    ///////////////////////////
-    let wethOracle =  await deploy.deployContract("Oracle_ETH_USD",
-    [
-        c.wethChainlinkOracle,
-        reignDAO.address,
-
-    ]
-    ) as OracleETHUSD
-
-    
-    let reignTokenOracle = await deploy.deployContract("Oracle_REIGN_USD",
-    [
-        c.uniswapFactoryAddr,
-        reignToken.address,
-        weth.address,
-        reignDAO.address,
-        wethOracle.address
-    ]
-        ) as OracleREIGNUSD
-    c.reignTokenOracle = reignTokenOracle
-    console.log(`Deployed Oracle for for REIGN/USDC at: '${reignTokenOracle.address}'`);
-
+    const smartPoolFactory = c.smartPoolFactory as Contract;
 
     ///////////////////////////
     // Deploy "BasketBalancer" contract:
@@ -78,39 +53,75 @@ export async function controllerSetup(c: DeployConfig): Promise<DeployConfig> {
     console.log(`BasketBalancer deployed at: ${basketBalancer1.address.toLowerCase()}`);
 
 
+    weth.connect(c.user1Acct).transfer(c.sovReignOwnerAddr, BigNumber.from(10).mul(tenPow18))
+    wbtc.connect(c.user2Acct).transfer(c.sovReignOwnerAddr, 1000000)
+    usdc.connect(c.user3Acct).transfer(c.sovReignOwnerAddr, 10000000)
+
+     ///////////////////////////
+    // Connect to Balancer Pool Factory
     ///////////////////////////
-    // Deploy "PoolController" contract:
-    ///////////////////////////
-    const poolController = await deploy.deployContract(
-        'PoolController',
+    let factory = new Contract(
+        c.bFactoryAddr,
+        bFactory,
+        c.sovReignOwnerAcct 
+    )
+    
+    const callDatasParams = [
+                'SVRLP',
+                'SoVReign Pool LP',
+                [weth.address, wbtc.address, usdc.address],
+                [BigNumber.from(10).mul(tenPow18), 1000000, 10000000],
+                [10, 10, 10],
+                5000000000000000
+            ]
+        
+
+    const callDatasRights =
         [
-            basketBalancer1.address,
-            svrToken.address,
-            reignToken.address,
-            reignTokenOracle.address,
-            reignDAO.address,
-            reignDiamond.address,
-            liquidityBufferVault.address
+            true, false, true, true, true, false,
         ]
-    ) as PoolController;
-    c.poolController = poolController;
-    console.log(`PoolController deployed at: ${poolController.address.toLowerCase()}`);
+
+    
+
+    
+
+    let smartPoolAdd = await smartPoolFactory.connect(c.sovReignOwnerAcct).callStatic['newCrp'](
+        c.bFactoryAddr,
+        callDatasParams,
+        callDatasRights
+    )
+        
+    await smartPoolFactory.connect(c.sovReignOwnerAcct).newCrp(
+        c.bFactoryAddr,
+        callDatasParams,
+        callDatasRights
+    )
+
 
     ///////////////////////////
-    // Set Controller in "SvrToken"
+    // Connect to Balancer Pool Factory
     ///////////////////////////
-    // set controller to ReignDiamond:
-    await svrToken.connect(c.sovReignOwnerAcct).setController(poolController.address)
-    console.log(`SvrToken controller set: '${poolController.address.toLowerCase()}' (PoolController contract)`);
-
-    ///////////////////////////
-    // Set Controller in "BasketBalancer"
-    ///////////////////////////
-    // set controller to poolController:
-    await basketBalancer1.connect(c.sovReignOwnerAcct).setController(poolController.address)
-    console.log(`BasketBalancer controller set: '${poolController.address.toLowerCase()}' (PoolController contract)`);
+    let smartPool = new Contract(
+        smartPoolAdd,//0x3D7753c4526f8657e383a46dC41eC97414941a80
+        SmartPool,
+        c.sovReignOwnerAcct 
+    ) as ISmartPool;
+    c.smartPool = smartPool
+    console.log(`SmartPool  connected at '${smartPoolAdd}'`);
 
 
+    console.log((await smartPool.totalSupply()).toString())
+    
+    await weth.approve(smartPoolAdd, BigNumber.from(10000).mul(tenPow18));
+    await wbtc.approve(smartPoolAdd, BigNumber.from(10000).mul(tenPow18));
+    await usdc.approve(smartPoolAdd, BigNumber.from(10000).mul(tenPow18));
+
+    await smartPool.connect(c.sovReignOwnerAcct).createPool(BigNumber.from(100000).mul(tenPow18));
+
+    console.log((await smartPool.totalSupply()).toString())
+
+    
+    
 
 
     return c;

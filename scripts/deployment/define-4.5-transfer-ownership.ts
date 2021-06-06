@@ -1,7 +1,6 @@
 import {DeployConfig} from "../config";
 
 import {
-    LiquidityBufferVault,
     ReignDAO,
     ReignToken,
     RewardsVault,
@@ -16,7 +15,6 @@ export async function transferOwnership(c: DeployConfig): Promise<DeployConfig> 
     const rewardsVault = c.rewardsVault as RewardsVault;
     const devVault = c.devVault as RewardsVault;
     const treasurySaleVault = c.treasurySaleVault as RewardsVault;
-    const liquidityBufferVault = c.liquidityBufferVault as LiquidityBufferVault;
 
 
 
@@ -37,9 +35,6 @@ export async function transferOwnership(c: DeployConfig): Promise<DeployConfig> 
 
     await treasurySaleVault.connect(c.sovReignOwnerAcct).transferOwnership(reignDAO.address)
     console.log(`Treasury Sale Vault owner set: '${reignDAO.address.toLowerCase()}' (Reign DAO)`);
-
-    await liquidityBufferVault.connect(c.sovReignOwnerAcct).transferOwnership(reignDAO.address)
-    console.log(`Liquidity Buffer Vault owner set: '${reignDAO.address.toLowerCase()}' (Reign DAO)`);
 
 
 

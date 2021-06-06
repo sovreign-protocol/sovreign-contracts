@@ -7,18 +7,13 @@ import {day, hour, minute} from "../test/helpers/time";
 import {
     BasketBalancer,
     GovRewards,
-    LiquidityBufferVault,
     LPRewards,
-    Pool,
-    PoolController,
     ReignDAO,
     ReignToken,
     RewardsVault,
-    SvrToken,
     Staking,
-    OracleREIGNUSD,
-    ChainlinkOracleAdapter,
-    PoolRewards
+    WrapSVR,
+    PoolRouter,
 } from "../typechain";
 
 const REIGN_SUPPLY = BigNumber.from(1000000000).mul(helpers.tenPow18);
@@ -29,24 +24,27 @@ export async function deployConfig(): Promise<DeployConfig> {
     const user2Addr: string = '0xE3DD3914aB28bB552d41B8dFE607355DE4c37A51'; // WBTC whale
     const user3Addr:string = '0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8';// Binance
     const usdcAddr: string = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+    const daiAddr: string = '0x6b175474e89094c44da98b954eedeac495271d0f';
     const wbtcAddr: string = '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599';
     const wethAddr: string = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
+    const bFactoryAddr: string = '0x9424B1412450D0f8Fc2255FAf6046b98213B76Bd'; 
+    const smartPoolFactoryAddr: string = '0xed52D8E202401645eDAD1c0AA21e872498ce47D0'; 
     const uniswapFactoryAddr: string = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
     const uniswapRouterAddr: string = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
-    const btcChainlinkOracle: string = '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c';
-    const wethChainlinkOracle: string = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419';
+    
     return new DeployConfig(
         sovReignOwnerAddr,
         user1Addr,
         user2Addr,
         user3Addr,
         usdcAddr,
+        daiAddr,
         wbtcAddr,
         wethAddr,
         uniswapFactoryAddr,
         uniswapRouterAddr,
-        btcChainlinkOracle,
-        wethChainlinkOracle,
+        bFactoryAddr,
+        smartPoolFactoryAddr,
         await getAccount(sovReignOwnerAddr),
         await impersonateAccount(user1Addr),
         await impersonateAccount(user2Addr),
@@ -79,12 +77,13 @@ export class DeployConfig {
     public user2Addr: string;
     public user3Addr: string;
     public usdcAddr: string;
+    public daiAddr: string;
     public wbtcAddr: string;
     public wethAddr: string;
     public uniswapFactoryAddr: string;
     public uniswapRouterAddr: string;
-    public btcChainlinkOracle: string;
-    public wethChainlinkOracle:string;
+    public bFactoryAddr: string;
+    public smartPoolFactoryAddr: string;
     public sovReignOwnerAcct: SignerWithAddress;
     public user1Acct: Signer;
     public user2Acct: Signer;
@@ -103,29 +102,23 @@ export class DeployConfig {
     public rewardsVault?: RewardsVault;
     public devVault?: RewardsVault;
     public treasurySaleVault?: RewardsVault;
-    public liquidityBufferVault?: LiquidityBufferVault;
+    public dai?: Contract;
     public usdc?: Contract;
     public wbtc?: Contract;
     public weth?: Contract;
     public reignToken?: ReignToken;
-    public svrToken?: SvrToken;
     public govRewards?: GovRewards;
     public staking?: Staking;
     public svrLpRewards?: LPRewards;
     public reignLpRewards?: LPRewards;
     public reignDAO?: ReignDAO;
+    public wrapSVR?:WrapSVR;
+    public poolRouter?:PoolRouter;
     public basketBalancer?: BasketBalancer;
-    public poolController?: PoolController;
+    public smartPool?: Contract;
+    public smartPoolFactory?: Contract;
     public uniswapFactory?: Contract;
     public uniswapRouter?: Contract;
-    public reignTokenOracle?: OracleREIGNUSD;
-    public oracle1?: ChainlinkOracleAdapter;
-    public oracle2?: ChainlinkOracleAdapter;
-    public pool1?: Pool;
-    public pool2?: Pool;
-    public pool1Rewards?: PoolRewards;
-    public pool2Rewards?: PoolRewards;
-
     // Objects to carry context/scenario-specific data
     public scenario1?: any;
 
@@ -135,12 +128,13 @@ export class DeployConfig {
         user2Addr: string,
         user3Addr: string,
         usdcAddr: string,
+        daiAddr: string,
         wbtcAddr: string,
         wethAddr: string,
         uniswapFactoryAddr: string,
         uniswapRouterAddr: string,
-        btcChainlinkOracle: string,
-        wethChainlinkOracle: string,
+        bFactoryAddr:string,
+        smartPoolFactoryAddr: string,
         sovReignOwnerAcct: SignerWithAddress,
         user1Acct: Signer,
         user2Acct: Signer,
@@ -161,12 +155,13 @@ export class DeployConfig {
         this.user2Addr = user2Addr;
         this.user3Addr = user3Addr;
         this.usdcAddr = usdcAddr;
+        this.daiAddr = daiAddr;
         this.wbtcAddr = wbtcAddr;
         this.wethAddr = wethAddr;
         this.uniswapFactoryAddr = uniswapFactoryAddr;
         this.uniswapRouterAddr = uniswapRouterAddr;
-        this.btcChainlinkOracle = btcChainlinkOracle;
-        this.wethChainlinkOracle = wethChainlinkOracle;
+        this.bFactoryAddr = bFactoryAddr;
+        this.smartPoolFactoryAddr = smartPoolFactoryAddr;
         this.sovReignOwnerAcct = sovReignOwnerAcct;
         this.user1Acct = user1Acct;
         this.user2Acct = user2Acct;

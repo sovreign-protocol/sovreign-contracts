@@ -12,13 +12,13 @@ import {createRewards} from "./deployment/define-6-create-rewards";
 deployConfig()
     .then(c => contractsPreFlight(c))
     .then(c => deployDAO(c))
-    .then(c => tokenSetup(c))
-    .then(c => uniswapSetup(c))
+    //.then(c => tokenSetup(c))
+    //.then(c => uniswapSetup(c))
     .then(c => controllerSetup(c))
-    .then(c => activateSoVReign(c))
-    .then(c => transferOwnership(c))
-    .then(c => createPools(c))
-    .then(c => createRewards(c))
+    //.then(c => activateSoVReign(c))
+    //.then(c => transferOwnership(c))
+    //.then(c => createPools(c))
+    //.then(c => createRewards(c))
     .catch(error => {
         console.error(error);
         process.exit(1);

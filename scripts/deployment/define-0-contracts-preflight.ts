@@ -1,6 +1,7 @@
 import {DeployConfig} from "../config";
 import {Contract} from "ethers";
 
+import CRPFactory from "./ContractABIs/CRPFactory.json"
 import UniswapV2Factory from "./ContractABIs/UniswapV2Factory.json"
 import UniswapV2Router from "./ContractABIs/UniswapV2Router.json"
 import ERC20 from "./ContractABIs/ERC20.json"
@@ -10,6 +11,18 @@ export async function contractsPreFlight(c: DeployConfig): Promise<DeployConfig>
     console.log(`\n --- CONNECTING TO CONTRACTS ---`);
 
     ///////////////////////////
+    // Connect "dai" contract:
+    ///////////////////////////
+    const dai = new Contract(
+        c.daiAddr,
+        ERC20,
+        c.sovReignOwnerAcct
+    )
+    c.dai = dai
+    console.log(`DAI connected at: ${dai.address.toLowerCase()}`);
+
+
+     ///////////////////////////
     // Connect "usdc" contract:
     ///////////////////////////
     const usdc = new Contract(
@@ -19,6 +32,7 @@ export async function contractsPreFlight(c: DeployConfig): Promise<DeployConfig>
     )
     c.usdc = usdc
     console.log(`USDC connected at: ${usdc.address.toLowerCase()}`);
+
 
     ///////////////////////////
     // Connect "wbtc" contract:
@@ -44,6 +58,17 @@ export async function contractsPreFlight(c: DeployConfig): Promise<DeployConfig>
 
 
     ///////////////////////////
+    // Connect to Balancer Pool Factory
+    ///////////////////////////
+    let smartPoolFactory = new Contract(
+        c.smartPoolFactoryAddr, 
+        CRPFactory,
+        c.sovReignOwnerAcct 
+    )
+    c.smartPoolFactory = smartPoolFactory
+    console.log(`SmartPool Factory connected at '${smartPoolFactory.address}'`);
+
+    ///////////////////////////
     // Connect to UniswapV2Factory
     ///////////////////////////
     let uniswapFactory = new Contract(
@@ -62,6 +87,7 @@ export async function contractsPreFlight(c: DeployConfig): Promise<DeployConfig>
     )
     c.uniswapRouter = uniswapRouter
     console.log(`UniswapV2Router connected  at '${uniswapRouter.address}'`);
+
 
 
     return c;

@@ -17,7 +17,6 @@ contract Staking is ReentrancyGuard {
 
     // duration of each epoch
     uint256 public epochDuration;
-    address reignDao;
 
     // holds the current balance of the user for each token
     mapping(address => mapping(address => uint256)) private balances;
@@ -67,11 +66,10 @@ contract Staking is ReentrancyGuard {
 
     constructor() {}
 
-    function initialize(address _epochClock, address _reignDao) public {
+    function initialize(address _epochClock) public {
         require(epoch1Start == 0, "Can only be initialized once");
         epoch1Start = IEpochClock(_epochClock).getEpoch1Start();
         epochDuration = IEpochClock(_epochClock).getEpochDuration();
-        reignDao = _reignDao;
     }
 
     /*

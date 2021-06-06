@@ -2,17 +2,12 @@ import {DeployConfig} from "../config";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
 import {
     BasketBalancer, 
-    InterestStrategy, 
-    PoolController, 
-    ChainlinkOracleAdapter, 
     ReignDAO,
-    Pool, 
     ReignFacet, 
     ReignToken 
 } from "../../typechain";
 import * as helpers from "../../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../../test/helpers/diamond";
-import {deployOracle} from "../../test/helpers/oracles";
 import {hour, minute} from "../../test/helpers/time";
 import {increaseBlockTime} from "../../test/helpers/helpers";
 import * as deploy from "../../test/helpers/deploy";
@@ -20,8 +15,6 @@ import * as deploy from "../../test/helpers/deploy";
 export class Scenario1Config {
 
     public amountStakedUser1?: BigNumber;
-    public interestStrategy1?: InterestStrategy;
-    public interestStrategy2?: InterestStrategy;
 
     constructor() {
     }
@@ -35,7 +28,6 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
     const reignDiamond = c.reignDiamond as Contract;
     const reignFacet = await diamondAsFacet(reignDiamond, 'ReignFacet') as ReignFacet;
     const reignDAO = c.reignDAO as ReignDAO;
-    const poolController = c.poolController as PoolController;
     const balancer = c.basketBalancer as BasketBalancer;
     const wbtc = c.wbtc as Contract;
     const weth = c.weth as Contract;
@@ -76,58 +68,11 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
         .deposit(amountStakedUser2);
 
 
-    console.log(`\n --- DEPLOY POOL DEPENDENCIES ---`);
-
-    ///////////////////////////
-    // User1 deploy InterestStrategy1 contract for Pool1:
-    ///////////////////////////
-    const interestStrategy1 = await deploy.deployContract(
-        'InterestStrategy',
-        [
-            // params were taken from the InterestStrategy.test.ts
-            BigNumber.from(30).mul(10 ** 9),
-            BigNumber.from(80).mul(BigNumber.from(10).pow(BigNumber.from(58))),
-            c.baseDelta,
-        ]
-    ) as InterestStrategy;
-    c.scenario1.interestStrategy1 = interestStrategy1;
-    console.log(`InterestStrategy1 deployed at: ${interestStrategy1.address.toLowerCase()}`);
-
-    ///////////////////////////
-    // User1 deploy InterestStrategy2 contract for Pool2:
-    ///////////////////////////
-    const interestStrategy2 = await deploy.deployContract(
-        'InterestStrategy',
-        [
-            // params were taken from the InterestStrategy.test.ts
-            BigNumber.from(30).mul(10 ** 9),
-            BigNumber.from(80).mul(BigNumber.from(10).pow(BigNumber.from(58))),
-            c.baseDelta,
-        ]
-    ) as InterestStrategy;
-    c.scenario1.interestStrategy2 = interestStrategy2;
-    console.log(`InterestStrategy2 deployed at: ${interestStrategy2.address.toLowerCase()}`);
-
-    const oracle1 = await deploy.deployContract("ChainlinkOracleAdapter", [c.wethChainlinkOracle, reignDAO.address]) as ChainlinkOracleAdapter
-    c.oracle1 = oracle1
-    console.log("WBTC Oracle deployed at: " + oracle1.address)
-    let WETHPrice = await oracle1.consult(c.wethAddr,BigNumber.from(10).pow(await weth.decimals()))
-    console.log("WBTC Oracle price: " + WETHPrice.toString())
-
-    const oracle2 = await deploy.deployContract("ChainlinkOracleAdapter", [c.btcChainlinkOracle, reignDAO.address]) as ChainlinkOracleAdapter
-    c.oracle2 = oracle2
-    console.log("WBTC Oracle deployed at: " + oracle2.address)
-    let WBTCPrice = await oracle2.consult(c.wbtcAddr,BigNumber.from(10).pow(await wbtc.decimals()))
-    console.log("WBTC Oracle price: " + WBTCPrice.toString())
-
-    
-
-
 
     console.log(`\n --- CREATE PROPOSAL  ---`);
 
 
-
+/*
     const targets = [
         poolController.address,
         poolController.address,
@@ -308,7 +253,7 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
     pool2 = pool2.attach(pool2Addr);
     c.pool2 = pool2
     console.log(`Pool2 Reserves '${ (await pool2.getReserves() ).toString()}'`)
-
+*/
 
     return c;
 }

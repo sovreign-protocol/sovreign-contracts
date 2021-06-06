@@ -1,12 +1,15 @@
 import {DeployConfig} from "../config";
 import {BigNumber, Contract} from "ethers";
 import {
+    BasketBalancer,
     GovRewards,
     LPRewards,
+    PoolRouter,
     ReignDAO,
     ReignFacet,
     ReignToken,
-    Staking
+    Staking,
+    WrapSVR
 } from "../../typechain";
 import * as helpers from "../../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../../test/helpers/diamond";
@@ -19,9 +22,13 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     const reignDAO = c.reignDAO as ReignDAO;
     const reignToken = c.reignToken as ReignToken;
     const staking = c.staking as Staking;
+    const wrapSVR = c.wrapSVR as WrapSVR;
+    const poolRouter = c.poolRouter as PoolRouter;
     const svrLpRewards = c.svrLpRewards as LPRewards;
     const reignLpRewards = c.reignLpRewards as LPRewards;
     const govRewards = c.govRewards as GovRewards;
+    const basketBalancer = c.basketBalancer as BasketBalancer;
+    const smartPool = c.smartPool as Contract;
 
 
     console.log(`\n --- ACTIVATE CONTRACTS ---`);
@@ -37,14 +44,31 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     // Init "ReignDAO":
     ///////////////////////////
     console.log(`Calling initialize() at '${reignDAO.address.toLowerCase()}' (ReignDAO contract)`);
-    await reignDAO.connect(c.sovReignOwnerAcct).initialize(reignDiamond.address);
+    await reignDAO.connect(c.sovReignOwnerAcct).initialize(
+        reignDiamond.address, 
+        basketBalancer.address,
+        smartPool.address
+    );
 
     
     ///////////////////////////
     // Init "Staking":
     ///////////////////////////
     console.log(`Calling initialize() at '${staking.address.toLowerCase()}' (Staking contract)`);
-    await staking.connect(c.sovReignOwnerAcct).initialize(reignDiamond.address);
+    await staking.connect(c.sovReignOwnerAcct).initialize(
+        reignDiamond.address
+        );
+
+    ///////////////////////////
+    // Init "WrapSVR":
+    ///////////////////////////
+    console.log(`Calling initialize() at '${wrapSVR.address.toLowerCase()}' (WrapSVR contract)`);
+    await wrapSVR.connect(c.sovReignOwnerAcct).initialize(
+        reignDiamond.address,
+        reignDAO.address,
+        smartPool.address,
+        poolRouter.address
+        );
 
     ///////////////////////////
     // Init "svrLPRewards":

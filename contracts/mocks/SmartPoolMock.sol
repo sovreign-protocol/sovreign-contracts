@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.7.6;
 
-import "../interfaces/ISmartPool.sol";
-import "./ERC20Mock.sol";
+import "../mocks/ERC20Mock.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract SmartPoolMock is ERC20Mock {

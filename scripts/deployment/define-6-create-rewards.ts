@@ -2,11 +2,8 @@ import {DeployConfig} from "../config";
 import {ethers as ejs, Contract} from "ethers";
 import {
     LibRewardsDistribution,
-    LiquidityBufferVault,
-    PoolRewards, 
     Staking, 
-    PoolController, 
-    ReignDAO,Pool, 
+    ReignDAO,
     ReignToken, 
     RewardsVault, 
     } from "../../typechain";
@@ -23,17 +20,13 @@ export async function createRewards(c: DeployConfig): Promise<DeployConfig> {
     const reignDiamond = c.reignDiamond as Contract;
     const staking = c.staking as Staking;
     const reignDAO = c.reignDAO as ReignDAO;
-    const poolController = c.poolController as PoolController;
     const rewardsVault = c.rewardsVault as RewardsVault;
-    const liquidityBuffer = c.liquidityBufferVault as LiquidityBufferVault;
-    const pool1 = c.pool1 as Pool;
-    const pool2 = c.pool2 as Pool;
 
 
     const tokenDistribution = await deploy.deployContract('LibRewardsDistribution' ) as LibRewardsDistribution;
     
     
-
+/*
     console.log(`\n --- DEPLOY POOL REWARDS ---`);
 
     ///////////////////////////
@@ -228,7 +221,7 @@ export async function createRewards(c: DeployConfig): Promise<DeployConfig> {
         .connect(c.user1Acct)
         .execute(proposalId);
     console.log(`User1 executes the proposal '${proposalId}'`);
-
+*/
 
     return c;
 }
