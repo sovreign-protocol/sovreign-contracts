@@ -5,6 +5,7 @@ import {
     ERC20,
 } from "../../typechain";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
+import {tenPow18} from "../../test/helpers/helpers";
 
 import ConfigurableRightsPool from "./ContractABIs/ConfigurableRightsPool.json"
 
