@@ -48,7 +48,12 @@ describe("Wrapping Rewards", function () {
         wrapper = (await deployContract("WrapSVR", [])) as WrapSVR;
     
         smartPool = (await deployContract("SmartPoolMock",)) as SmartPoolMock;
-        router = (await deployContract("PoolRouter", [smartPool.address, wrapper.address])) as PoolRouter;
+        router = (await deployContract("PoolRouter", [
+            smartPool.address,
+            wrapper.address,
+            await treasury.getAddress(),
+            100000 //no fees for this test
+        ])) as PoolRouter;
 
         await wrapper.initialize(
             epochClock.address,  

@@ -12,10 +12,23 @@ contract PoolRouter {
 
     ISmartPool smartPool;
     IWrapSVR wrappingContract;
+    address reignDao;
+    address treasoury;
 
-    constructor(address _smartPool, address _wrappingContract) {
+    uint256 protocolFee = 99950; // 100% - 0.050% -> 100000 is 100%
+
+    uint256 FEE_DECIMALS = 1000000;
+
+    constructor(
+        address _smartPool,
+        address _wrappingContract,
+        address _treasoury,
+        uint256 _protocolFee
+    ) {
         smartPool = ISmartPool(_smartPool);
         wrappingContract = IWrapSVR(_wrappingContract);
+        treasoury = _treasoury;
+        protocolFee = _protocolFee;
     }
 
     function deposit(
@@ -26,13 +39,19 @@ contract PoolRouter {
     ) public {
         // pull underlying token here
         IERC20(tokenIn).transferFrom(msg.sender, address(this), tokenAmountIn);
-        IERC20(tokenIn).approve(address(smartPool), tokenAmountIn);
+
+        //take fee before swap
+        uint256 amountMinusFee = tokenAmountIn.mul(protocolFee).div(100000);
+        uint256 poolAmountMinusFee =
+            minPoolAmountOut.mul(protocolFee).div(100000);
+
+        IERC20(tokenIn).approve(address(smartPool), amountMinusFee);
 
         // swap underlying token for LP
         smartPool.joinswapExternAmountIn(
             tokenIn,
-            tokenAmountIn,
-            minPoolAmountOut
+            amountMinusFee,
+            poolAmountMinusFee
         );
 
         // deposit LP for sender and mint SVR to sender
@@ -49,12 +68,20 @@ contract PoolRouter {
         //burns SVR from sender and recieve LP from sender to here
         wrappingContract.withdraw(msg.sender, msg.sender, poolAmountIn);
 
+        //get balance before exitswap
+        uint256 balanceBefore = IERC20(tokenOut).balanceOf(address(this));
+
         //swaps LP for underlying
         smartPool.exitswapPoolAmountIn(tokenOut, poolAmountIn, minAmountOut);
 
-        //transfer underlying to sender
-        uint256 balance = IERC20(tokenOut).balanceOf(address(this));
-        IERC20(tokenOut).transfer(msg.sender, balance);
+        //get balance after exitswap
+        uint256 balanceAfter = IERC20(tokenOut).balanceOf(address(this));
+
+        //take fee before transfer out
+        uint256 amountMinusFee =
+            (balanceAfter.sub(balanceBefore)).mul(protocolFee).div(100000);
+
+        IERC20(tokenOut).transfer(msg.sender, amountMinusFee);
     }
 
     function liquidate(
@@ -64,18 +91,28 @@ contract PoolRouter {
         uint256 minAmountOut
     ) public {
         //burns SVR from sender and recieve LP to here
-        // also pay the liquidation fee in tokenOut ot liquidatedUser
         wrappingContract.liquidate(msg.sender, liquidatedUser, poolAmountIn);
+
+        //get balance before exitswap
+        uint256 balanceBefore = IERC20(tokenOut).balanceOf(address(this));
 
         //swaps LP for underlying
         smartPool.exitswapPoolAmountIn(tokenOut, poolAmountIn, minAmountOut);
-        uint256 amountRecieved = IERC20(tokenOut).balanceOf(address(this));
+
+        //get balance after exitswap
+        uint256 balanceAfter = IERC20(tokenOut).balanceOf(address(this));
+
+        //take protocol fee before transfer
+        uint256 amountMinusFee =
+            (balanceAfter.sub(balanceBefore)).mul(protocolFee).div(100000);
+
+        IERC20(tokenOut).transfer(msg.sender, amountMinusFee);
 
         // liquidation fee is paid in tokenOut tokens, it is set by lpOwner at deposit
         uint256 liquidationFeeAmount =
-            amountRecieved
+            (balanceAfter.sub(balanceBefore))
                 .mul(wrappingContract.liquidationFee(liquidatedUser))
-                .div(1000000);
+                .div(FEE_DECIMALS);
 
         require(
             IERC20(tokenOut).allowance(msg.sender, address(this)) >=
@@ -89,8 +126,11 @@ contract PoolRouter {
             liquidatedUser,
             liquidationFeeAmount
         );
+    }
 
-        //transfer underlying to sender
-        IERC20(tokenOut).transfer(msg.sender, amountRecieved);
+    // transfer the entire fees collected in this contract to DAO treasoury
+    function collectFeesToDAO(address token) public {
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        IERC20(token).transfer(treasoury, balance);
     }
 }

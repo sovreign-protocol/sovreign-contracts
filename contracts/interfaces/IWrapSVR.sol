@@ -22,6 +22,8 @@ interface IWrapSVR {
 
     function liquidationFee(address) external view returns (uint256);
 
+    function maxLiquidationFee() external view returns (uint256);
+
     function getEpochId(uint256 timestamp) external view returns (uint256); // get epoch id
 
     function getEpochUserBalance(address user, uint128 epoch)
