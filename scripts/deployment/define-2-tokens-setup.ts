@@ -11,6 +11,7 @@ import {
     WrapSVR,
     RewardsVault,
     LibRewardsDistribution,
+    BasketBalancer
 } from "../../typechain";
 import { string } from "hardhat/internal/core/params/argumentTypes";
 
@@ -205,6 +206,26 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
 
 
 
+    console.log(`\n --- DEPLOY BASKET BALANCER ---`);
+
+    ///////////////////////////
+    // Deploy "BasketBalancer" contract:
+    ///////////////////////////
+    const basketBalancer = await deploy.deployContract(
+        'BasketBalancer',
+        [
+            // empty since new pools can be added later (initial state)
+            [],
+            // empty since new allocations can be added later (initial state)
+            [],
+            reignDiamond.address,
+            reignDAO.address,
+            c.sovReignOwnerAddr,
+            100000000,
+        ]
+    ) as BasketBalancer;
+    c.basketBalancer = basketBalancer;
+    console.log(`BasketBalancer deployed at: ${basketBalancer.address.toLowerCase()}`);
 
     return c;
 }

@@ -14,7 +14,6 @@ import {
 import * as helpers from "../../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../../test/helpers/diamond";
 import {getUnixTimestamp} from "../../test/helpers/time";
-import {increaseBlockTime} from "../../test/helpers/helpers";
 
 
 export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {

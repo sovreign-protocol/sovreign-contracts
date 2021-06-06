@@ -6,14 +6,7 @@ import {increaseBlockTime, tenPow18, tenPow6, waitFor} from "../../test/helpers/
 import * as deploy from "../../test/helpers/deploy";
 
 import {
-    GovRewards, 
-    ReignDAO,
-    Staking,
-    LPRewards,
     ReignToken,
-    WrapSVR,
-    RewardsVault,
-    LibRewardsDistribution,
 } from "../../typechain";
 
 
@@ -54,9 +47,6 @@ export async function uniswapSetup(c: DeployConfig): Promise<DeployConfig> {
         )
     await tx.wait();
     console.log(`Liquidity added to REIGN/WETH Pair`);
-
-
-
 
 
     return c;
