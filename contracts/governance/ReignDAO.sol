@@ -167,6 +167,11 @@ contract ReignDAO is Bridge {
         updateWeights(weights);
     }
 
+    function triggerApplyAddToken() public {
+        // apply addition of new token, reverts if token add lock is not elapsed
+        applyAddToken();
+    }
+
     function propose(
         address[] memory targets,
         uint256[] memory values,

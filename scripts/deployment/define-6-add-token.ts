@@ -2,6 +2,7 @@ import {DeployConfig} from "../config";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
 import {
     BasketBalancer, 
+    PoolRouter, 
     ReignDAO,
     ReignFacet, 
     ReignToken 
@@ -9,7 +10,7 @@ import {
 import * as helpers from "../../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../../test/helpers/diamond";
 import {hour, minute} from "../../test/helpers/time";
-import {increaseBlockTime} from "../../test/helpers/helpers";
+import {increaseBlockTime, mineBlocks, tenPow18} from "../../test/helpers/helpers";
 import * as deploy from "../../test/helpers/deploy";
 
 export class Scenario1Config {
@@ -28,9 +29,15 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
     const reignDiamond = c.reignDiamond as Contract;
     const reignFacet = await diamondAsFacet(reignDiamond, 'ReignFacet') as ReignFacet;
     const reignDAO = c.reignDAO as ReignDAO;
-    const balancer = c.basketBalancer as BasketBalancer;
+    const poolRouter = c.poolRouter as PoolRouter;
+    const smartPool = c.smartPool as Contract;
     const wbtc = c.wbtc as Contract;
-    const weth = c.weth as Contract;
+    const dai = c.dai as Contract;
+
+    let amountDai = BigNumber.from(10_000).mul(tenPow18)
+
+    // Give DAO some tokens for proposal
+    await dai.connect(c.user4Acct).transfer(reignDAO.address, amountDai.mul(2))
 
 
     console.log(`\n --- USER STAKE TOKENS INTO GOVERNANCE ---`);
@@ -68,69 +75,73 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
         .deposit(amountStakedUser2);
 
 
+    ///////////////////////////
+    // Get Tokens in Pool
+    ///////////////////////////
+    let poolTokens = await poolRouter
+    .getPoolTokens();
+    console.log(`Tokens now in the Pool:  ${poolTokens}` );
+
+    let weight1 = await smartPool
+        .getDenormalizedWeight(poolTokens[0]);
+    console.log(`Token 1 - WETH '${weight1}' denormalized Weight`)
+
+    let weight2 = await smartPool
+        .getDenormalizedWeight(poolTokens[1]);
+    console.log(`Token 2 - WBTC '${weight2}' denormalized Weight`)
+
+    let weight3 = await smartPool
+        .getDenormalizedWeight(poolTokens[2]);
+    console.log(`Token 3 - USDC '${weight3}' denormalized Weight`)
+
 
     console.log(`\n --- CREATE PROPOSAL  ---`);
 
 
-/*
+
     const targets = [
-        poolController.address,
-        poolController.address,
-        balancer.address
+        dai.address,
+        smartPool.address,
     ];
-    const values = ['0', '0', '0'];
+    const values = ['0','0'];
     const signatures = [
-        'createPool(address,address,address)', 
-        'createPool(address,address,address)', 
-        'setInitialAllocation(uint256[])'];
+        'approve(address,uint256)',
+        'commitAddToken(address,uint256,uint256)' ]
     const callDatas = [
         // for the first pool (Pool1):
         ejs.utils.defaultAbiCoder.encode(
             [
                 'address',
-                'address',
-                'address'
+                'uint256'
             ],
             [
-                // first param: token address
-                // WETH: https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
-                c.wethAddr,
-                // second param: interestStrategy
-                interestStrategy1.address,
-                // third param: oracle
-                oracle1.address,
-            ]
-        ),
+                // contract address
+                smartPool.address,
+                // token amount approved
+                amountDai,
 
-        // for the second pool (Pool2):
+            ]
+        ),
+        // for the first pool (Pool1):
         ejs.utils.defaultAbiCoder.encode(
             [
                 'address',
-                'address',
-                'address'
+                'uint256',
+                'uint256'
             ],
             [
-                // first param: token address
-                // WBTC: https://etherscan.io/token/0x2260fac5e5542a773aa44fbcfedf7c193bc2c599
-                c.wbtcAddr,
-                // second param: interestStrategy
-                interestStrategy2.address,
-                // third param: oracle
-                oracle2.address,
+                // token address
+                c.daiAddr,
+                // token amount added
+                amountDai,
+                // token wight
+                BigNumber.from(2).mul(tenPow18),
+
             ]
-        ),
-        // for allocation:
-        ejs.utils.defaultAbiCoder.encode(
-            [
-                'uint256[]',
-            ],
-            [
-                [500000000,500000000],
-            ]
-        ),
+        )
     ];
 
-    console.log(`User1 proposes to create two pools.`)
+    console.log(`User1 proposes to add DAI `)
     await reignDAO
         .connect(c.user1Acct)
         .propose(
@@ -138,7 +149,7 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
             values,
             signatures,
             callDatas,
-            'Create two pools.',
+            'Add DAI to Pool',
             'Proposal1'
         );
 
@@ -222,38 +233,45 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
         .execute(proposalId);
     console.log(`User1 executes the proposal '${proposalId}'`);
 
-    ///////////////////////////
-    // Display Pool1 and Pool2 addresses and initial allocation
-    ///////////////////////////
 
-    let pool1Addr = await poolController
-        .connect(c.sovReignOwnerAcct)
-        .allPools(0);
-    console.log(`Pool1 created at address: ${pool1Addr}`);
-    let pool1Alloc = (await balancer.getTargetAllocation(pool1Addr)).toString()
-    console.log(`Pool1 allocation: ${pool1Alloc}`);
-
-    let pool2Addr = await poolController
-        .connect(c.sovReignOwnerAcct)
-        .allPools(1);
-    console.log(`Pool2 created at address: ${pool2Addr}`);
-    let pool2Alloc = (await balancer.getTargetAllocation(pool2Addr)).toString()
-    console.log(`Pool2 allocation: ${pool2Alloc}`);
+    ///////////////////////////
+    // Mine Until  applyToken lock expires
+    ///////////////////////////
+    console.log(`Mining 256 blocks...`)
+    await mineBlocks(256)
 
 
     ///////////////////////////
-    // Attach To deployed Pools
+    // Call ApplyToken in pool
     ///////////////////////////
-    let pool1 = (await deploy.deployContract('Pool')) as Pool;
-    pool1 = pool1.attach(pool1Addr);
-    c.pool1 = pool1
-    console.log(`Pool1 Reserves '${ (await pool1.getReserves() ).toString()}'`)
+    await reignDAO
+        .connect(c.user1Acct)
+        .triggerApplyAddToken();
+    console.log(`User1 triggers applyToken`);
 
-    let pool2 = (await deploy.deployContract('Pool')) as Pool;
-    pool2 = pool2.attach(pool2Addr);
-    c.pool2 = pool2
-    console.log(`Pool2 Reserves '${ (await pool2.getReserves() ).toString()}'`)
-*/
+
+     ///////////////////////////
+    // Get Tokens in Pool
+    ///////////////////////////
+    poolTokens = await poolRouter
+    .getPoolTokens();
+    console.log(`Tokens now in the Pool:  ${poolTokens}` );
+
+    weight1 = await smartPool
+        .getDenormalizedWeight(poolTokens[0]);
+    console.log(`Token 1 - WETH '${weight1}' denormalized Weight`)
+
+    weight2 = await smartPool
+        .getDenormalizedWeight(poolTokens[1]);
+    console.log(`Token 2 - WBTC '${weight2}' denormalized Weight`)
+
+    weight3 = await smartPool
+        .getDenormalizedWeight(poolTokens[2]);
+    console.log(`Token 3 - USDC '${weight3}' denormalized Weight`)
+
+    let weight4 = await smartPool
+        .getDenormalizedWeight(poolTokens[3]);
+    console.log(`Token 4 - DAI  '${weight4}' denormalized Weight`)
 
     return c;
 }

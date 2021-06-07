@@ -128,6 +128,12 @@ abstract contract ISmartPool is BalancerOwnable {
 
     function setPublicSwap(bool public_) external virtual;
 
+    function getDenormalizedWeight(address token)
+        external
+        view
+        virtual
+        returns (uint256);
+
     function joinPool(uint256 poolAmountOut, uint256[] calldata maxAmountsIn)
         external
         virtual;
@@ -137,6 +143,8 @@ abstract contract ISmartPool is BalancerOwnable {
         virtual;
 
     function bPool() external view virtual returns (BPool);
+
+    function applyAddToken() external virtual;
 
     function getSmartPoolManagerVersion()
         external

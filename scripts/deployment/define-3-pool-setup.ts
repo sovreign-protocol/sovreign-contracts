@@ -81,7 +81,7 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     await smartPool.connect(c.sovReignOwnerAcct).createPool(
         BigNumber.from(10000).mul(tenPow18),
         13292,   // 2 days for weights update
-        6646  // 1 day token add lock time
+        250  //  ca. 55min token add lock time
     )
 
 

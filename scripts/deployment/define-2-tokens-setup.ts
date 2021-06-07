@@ -137,7 +137,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     tx = await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(wrapSVR.address, c.usdcAddr)
     await tx.wait()
-    let svrPairAddress = await  uniswapFactory.getPair(wrapSVR.address, c.daiAddr)
+    let svrPairAddress = await  uniswapFactory.getPair(wrapSVR.address, c.usdcAddr)
     console.log(`Deployed a Uniswap pair for SVR/USDC: '${ svrPairAddress}'`);
     
 

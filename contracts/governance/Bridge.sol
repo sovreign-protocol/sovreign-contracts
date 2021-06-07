@@ -70,6 +70,10 @@ abstract contract Bridge is Parameters {
         );
     }
 
+    function applyAddToken() internal {
+        ISmartPool(smartPool).applyAddToken();
+    }
+
     function _getTxHash(
         address target,
         uint256 value,
