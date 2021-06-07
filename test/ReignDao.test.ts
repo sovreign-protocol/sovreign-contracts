@@ -100,13 +100,6 @@ describe('ReignDAO', function () {
             expect(await reignDAO.isActive()).to.be.true;
         });
 
-        it('activates through weightUpdate when threshold is met', async function () {
-            await reign.setBondStaked(BigNumber.from(4000000).mul(helpers.tenPow18));
-            
-            await reignDAO.triggerWeightUpdate();
-            expect(await reignDAO.isActive()).to.be.true;
-        });
-
         it('reverts if already activated', async function () {
             await reign.setBondStaked(BigNumber.from(4000000).mul(helpers.tenPow18));
             await reignDAO.activate();
