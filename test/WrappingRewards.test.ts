@@ -217,12 +217,24 @@ describe("Wrapping Rewards", function () {
     describe('Collect Protocol Fees', async function () {
 
         it('can collect fees to treasury', async function () {
-            let balanceBefore = await reignToken.balanceOf(router.address);
+            await depositUnderlying(amount)
+
+            await MoveToEpoch(1)
+            await MoveToEpoch(2)
+            await MoveToEpoch(3)
+            await MoveToEpoch(4)
+            await wrappingRewards.connect(user).harvest(1)
+            await wrappingRewards.connect(user).harvest(2)
+            let epoch2Rewards = 
+                (await wrappingRewards.getRewardsForEpoch(2))
+
 
             await wrappingRewards.collectFeesToDAO();
 
-            expect(await reignToken.balanceOf(treasuryAddr)).to.be.eq(balanceBefore)
-            console.log('Collected REIGN: ', (await reignToken.balanceOf(treasuryAddr)).toString())
+            let expectedFee = epoch2Rewards.sub(epoch2Rewards.mul(await getUserBoost(userAddr,2)).div(tenPow18))
+            
+            // this also randomly fails by 1, so divide by 10 to round
+            expect(await (await reignToken.balanceOf(treasuryAddr)).div(10)).to.be.eq(expectedFee.div(10))
         });
     });
 
