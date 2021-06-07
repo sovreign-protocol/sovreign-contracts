@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-interface IPoolErc20 {
+interface IERC20 {
     event Approval(
         address indexed owner,
         address indexed spender,
@@ -9,11 +9,11 @@ interface IPoolErc20 {
     );
     event Transfer(address indexed from, address indexed to, uint256 value);
 
-    function name() external pure returns (string memory);
+    function name() external view returns (string memory);
 
-    function symbol() external pure returns (string memory);
+    function symbol() external view returns (string memory);
 
-    function decimals() external pure returns (uint8);
+    function decimals() external view returns (uint8);
 
     function totalSupply() external view returns (uint256);
 
@@ -33,20 +33,4 @@ interface IPoolErc20 {
         address to,
         uint256 value
     ) external returns (bool);
-
-    function DOMAIN_SEPARATOR() external view returns (bytes32);
-
-    function PERMIT_TYPEHASH() external pure returns (bytes32);
-
-    function nonces(address owner) external view returns (uint256);
-
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
 }

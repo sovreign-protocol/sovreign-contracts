@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.4;
+pragma solidity ^0.7.6;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 interface IStaking {
     function getEpochId(uint256 timestamp) external view returns (uint256); // get epoch id

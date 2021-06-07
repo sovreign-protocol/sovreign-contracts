@@ -1,24 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.4;
+pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "./LibDiamondStorage.sol";
 
 library LibOwnership {
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     function setContractOwner(address _newOwner) internal {
-        LibDiamondStorage.DiamondStorage storage ds =
-            LibDiamondStorage.diamondStorage();
+        LibDiamondStorage.DiamondStorage storage ds = LibDiamondStorage.diamondStorage();
 
         address previousOwner = ds.contractOwner;
-        require(
-            previousOwner != _newOwner,
-            "Previous owner and new owner must be different"
-        );
+        require(previousOwner != _newOwner, "Previous owner and new owner must be different");
 
         ds.contractOwner = _newOwner;
 
@@ -29,18 +22,12 @@ library LibOwnership {
         contractOwner_ = LibDiamondStorage.diamondStorage().contractOwner;
     }
 
-    function enforceIsContractOwner() internal view {
-        require(
-            msg.sender == LibDiamondStorage.diamondStorage().contractOwner,
-            "Must be contract owner"
-        );
+    function enforceIsContractOwner() view internal {
+        require(msg.sender == LibDiamondStorage.diamondStorage().contractOwner, "Must be contract owner");
     }
 
     modifier onlyOwner {
-        require(
-            msg.sender == LibDiamondStorage.diamondStorage().contractOwner,
-            "Must be contract owner"
-        );
+        require(msg.sender == LibDiamondStorage.diamondStorage().contractOwner, "Must be contract owner");
         _;
     }
 }

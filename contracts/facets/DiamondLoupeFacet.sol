@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.4;
+pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "../libraries/LibDiamondStorage.sol";
@@ -17,9 +17,8 @@ contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
     // }
     /// @notice Gets all facets and their selectors.
     /// @return facets_ Facet
-    function facets() external view override returns (Facet[] memory facets_) {
-        LibDiamondStorage.DiamondStorage storage ds =
-            LibDiamondStorage.diamondStorage();
+    function facets() external override view returns (Facet[] memory facets_) {
+        LibDiamondStorage.DiamondStorage storage ds = LibDiamondStorage.diamondStorage();
         uint256 selectorCount = ds.selectors.length;
 
         // create an array set to the maximum size possible
@@ -32,11 +31,7 @@ contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
         uint256 numFacets;
 
         // loop through function selectors
-        for (
-            uint256 selectorIndex;
-            selectorIndex < selectorCount;
-            selectorIndex++
-        ) {
+        for (uint256 selectorIndex; selectorIndex < selectorCount; selectorIndex++) {
             bytes4 selector = ds.selectors[selectorIndex];
             address facetAddress_ = ds.facets[selector].facetAddress;
             bool continueLoop = false;
@@ -44,9 +39,7 @@ contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
             // find the functionSelectors array for selector and add selector to it
             for (uint256 facetIndex; facetIndex < numFacets; facetIndex++) {
                 if (facets_[facetIndex].facetAddress == facetAddress_) {
-                    facets_[facetIndex].functionSelectors[
-                        numFacetSelectors[facetIndex]
-                    ] = selector;
+                    facets_[facetIndex].functionSelectors[numFacetSelectors[facetIndex]] = selector;
                     // probably will never have more than 256 functions from one facet contract
                     require(numFacetSelectors[facetIndex] < 255);
                     numFacetSelectors[facetIndex]++;
@@ -88,25 +81,15 @@ contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
     /// @notice Gets all the function selectors supported by a specific facet.
     /// @param _facet The facet address.
     /// @return _facetFunctionSelectors The selectors associated with a facet address.
-    function facetFunctionSelectors(address _facet)
-        external
-        view
-        override
-        returns (bytes4[] memory _facetFunctionSelectors)
-    {
-        LibDiamondStorage.DiamondStorage storage ds =
-            LibDiamondStorage.diamondStorage();
+    function facetFunctionSelectors(address _facet) external override view returns (bytes4[] memory _facetFunctionSelectors) {
+        LibDiamondStorage.DiamondStorage storage ds = LibDiamondStorage.diamondStorage();
 
         uint256 selectorCount = ds.selectors.length;
         uint256 numSelectors;
         _facetFunctionSelectors = new bytes4[](selectorCount);
 
         // loop through function selectors
-        for (
-            uint256 selectorIndex;
-            selectorIndex < selectorCount;
-            selectorIndex++
-        ) {
+        for (uint256 selectorIndex; selectorIndex < selectorCount; selectorIndex++) {
             bytes4 selector = ds.selectors[selectorIndex];
             address facetAddress_ = ds.facets[selector].facetAddress;
             if (_facet == facetAddress_) {
@@ -123,14 +106,8 @@ contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
 
     /// @notice Get all the facet addresses used by a diamond.
     /// @return facetAddresses_
-    function facetAddresses()
-        external
-        view
-        override
-        returns (address[] memory facetAddresses_)
-    {
-        LibDiamondStorage.DiamondStorage storage ds =
-            LibDiamondStorage.diamondStorage();
+    function facetAddresses() external override view returns (address[] memory facetAddresses_) {
+        LibDiamondStorage.DiamondStorage storage ds = LibDiamondStorage.diamondStorage();
 
         uint256 selectorCount = ds.selectors.length;
         // create an array set to the maximum size possible
@@ -138,11 +115,7 @@ contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
         uint256 numFacets;
 
         // loop through function selectors
-        for (
-            uint256 selectorIndex;
-            selectorIndex < selectorCount;
-            selectorIndex++
-        ) {
+        for (uint256 selectorIndex; selectorIndex < selectorCount; selectorIndex++) {
             bytes4 selector = ds.selectors[selectorIndex];
             address facetAddress_ = ds.facets[selector].facetAddress;
             bool continueLoop = false;
@@ -176,26 +149,14 @@ contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
     /// @dev If facet is not found return address(0).
     /// @param _functionSelector The function selector.
     /// @return facetAddress_ The facet address.
-    function facetAddress(bytes4 _functionSelector)
-        external
-        view
-        override
-        returns (address facetAddress_)
-    {
-        LibDiamondStorage.DiamondStorage storage ds =
-            LibDiamondStorage.diamondStorage();
+    function facetAddress(bytes4 _functionSelector) external override view returns (address facetAddress_) {
+        LibDiamondStorage.DiamondStorage storage ds = LibDiamondStorage.diamondStorage();
         facetAddress_ = ds.facets[_functionSelector].facetAddress;
     }
 
     // This implements ERC-165.
-    function supportsInterface(bytes4 _interfaceId)
-        external
-        view
-        override
-        returns (bool)
-    {
-        LibDiamondStorage.DiamondStorage storage ds =
-            LibDiamondStorage.diamondStorage();
+    function supportsInterface(bytes4 _interfaceId) external override view returns (bool) {
+        LibDiamondStorage.DiamondStorage storage ds = LibDiamondStorage.diamondStorage();
         return ds.supportedInterfaces[_interfaceId];
     }
 }

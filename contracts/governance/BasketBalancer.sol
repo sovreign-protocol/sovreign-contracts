@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.4;
+pragma solidity 0.7.6;
 
 import "../interfaces/IReign.sol";
 import "../interfaces/IBasketBalancer.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract BasketBalancer is IBasketBalancer {
     using SafeMath for uint256;

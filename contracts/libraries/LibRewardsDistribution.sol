@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.4;
+pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
-
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "hardhat/console.sol";
 
 library LibRewardsDistribution {
     using SafeMath for uint256;

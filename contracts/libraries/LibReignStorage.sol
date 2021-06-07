@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.4;
+pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../interfaces/IRewards.sol";
 
 library LibReignStorage {
     bytes32 constant STORAGE_POSITION = keccak256("ch.dialectic.reign.storage");
@@ -40,6 +41,7 @@ library LibReignStorage {
         // every delegate/stopDelegate call create a new checkpoint (max one per block)
         mapping(address => Checkpoint[]) delegatedPowerHistory;
         IERC20 reign;
+        IRewards rewards;
         uint256 epoch1Start;
         uint256 epochDuration;
     }

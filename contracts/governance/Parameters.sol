@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.4;
+pragma solidity 0.7.6;
 
 abstract contract Parameters {
     // These values are set very low in the beginnign to allow the DAO to quickly interveen in case of

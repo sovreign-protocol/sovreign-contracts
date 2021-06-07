@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.4;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract RewardsVault is Ownable {
+
     IERC20 private _reignToken;
 
     constructor(address reignToken) {
