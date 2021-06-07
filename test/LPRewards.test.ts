@@ -32,7 +32,7 @@ describe('YieldFarm AMM Pool', function () {
         epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
 
         staking = (await deployContract("Staking")) as Staking;
-        await staking.initialize(epochClock.address)
+        await staking.initialize(epochClock.address, await creator.getAddress())
         reignToken = (await deployContract("ERC20Mock")) as ERC20Mock;
         uniLP = (await deployContract("ERC20Mock")) as ERC20Mock;
 
