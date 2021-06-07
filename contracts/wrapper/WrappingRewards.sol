@@ -17,12 +17,16 @@ contract WrappingRewards {
     // state variables
 
     // addreses
+    address public treasoury;
     address private _poolLP;
     address private _rewardsVault;
     address private _balancer;
     // contracts
     IERC20 private _reignToken;
     IWrapSVR private _wrapper;
+
+    uint256 BASE_MULTIPLIER = 10**18;
+    uint256 public NO_BOOST_PENALTY = 3 * 10**16; // -3%
 
     mapping(uint128 => uint256) private _sizeAtEpoch;
     uint128 public lastInitializedEpoch;
@@ -50,7 +54,8 @@ contract WrappingRewards {
         address poolLP,
         address balancer,
         address wrappingContract,
-        address rewardsVault
+        address rewardsVault,
+        address _treasury
     ) {
         _reignToken = IERC20(reignTokenAddress);
         _poolLP = poolLP;
@@ -59,6 +64,7 @@ contract WrappingRewards {
         _balancer = balancer;
         epochDuration = _wrapper.epochDuration();
         epochStart = _wrapper.epoch1Start() + epochDuration;
+        treasoury = _treasury;
     }
 
     // public method to harvest all the unharvested epochs until current epoch - 1
@@ -111,6 +117,12 @@ contract WrappingRewards {
         return userReward;
     }
 
+    // transfer the entire fees collected in this contract to DAO treasoury
+    function collectFeesToDAO() public {
+        uint256 balance = IERC20(_reignToken).balanceOf(address(this));
+        IERC20(_reignToken).transfer(treasoury, balance);
+    }
+
     /*
      * internal methods
      */
@@ -129,15 +141,23 @@ contract WrappingRewards {
         }
 
         uint256 epochRewards = getRewardsForEpoch(epochId);
+        bool boost = isBoosted(msg.sender, epochId);
 
-        uint256 boostMultiplier = getBoost(msg.sender, epochId);
-
+        // get users share of rewards
         uint256 userEpochRewards =
-            epochRewards
-                .mul(_getUserBalancePerEpoch(msg.sender, epochId))
-                .mul(boostMultiplier) // apply boost multiplier
-                .div(_sizeAtEpoch[epochId])
-                .div(1 * 10**18);
+            epochRewards.mul(_getUserBalancePerEpoch(msg.sender, epochId)).div(
+                _sizeAtEpoch[epochId]
+            );
+
+        //if user is not boosted pull penalty into this contract and reduce user rewards
+        if (!boost) {
+            uint256 penalty =
+                userEpochRewards.mul(NO_BOOST_PENALTY).div(BASE_MULTIPLIER); // decrease by 3%
+
+            userEpochRewards = userEpochRewards.sub(penalty);
+
+            _reignToken.safeTransferFrom(_rewardsVault, address(this), penalty);
+        }
 
         return userEpochRewards;
     }
@@ -187,11 +207,7 @@ contract WrappingRewards {
     }
 
     // checks if the user has voted that epoch and returns accordingly
-    function getBoost(address user, uint128 epoch)
-        public
-        view
-        returns (uint256)
-    {
+    function isBoosted(address user, uint128 epoch) public view returns (bool) {
         IBasketBalancer balancer = IBasketBalancer(_balancer);
         address _reign = balancer.reignAddress();
         // if user or users delegate has voted
@@ -205,9 +221,9 @@ contract WrappingRewards {
                 epoch + 1 // _balancer epoch is 1 higher then pool
             )
         ) {
-            return 1 * 10**18;
+            return true;
         } else {
-            return 97 * 10**16; // -3%
+            return false; // -3%
         }
     }
 
