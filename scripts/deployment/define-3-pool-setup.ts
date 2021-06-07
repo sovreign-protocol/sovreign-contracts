@@ -38,15 +38,14 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
                 [weth.address, wbtc.address, usdc.address],
                 [BigNumber.from(10).mul(tenPow18), 1_00000000, 10000_000000],
                 [BigNumber.from(26).mul(tenPow18), BigNumber.from(4).mul(tenPow18), BigNumber.from(10).mul(tenPow18)],
-                5000000000000000
+                5000000000000000 // 0.5%
             ]
         
 
     const callDatasRights =
         [
-            true, false, true, true, true, false,
+            true, true, true, true, true, false,
         ]
-
 
     let smartPoolAddr = await smartPoolFactory.connect(c.sovReignOwnerAcct).callStatic['newCrp'](
         c.bFactoryAddr,
@@ -91,7 +90,6 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Smart Pool controlled by: ${controller} (sovReignOwnerAcct)`);
 
 
-
     console.log(`\n --- DEPLOY POOL ROUTER ---`);
 
 
@@ -106,6 +104,12 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     ]) as PoolRouter;
     c.poolRouter = poolRouter;
     console.log(`PoolRouter deployed at: ${poolRouter.address.toLowerCase()}`);
+
+    ///////////////////////////
+    // Whitelist Router as Pool LP
+    ///////////////////////////
+    smartPool.connect(c.sovReignOwnerAcct).whitelistLiquidityProvider(poolRouter.address)
+    console.log(`PoolRouter Whitelisted as LP`);
 
     return c;
 }
