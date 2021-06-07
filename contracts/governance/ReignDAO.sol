@@ -153,14 +153,6 @@ contract ReignDAO is Bridge {
     }
 
     function triggerWeightUpdate() public {
-        if (!isActive) {
-            require(
-                reign.reignStaked() >= ACTIVATION_THRESHOLD,
-                "DAO not yet active"
-            );
-            isActive = true;
-        }
-
         // this will revert if epoch is not over
         basketBalancer.updateBasketBalance();
 
