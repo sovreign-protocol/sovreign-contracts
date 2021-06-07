@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.7.6;
+pragma solidity 0.8.4;
 pragma experimental ABIEncoderV2;
 
 import "../interfaces/IDiamondCut.sol";
@@ -20,8 +20,13 @@ contract DiamondCutFacet is IDiamondCut {
     ) external override {
         LibOwnership.enforceIsContractOwner();
 
-        uint256 selectorCount = LibDiamondStorage.diamondStorage().selectors.length;
-        for (uint256 facetIndex; facetIndex < _diamondCut.length; facetIndex++) {
+        uint256 selectorCount =
+            LibDiamondStorage.diamondStorage().selectors.length;
+        for (
+            uint256 facetIndex;
+            facetIndex < _diamondCut.length;
+            facetIndex++
+        ) {
             FacetCut memory cut;
             cut.action = _diamondCut[facetIndex].action;
             cut.facetAddress = _diamondCut[facetIndex].facetAddress;

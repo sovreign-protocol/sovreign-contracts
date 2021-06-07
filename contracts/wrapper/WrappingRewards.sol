@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.7.6;
+pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IWrapSVR.sol";
 import "../interfaces/IBasketBalancer.sol";
 import "../interfaces/IReignPoolRewards.sol";
 import "../libraries/LibRewardsDistribution.sol";
-import "../libraries/SafeERC20.sol";
 
 contract WrappingRewards {
     // lib

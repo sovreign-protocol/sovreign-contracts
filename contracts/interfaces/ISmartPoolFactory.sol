@@ -1,4 +1,5 @@
-pragma solidity >=0.5.0;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.4;
 pragma abicoder v2;
 
 import "./ISmartPool.sol";

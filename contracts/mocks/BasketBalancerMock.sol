@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.7.6;
+pragma solidity 0.8.4;
 
 import "../interfaces/IBasketBalancer.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract BasketBalancerMock is IBasketBalancer {
     using SafeMath for uint128;

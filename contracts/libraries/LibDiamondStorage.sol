@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.7.6;
+pragma solidity 0.8.4;
 
 library LibDiamondStorage {
     bytes32 constant DIAMOND_STORAGE_POSITION =

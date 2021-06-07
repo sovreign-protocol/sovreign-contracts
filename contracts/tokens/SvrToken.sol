@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.7.6;
+pragma solidity 0.8.4;
 
-import "../interfaces/IERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 abstract contract SvrToken is IERC20 {
     using SafeMath for uint256;
 
-    string public constant override name = "Store Of Value Reserve Token";
-    string public constant override symbol = "SVR";
-    uint8 public override decimals = 18;
+    string public constant name = "Store Of Value Reserve Token";
+    string public constant symbol = "SVR";
+    uint8 public decimals = 18;
     uint256 public override totalSupply = 0;
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;

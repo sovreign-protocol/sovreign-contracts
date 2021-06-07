@@ -22,7 +22,7 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
 // Go to https://hardhat.org/config/ for the syntax.
 const cfg: HardhatUserConfig = {
     solidity: {
-        version: '0.7.6',
+        version: '0.8.4',
         settings: {
             optimizer: {
                 enabled: true,
@@ -37,7 +37,7 @@ const cfg: HardhatUserConfig = {
     etherscan: config.etherscan,
 
     abiExporter: {
-        only: ['ReignDiamond', 'ReignFacet', 'OwnershipFacet', 'DiamondCutFacet', 'DiamondLoupeFacet', 'Rewards', 'RewardsVault', 'ReignDAO'],
+        only: ['ReignDiamond', 'ReignFacet', 'OwnershipFacet', 'DiamondCutFacet', 'DiamondLoupeFacet', 'GovRewards', 'RewardsVault', 'ReignDAO'],
         except: ['.*Mock$'],
         clear: true,
         flat: true,

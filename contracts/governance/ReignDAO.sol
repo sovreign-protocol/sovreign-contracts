@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.7.6;
+pragma solidity 0.8.4;
 pragma experimental ABIEncoderV2;
 
 import "../interfaces/IReign.sol";
 import "../interfaces/IBasketBalancer.sol";
 import "./ReignDiamond.sol";
 import "./Bridge.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract ReignDAO is Bridge {
     using SafeMath for uint256;
