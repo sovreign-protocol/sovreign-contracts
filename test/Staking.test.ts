@@ -35,7 +35,7 @@ describe("Staking", function () {
 
         epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
         staking = (await deployContract("Staking")) as Staking;
-        await staking.initialize(epochClock.address, ownerAddr)
+        await staking.initialize(epochClock.address)
 
         underlyingToken = (await deployContract("ERC20Mock")) as ERC20Mock;
 
@@ -60,7 +60,7 @@ describe("Staking", function () {
 
         it("Can not initialize twice", async function () {
             await expect(
-                staking.initialize(epochClock.address, ownerAddr)
+                staking.initialize(epochClock.address)
             ).to.be.revertedWith("Can only be initialized once");
         });
     })

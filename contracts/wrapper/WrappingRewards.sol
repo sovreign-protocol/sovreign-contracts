@@ -6,7 +6,7 @@ import "../interfaces/IWrapSVR.sol";
 import "../interfaces/IBasketBalancer.sol";
 import "../interfaces/IReignPoolRewards.sol";
 import "../libraries/LibRewardsDistribution.sol";
-import "../libraries/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 contract WrappingRewards {
     // lib

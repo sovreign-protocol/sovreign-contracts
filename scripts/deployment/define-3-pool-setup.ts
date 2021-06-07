@@ -107,5 +107,11 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     c.poolRouter = poolRouter;
     console.log(`PoolRouter deployed at: ${poolRouter.address.toLowerCase()}`);
 
+    ///////////////////////////
+    // Whitelist Router as LP
+    ///////////////////////////
+    smartPool.connect(c.sovReignOwnerAcct).whitelistLiquidityProvider(poolRouter.address);
+    console.log(`PoolRouter Whitelisted`);
+
     return c;
 }
