@@ -44,7 +44,7 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
 
     const callDatasRights =
         [
-            true, false, true, true, true, false,
+            true, false, true, true, true, true,
         ]
 
 
@@ -85,9 +85,9 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     )
 
 
-    let lpSupply = (await smartPool.totalSupply()).toString()
+    let lpSupply = (await smartPool.totalSupply())
     let controller = (await smartPool.getController()).toString()
-    console.log(`Initial LP Supply: ${lpSupply}`);
+    console.log(`Initial LP Supply: ${lpSupply.div(tenPow18).toString()}`);
     console.log(`Smart Pool controlled by: ${controller} (sovReignOwnerAcct)`);
 
 
@@ -112,6 +112,13 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     smartPool.connect(c.sovReignOwnerAcct).whitelistLiquidityProvider(poolRouter.address);
     console.log(`PoolRouter Whitelisted`);
+
+
+    ///////////////////////////
+    // Set Pool Cap
+    ///////////////////////////
+    smartPool.connect(c.sovReignOwnerAcct).setCap(lpSupply.mul(10000));
+    console.log(`Cap Set at ${lpSupply.mul(1000).div(tenPow18).toString()} LP Tokens`);
 
     return c;
 }

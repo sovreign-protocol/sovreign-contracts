@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import { BigNumber, Signer } from "ethers";
-import { moveAtEpoch, tenPow18,mineBlocks,setTime,getCurrentUnix, moveAtTimestamp } from "./helpers/helpers";
+import { moveAtEpoch, tenPow18,mineBlocks,setTime,getCurrentUnix, moveAtTimestamp, zeroAddress } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
 import { 
@@ -47,7 +47,7 @@ describe("Wrapping Rewards", function () {
         
         wrapper = (await deployContract("WrapSVR", [])) as WrapSVR;
     
-        smartPool = (await deployContract("SmartPoolMock",)) as SmartPoolMock;
+        smartPool = (await deployContract("SmartPoolMock", [underlyingToken.address, zeroAddress])) as SmartPoolMock;
         router = (await deployContract("PoolRouter", [
             smartPool.address,
             wrapper.address,

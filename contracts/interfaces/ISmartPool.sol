@@ -131,4 +131,40 @@ abstract contract ISmartPool is BalancerOwnable {
     function joinPool(uint256 poolAmountOut, uint256[] calldata maxAmountsIn)
         external
         virtual;
+
+    function exitPool(uint256 poolAmountIn, uint256[] calldata minAmountsOut)
+        external
+        virtual;
+
+    function bPool() external view virtual returns (BPool);
+
+    function getSmartPoolManagerVersion()
+        external
+        view
+        virtual
+        returns (address);
+}
+
+abstract contract SmartPoolManager {
+    function joinPool(
+        ConfigurableRightsPool,
+        BPool,
+        uint256 poolAmountOut,
+        uint256[] calldata maxAmountsIn
+    ) external view virtual returns (uint256[] memory actualAmountsIn);
+
+    function exitPool(
+        ConfigurableRightsPool self,
+        BPool bPool,
+        uint256 poolAmountIn,
+        uint256[] calldata minAmountsOut
+    )
+        external
+        view
+        virtual
+        returns (
+            uint256 exitFee,
+            uint256 pAiAfterExitFee,
+            uint256[] memory actualAmountsOut
+        );
 }

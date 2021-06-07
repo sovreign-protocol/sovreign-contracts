@@ -14,8 +14,9 @@ describe('PoolRouter', function () {
     let smartPool: SmartPoolMock;
     let router: PoolRouter;
     let underlyingToken: ERC20Mock;
-    let creator: Signer, owner: Signer, user:Signer, treasury: Signer;
-    let ownerAddr: string, userAddr: string, treasuryAddr: string;
+    let underlyingToken2: ERC20Mock;
+    let creator: Signer, owner: Signer, user:Signer, treasury: Signer, userNew:Signer;
+    let ownerAddr: string, userAddr: string, userNewAddr: string,  treasuryAddr: string;
     let epochClock:EpochClockMock
 
     const amount = BigNumber.from(100).mul(tenPow18) as BigNumber;
@@ -33,22 +34,35 @@ describe('PoolRouter', function () {
 
     let amountLPBefore:BigNumber;
     let amountBefore:BigNumber;
+    let amountBefore2:BigNumber;
     let routerBalanceBefore:BigNumber;
+    let routerBalanceBefore2:BigNumber;
 
     before(async () => {
-        [creator, owner, user, treasury] = await ethers.getSigners();
+        [creator, owner, user, treasury,userNew] = await ethers.getSigners();
         ownerAddr = await owner.getAddress();
         userAddr = await user.getAddress();
         treasuryAddr = await treasury.getAddress();
+        userNewAddr = await userNew.getAddress();
 
 
         await setTime(await getCurrentUnix());
 
         epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
         wrapper = (await deployContract("WrapSVR")) as WrapSVR;
-        smartPool = (await deployContract("SmartPoolMock")) as SmartPoolMock;
+
+
 
         underlyingToken = (await deployContract("ERC20Mock")) as ERC20Mock; 
+        underlyingToken2 = (await deployContract("ERC20Mock")) as ERC20Mock; 
+
+
+        smartPool = (await deployContract("SmartPoolMock", 
+            [
+                underlyingToken.address, 
+                underlyingToken2.address
+            ]
+        )) as SmartPoolMock;
 
         router = (await deployContract("PoolRouter", [
             smartPool.address, 
@@ -68,8 +82,12 @@ describe('PoolRouter', function () {
         await underlyingToken.mint(userAddr, totalAmount)
         await underlyingToken.connect(user).approve(router.address, totalAmount)
 
+        await underlyingToken.mint(userNewAddr, totalAmount)
+        await underlyingToken.connect(userNew).approve(router.address, totalAmount)
 
-        
+        await underlyingToken2.mint(userNewAddr, totalAmount)
+        await underlyingToken2.connect(userNew).approve(router.address, totalAmount)
+
     });
 
     beforeEach(async function () {
@@ -142,6 +160,79 @@ describe('PoolRouter', function () {
         it('accrues protocol fee', async function () {
             expect(await underlyingToken.balanceOf(router.address)).to.be.eq(
                 routerBalanceBefore.add(amount.div(2).mul(50).div(100000))
+            )
+        })
+    })
+
+    describe('DepositAll', async function () {
+
+        before(async function () {
+            routerBalanceBefore = (await underlyingToken.balanceOf(router.address))
+
+            await router.connect(userNew).depositAll([amount,amount], amountLP, liquidationFee);
+        });
+
+        it('deposits LP tokens in wrapper on behalf of user', async function () {
+            expect(await wrapper.connect(userNew).balanceLocked(userNewAddr)).to.be.eq(amountLP.mul(protocolFee).div(100000))
+        })
+
+        it('mints the correct amount of SVR to the user', async function () {
+            expect(await wrapper.connect(userNew).balanceOf(userNewAddr)).to.be.eq(amountLP.mul(protocolFee).div(100000))
+        })
+
+        it('pulls the underlying form the user', async function () {
+            expect(await underlyingToken.balanceOf(userNewAddr)).to.be.eq(totalAmount.sub(amount))
+            expect(await underlyingToken2.balanceOf(userNewAddr)).to.be.eq(totalAmount.sub(amount))
+        })
+
+        it('accrues protocol fee', async function () {
+            expect(await underlyingToken.balanceOf(router.address)).to.be.eq(
+                routerBalanceBefore.add(amount.mul(50).div(100000))
+                )
+            expect(await underlyingToken2.balanceOf(router.address)).to.be.eq(amount.mul(50).div(100000))
+        })
+    })
+
+    describe('WithdrawAll', async function () {
+
+
+        before(async function () {
+            amountLPBefore = (await wrapper.balanceLocked(userNewAddr))
+            amountBefore = (await underlyingToken.balanceOf(userNewAddr))
+            amountBefore2 = (await underlyingToken2.balanceOf(userNewAddr))
+            routerBalanceBefore = (await underlyingToken.balanceOf(router.address))
+            routerBalanceBefore2 = (await underlyingToken2.balanceOf(router.address))
+            //withdraw half of what was deposited before
+            await router.connect(userNew).withdrawAll(amountLP.div(2), [amount.div(2),amount.div(2)]);
+        });
+
+        it('withdraws LP tokens from wrapper on behalf of user', async function () {
+            expect(await wrapper.connect(userNew).balanceLocked(userNewAddr)).to.be.eq(
+                amountLPBefore.sub(amountLP.div(2))
+            )
+        })
+
+        it('burns the correct amount of SVR from the user', async function () {
+            expect(await wrapper.connect(userNew).balanceOf(userNewAddr)).to.be.eq(
+                amountLPBefore.sub(amountLP.div(2))
+            )
+        })
+
+        it('sends the underlying to the user', async function () {
+            expect(await underlyingToken.balanceOf(userNewAddr)).to.be.eq(
+                amountBefore.add(amount.div(2).mul(protocolFee).div(100000))
+            )
+            expect(await underlyingToken2.balanceOf(userNewAddr)).to.be.eq(
+                amountBefore2.add(amount.div(2).mul(protocolFee).div(100000))
+            )
+        })
+
+        it('accrues protocol fee', async function () {
+            expect(await underlyingToken.balanceOf(router.address)).to.be.eq(
+                routerBalanceBefore.add(amount.div(2).mul(50).div(100000))
+            )
+            expect(await underlyingToken2.balanceOf(router.address)).to.be.eq(
+                routerBalanceBefore2.add(amount.div(2).mul(50).div(100000))
             )
         })
     })

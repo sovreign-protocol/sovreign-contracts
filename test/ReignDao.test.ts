@@ -15,6 +15,8 @@ describe('ReignDAO', function () {
     let voter1: Signer, voter2: Signer, voter3: Signer;
     let snapshotId: any;
 
+    let tokens = ["0x0000000000000000000000000000000000000001","0x0000000000000000000000000000000000000002"]
+
     let warmUpDuration: number, activeDuration: number, queueDuration: number, gracePeriodDuration: number;
 
     enum ProposalState {
@@ -37,12 +39,12 @@ describe('ReignDAO', function () {
         reignDAO = await helpers.deployReignDAO();
 
         basketBalancer = (await deployContract("BasketBalancerMock", [
-            ["0x0000000000000000000000000000000000000001","0x0000000000000000000000000000000000000002"],
+            tokens,
             [20,80],
             await reign.address]
             )) as BasketBalancerMock;
 
-        smartPool = (await deployContract("SmartPoolMock")) as SmartPoolMock;
+        smartPool = (await deployContract("SmartPoolMock", [tokens[0], tokens[1]])) as SmartPoolMock;
         
 
         await reignDAO.initialize(reign.address, basketBalancer.address, smartPool.address);
