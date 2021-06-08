@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.7.6;
 
-import "../interfaces/IERC20.sol";
-import "../interfaces/IPoolController.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract ReignToken is IERC20 {
     using SafeMath for uint256;
 
-    string public constant override name = "SoVReign Governance Token";
-    string public constant override symbol = "REIGN";
-    uint8 public constant override decimals = 18;
+    string public constant name = "SoVReign Governance Token";
+    string public constant symbol = "REIGN";
+    uint8 public constant decimals = 18;
     uint256 public override totalSupply;
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;

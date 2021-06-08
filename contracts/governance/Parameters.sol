@@ -10,8 +10,12 @@ abstract contract Parameters {
     uint256 public queueDuration = 1 hours;
     uint256 public gracePeriodDuration = 1 hours;
 
+    uint256 public gradualWeightUpdate = 13300; // 2 days in blocks
+
     uint256 public acceptanceThreshold = 60;
     uint256 public minQuorum = 40;
+
+    address public smartPool;
 
     uint256 constant ACTIVATION_THRESHOLD = 4_000_000 * 10**18;
     uint256 constant PROPOSAL_MAX_ACTIONS = 10;
@@ -23,6 +27,22 @@ abstract contract Parameters {
 
     function setWarmUpDuration(uint256 period) public onlyDAO {
         warmUpDuration = period;
+    }
+
+    function setSmartPoolAddress(address _smartPool) public onlyDAO {
+        smartPool = _smartPool;
+    }
+
+    function setSmartPoolInitial(address _smartPool) public {
+        require(
+            smartPool == address(0),
+            "Can only initialize smartPool address once"
+        );
+        smartPool = _smartPool;
+    }
+
+    function setGradualWeightUpdate(uint256 period) public onlyDAO {
+        gradualWeightUpdate = period;
     }
 
     function setActiveDuration(uint256 period) public onlyDAO {

@@ -6,8 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IReign.sol";
 import "../libraries/LibRewardsDistribution.sol";
 
-import "hardhat/console.sol";
-
 contract GovRewards {
     // lib
     using SafeMath for uint256;
@@ -15,8 +13,6 @@ contract GovRewards {
 
     // state variables
 
-    // addreses
-    address private _poolLP;
     address private _rewardsVault;
     // contracts
     IERC20 private _reignToken;
@@ -24,10 +20,11 @@ contract GovRewards {
 
     mapping(uint128 => uint256) private _sizeAtEpoch;
     mapping(uint128 => uint256) private _epochInitTime;
-    uint128 public lastInitializedEpoch;
     mapping(address => uint128) private lastEpochIdHarvested;
-    uint256 public epochDuration; // init from staking contract
-    uint256 public epochStart; // init from staking contract
+
+    uint256 public epochDuration; // init from reignDiamond contract
+    uint256 public epochStart; // init from reignDiamond contract
+    uint128 public lastInitializedEpoch;
 
     // events
     event MassHarvest(
@@ -53,6 +50,7 @@ contract GovRewards {
         _rewardsVault = rewardsVault;
     }
 
+    //before this the epoch start date is 0
     function initialize() public {
         require(epochStart == 0, "Can only be initialized once");
         epochDuration = _reign.getEpochDuration();
@@ -98,6 +96,7 @@ contract GovRewards {
             lastEpochIdHarvested[msg.sender].add(1) == epochId,
             "Harvest in order"
         );
+        // get amount to transfer and transfer it
         uint256 userReward = _harvest(epochId);
         if (userReward > 0) {
             _reignToken.transferFrom(_rewardsVault, msg.sender, userReward);
@@ -118,15 +117,16 @@ contract GovRewards {
         }
         // Set user state for last harvested
         lastEpochIdHarvested[msg.sender] = epochId;
-        // compute and return user total reward. For optimization reasons the transfer have been moved to an upper layer (i.e. massHarvest needs to do a single transfer)
 
         // exit if there is no stake on the epoch
         if (_sizeAtEpoch[epochId] == 0) {
             return 0;
         }
 
+        // compute and return user total reward.
+        // For optimization reasons the transfer have been moved to an upper layer
+        // (i.e. massHarvest needs to do a single transfer)
         uint256 epochRewards = getRewardsForEpoch();
-
         uint256 boostMultiplier = getBoost(msg.sender, epochId);
         uint256 userEpochRewards =
             epochRewards

@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "../interfaces/IReign.sol";
+import "../interfaces/IBasketBalancer.sol";
 import "./ReignDiamond.sol";
 import "./Bridge.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -89,6 +90,7 @@ contract ReignDAO is Bridge {
     mapping(uint256 => AbrogationProposal) public abrogationProposals;
     mapping(address => uint256) public latestProposalIds;
     IReign reign;
+    IBasketBalancer basketBalancer;
     bool isInitialized;
     bool public isActive;
 
@@ -126,11 +128,17 @@ contract ReignDAO is Bridge {
     receive() external payable {}
 
     // executed only once
-    function initialize(address reignAddr) public {
+    function initialize(
+        address _reignAddr,
+        address _basketBalancer,
+        address _smartPool
+    ) public {
         require(isInitialized == false, "Contract already initialized.");
-        require(reignAddr != address(0), "reign must not be 0x0");
+        require(_reignAddr != address(0), "reign must not be 0x0");
 
-        reign = IReign(reignAddr);
+        reign = IReign(_reignAddr);
+        basketBalancer = IBasketBalancer(_basketBalancer);
+        setSmartPoolInitial(_smartPool);
         isInitialized = true;
     }
 
@@ -142,6 +150,26 @@ contract ReignDAO is Bridge {
         );
 
         isActive = true;
+    }
+
+    function triggerWeightUpdate() public {
+        // this will revert if epoch is not over
+        basketBalancer.updateBasketBalance();
+
+        // get etsablished weights
+        address[] memory token = basketBalancer.getTokens();
+        uint256[] memory weights = new uint256[](token.length);
+        for (uint256 i = 0; i < token.length; i++) {
+            weights[i] = basketBalancer.getTargetAllocation(token[i]);
+        }
+
+        //update weights gradually in smartPool
+        updateWeights(weights);
+    }
+
+    function triggerApplyAddToken() public {
+        // apply addition of new token, reverts if token add lock is not elapsed
+        applyAddToken();
     }
 
     function propose(

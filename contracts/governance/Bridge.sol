@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "./Parameters.sol";
+import "../interfaces/ISmartPool.sol";
 
 abstract contract Bridge is Parameters {
     mapping(bytes32 => bool) public queuedTransactions;
@@ -37,16 +38,8 @@ abstract contract Bridge is Parameters {
         bytes memory data,
         uint256 eta
     ) internal returns (bytes memory) {
+        // reignDAO.execute already checks that the proposal is in grace period
         bytes32 txHash = _getTxHash(target, value, signature, data, eta);
-
-        require(
-            block.timestamp >= eta,
-            "executeTransaction: Transaction hasn't surpassed time lock."
-        );
-        require(
-            block.timestamp <= eta + gracePeriodDuration,
-            "executeTransaction: Transaction is stale."
-        );
 
         queuedTransactions[txHash] = false;
 
@@ -67,6 +60,18 @@ abstract contract Bridge is Parameters {
         require(success, string(returnData));
 
         return returnData;
+    }
+
+    function updateWeights(uint256[] memory weights) internal {
+        ISmartPool(smartPool).updateWeightsGradually(
+            weights,
+            block.number,
+            block.number + gradualWeightUpdate // plus 2 days
+        );
+    }
+
+    function applyAddToken() internal {
+        ISmartPool(smartPool).applyAddToken();
     }
 
     function _getTxHash(

@@ -7,15 +7,14 @@ This repo has all smart contracts used by SoVReign.
 The `./contracts` folder has the following structure:
 
 - `./facets/`: contains the Diamond Facets utilized
+- `./farming/`: contains all yield-farming contracts and the main staking vault
 - `./governance/`: contains contracts related to the ReignDAO, the Diamond Proxy and Governance Rewards
 - `./interfaces/`: contains all interfaces used across the protocol
 - `./libraries/`: contains all libraries
 - `./mocks/`: contains mock contracts used for testing
-- `./periphery/`: contains: oracles, the basket balancer and the default interest
-- `./pool/`: contains all functionality related to pools
-- `./staking/`: contains all yield-farming and staking contracts
 - `./tokens/`: contains the SVR and REIGN Token contracts
 - `./vesting/`: contains vesting contracts for the team and early investors
+- `./wrapper/`: contains all functionality related to wrapping the Balancer LP into SVR
 
 ## solc
 
@@ -64,9 +63,9 @@ yarn coverage
 ## Deployment
 
 > **IMPORTANT:**
-> 
-> By default, the env variable `MAINNET_ALCHEMY_ENABLED` is set to `true` in `.env` file. It means that 
-> hardhat uses mainnet forking for running the scripts and tests. 
+>
+> By default, the env variable `MAINNET_ALCHEMY_ENABLED` is set to `true` in `.env` file. It means that
+> hardhat uses mainnet forking for running the scripts and tests.
 
 - Just deploy and set-up all contracts:
 
@@ -78,12 +77,6 @@ npx hardhat run scripts/run-deploy-all.ts
 
 ```shell script
 npx hardhat run ./scripts/run-scenario1.ts
-```
-
-- Run the `scenario2`:
-
-```shell script
-npx hardhat run ./scripts/run-scenario2.ts
 ```
 
 ## Run Remix-IDE and point to your local folder

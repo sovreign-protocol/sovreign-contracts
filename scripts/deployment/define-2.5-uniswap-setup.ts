@@ -2,21 +2,11 @@ import {DeployConfig} from "../config";
 import {BigNumber, Contract} from "ethers";
 
 import {hour} from "../../test/helpers/time";
-import {deployOracle} from "../../test/helpers/oracles";
 import {increaseBlockTime, tenPow18, tenPow6, waitFor} from "../../test/helpers/helpers";
 import * as deploy from "../../test/helpers/deploy";
 
 import {
-    GovRewards, 
-    LiquidityBufferVault,
-    ReignDAO,
-    Staking,
-    LPRewards,
     ReignToken,
-    UniswapPairOracle,
-    SvrToken,
-    RewardsVault,
-    LibRewardsDistribution,
 } from "../../typechain";
 
 
@@ -57,9 +47,6 @@ export async function uniswapSetup(c: DeployConfig): Promise<DeployConfig> {
         )
     await tx.wait();
     console.log(`Liquidity added to REIGN/WETH Pair`);
-
-
-
 
 
     return c;

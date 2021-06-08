@@ -1,44 +1,44 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.7.6;
 
-import "../interfaces/IBasketBalancer.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract BasketBalancerMock is IBasketBalancer {
+contract BasketBalancerMock {
     using SafeMath for uint128;
+    using SafeMath for uint256;
 
-    uint256 public override FULL_ALLOCATION = 1000000000; // 9 decimals precision
+    uint256 public full_allocation;
 
-    address public override reignAddress;
-    address[] allPools;
-    mapping(address => uint256) poolAllocation;
+    address public reignAddress;
+    address[] allTokens;
+    mapping(address => uint256) tokenAllocation;
 
     constructor(
-        address[] memory newPools,
+        address[] memory newtokens,
         uint256[] memory newAllocation,
         address _reignAddress
     ) {
-        for (uint256 i = 0; i < newPools.length; i++) {
-            uint256 poolPercentage = newAllocation[i];
-            poolAllocation[newPools[i]] = poolPercentage;
+        for (uint256 i = 0; i < newtokens.length; i++) {
+            uint256 tokenPercentage = newAllocation[i];
+            tokenAllocation[newtokens[i]] = tokenPercentage;
+            full_allocation = full_allocation.add(tokenPercentage);
         }
-        allPools = newPools;
+        allTokens = newtokens;
         reignAddress = _reignAddress;
     }
 
     function updateAllocationVote(
-        address[] calldata pools,
+        address[] calldata tokens,
         uint256[] calldata allocations
     ) public {}
 
-    function updateBasketBalance() external override {}
+    function updateBasketBalance() external {}
 
     function computeAllocation() public pure returns (uint256[] memory) {}
 
     function hasVotedInEpoch(address user, uint128 epoch)
         external
         pure
-        override
         returns (bool)
     {
         if (epoch.mod(2) == 0) {
@@ -58,21 +58,11 @@ contract BasketBalancerMock is IBasketBalancer {
         )
     {}
 
-    function getTargetAllocation(address pool)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        return poolAllocation[pool];
+    function getTargetAllocation(address token) public view returns (uint256) {
+        return tokenAllocation[token];
     }
 
-    function addPool(address pool) public override returns (uint256) {
-        poolAllocation[pool] = 500000000;
-        return allPools.length;
-    }
-
-    function getPools() public view returns (address[] memory) {
-        return allPools;
+    function getTokens() public view returns (address[] memory) {
+        return allTokens;
     }
 }
