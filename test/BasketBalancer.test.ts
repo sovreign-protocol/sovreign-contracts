@@ -356,13 +356,13 @@ describe('BasketBalancer', function () {
             expect( await balancer.getTargetAllocation(address3)).to.be.equal(maxAllocation.div(10))
             expect( await balancer.full_allocation()).to.be.equal(maxAllocation.add(maxAllocation.div(10)))
 
-            await balancer.connect(reignDAO).removeToken(address3)
-            expect( await balancer.getTargetAllocation(address3)).to.be.equal(0)
-            expect( await balancer.full_allocation()).to.be.equal(maxAllocation)
+            await balancer.connect(reignDAO).removeToken(address2)
+            expect( await balancer.getTargetAllocation(address2)).to.be.equal(0)
+            expect( await balancer.full_allocation()).to.be.equal(maxAllocation.div(2).add(maxAllocation.div(10)))
             let tokens = await balancer.getTokens()
             expect(tokens.length).to.be.equal(2)
             expect(tokens[0]).to.be.equal(address1)
-            expect(tokens[1]).to.be.equal(address2)
+            expect(tokens[1]).to.be.equal(address3)
         });
 
 
