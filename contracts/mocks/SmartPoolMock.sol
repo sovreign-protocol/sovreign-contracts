@@ -82,6 +82,14 @@ contract SmartPoolMock is ERC20Mock {
     function getSmartPoolManagerVersion() public view returns (address) {
         return smartPoolManager;
     }
+
+    function getDenormalizedWeight(address token)
+        external
+        view
+        returns (uint256)
+    {
+        return 10 * 10**18;
+    }
 }
 
 contract BPool {

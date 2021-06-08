@@ -217,6 +217,19 @@ contract PoolRouter {
     }
 
     // gets all tokens currently in the pool
+    function getTokenWeights() public view returns (uint256[] memory) {
+        address[] memory tokens = getPoolTokens();
+        uint256[] memory weights = new uint256[](tokens.length);
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            weights[i] = smartPool.getDenormalizedWeight(tokens[i]);
+        }
+        return weights;
+    }
+
+    // The follwing lines are not covered by unit test, they just forwards the data from SmartPoolManager
+
+    // gets current LP exchange rate for all
     function getAmountsTokensIn(
         uint256 poolAmountOut,
         uint256[] memory maxAmountsIn
@@ -231,7 +244,24 @@ contract PoolRouter {
             );
     }
 
-    // gets all tokens currently in the pool
+    // gets current LP exchange rate for single Asset
+    function getAmountsTokensInSingle(
+        address tokenIn,
+        uint256 amountTokenIn,
+        uint256 minPoolAmountOut
+    ) public view returns (uint256) {
+        address manager = smartPool.getSmartPoolManagerVersion();
+        return
+            SmartPoolManager(manager).joinswapExternAmountIn(
+                ConfigurableRightsPool(address(this)),
+                smartPool.bPool(),
+                tokenIn,
+                amountTokenIn,
+                minPoolAmountOut
+            );
+    }
+
+    // gets current LP exchange rate for all
     function getAmountPoolOut(
         uint256 poolAmountIn,
         uint256[] memory minAmountsOut

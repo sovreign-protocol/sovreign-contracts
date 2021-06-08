@@ -10,7 +10,7 @@ abstract contract Parameters {
     uint256 public queueDuration = 1 hours;
     uint256 public gracePeriodDuration = 1 hours;
 
-    uint256 public gradualWeightUpdate = 2 days;
+    uint256 public gradualWeightUpdate = 13300; // 2 days in blocks
 
     uint256 public acceptanceThreshold = 60;
     uint256 public minQuorum = 40;

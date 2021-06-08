@@ -13,6 +13,7 @@ import {hour, minute} from "../../test/helpers/time";
 import {increaseBlockTime, mineBlocks, tenPow18} from "../../test/helpers/helpers";
 import * as deploy from "../../test/helpers/deploy";
 
+
 export class Scenario1Config {
 
     public amountStakedUser1?: BigNumber;
@@ -21,9 +22,11 @@ export class Scenario1Config {
     }
 }
 
-export async function createPools(c: DeployConfig): Promise<DeployConfig> {
+export async function addToken(c: DeployConfig): Promise<DeployConfig> {
+
 
     c.scenario1 = new Scenario1Config();
+
 
     const reignToken = c.reignToken as ReignToken;
     const reignDiamond = c.reignDiamond as Contract;
@@ -31,13 +34,14 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
     const reignDAO = c.reignDAO as ReignDAO;
     const poolRouter = c.poolRouter as PoolRouter;
     const smartPool = c.smartPool as Contract;
-    const wbtc = c.wbtc as Contract;
-    const dai = c.dai as Contract;
+    const basketBalancer = c.basketBalancer as BasketBalancer;
+    const weth = c.weth as Contract;
 
-    let amountDai = BigNumber.from(10_000).mul(tenPow18)
+    let amountWeth = BigNumber.from(20).mul(tenPow18)
 
     // Give DAO some tokens for proposal
-    await dai.connect(c.user4Acct).transfer(reignDAO.address, amountDai.mul(2))
+
+    await weth.connect(c.user1Acct).transfer(reignDAO.address, amountWeth)
 
 
     console.log(`\n --- USER STAKE TOKENS INTO GOVERNANCE ---`);
@@ -80,19 +84,19 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     let poolTokens = await poolRouter
     .getPoolTokens();
-    console.log(`Tokens now in the Pool:  ${poolTokens}` );
+    console.log(`Token Weights before WETH is Added` );
 
     let weight1 = await smartPool
         .getDenormalizedWeight(poolTokens[0]);
-    console.log(`Token 1 - WETH '${weight1}' denormalized Weight`)
+    console.log(`Token 1 - WBTC '${weight1}' denormalized Weight`)
 
     let weight2 = await smartPool
         .getDenormalizedWeight(poolTokens[1]);
-    console.log(`Token 2 - WBTC '${weight2}' denormalized Weight`)
+    console.log(`Token 2 - USDC '${weight2}' denormalized Weight`)
 
     let weight3 = await smartPool
         .getDenormalizedWeight(poolTokens[2]);
-    console.log(`Token 3 - USDC '${weight3}' denormalized Weight`)
+    console.log(`Token 3 - DAI '${weight3}' denormalized Weight`)
 
 
     console.log(`\n --- CREATE PROPOSAL  ---`);
@@ -100,13 +104,16 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
 
 
     const targets = [
-        dai.address,
+        weth.address,
         smartPool.address,
+        basketBalancer.address
     ];
-    const values = ['0','0'];
+    const values = ['0','0','0'];
     const signatures = [
         'approve(address,uint256)',
-        'commitAddToken(address,uint256,uint256)' ]
+        'commitAddToken(address,uint256,uint256)' ,
+        'addToken(address,uint256)' 
+    ]
     const callDatas = [
         // for the first pool (Pool1):
         ejs.utils.defaultAbiCoder.encode(
@@ -118,7 +125,7 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
                 // contract address
                 smartPool.address,
                 // token amount approved
-                amountDai,
+                amountWeth,
 
             ]
         ),
@@ -131,9 +138,23 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
             ],
             [
                 // token address
-                c.daiAddr,
+                c.wethAddr,
                 // token amount added
-                amountDai,
+                amountWeth,
+                // token wight
+                BigNumber.from(20).mul(BigNumber.from(10).pow(17)),
+
+            ]
+        ),
+        // add token to balancer:
+        ejs.utils.defaultAbiCoder.encode(
+            [
+                'address',
+                'uint256',
+            ],
+            [
+                // token address
+                c.wethAddr,
                 // token wight
                 BigNumber.from(2).mul(tenPow18),
 
@@ -141,7 +162,7 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
         )
     ];
 
-    console.log(`User1 proposes to add DAI `)
+    console.log(`User1 proposes to add WETH `)
     await reignDAO
         .connect(c.user1Acct)
         .propose(
@@ -149,7 +170,7 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
             values,
             signatures,
             callDatas,
-            'Add DAI to Pool',
+            'Add WETH to Pool',
             'Proposal1'
         );
 
@@ -255,23 +276,23 @@ export async function createPools(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     poolTokens = await poolRouter
     .getPoolTokens();
-    console.log(`Tokens now in the Pool:  ${poolTokens}` );
+    console.log(`Token Weights after WETH is Added` );
 
     weight1 = await smartPool
         .getDenormalizedWeight(poolTokens[0]);
-    console.log(`Token 1 - WETH '${weight1}' denormalized Weight`)
+    console.log(`Token 1 - WBTC '${weight1}' denormalized Weight`)
 
     weight2 = await smartPool
         .getDenormalizedWeight(poolTokens[1]);
-    console.log(`Token 2 - WBTC '${weight2}' denormalized Weight`)
+    console.log(`Token 2 - USDC '${weight2}' denormalized Weight`)
 
     weight3 = await smartPool
         .getDenormalizedWeight(poolTokens[2]);
-    console.log(`Token 3 - USDC '${weight3}' denormalized Weight`)
+    console.log(`Token 3 - DAI '${weight3}' denormalized Weight`)
 
     let weight4 = await smartPool
         .getDenormalizedWeight(poolTokens[3]);
-    console.log(`Token 4 - DAI  '${weight4}' denormalized Weight`)
+    console.log(`Token 4 - WETH  '${weight4}' denormalized Weight`)
 
     return c;
 }

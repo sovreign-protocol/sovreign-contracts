@@ -46,7 +46,7 @@ export async function contractsPreFlight(c: DeployConfig): Promise<DeployConfig>
     console.log(`WBTC connected at: ${wbtc.address.toLowerCase()}`);
 
     ///////////////////////////
-    // Connect "usdc" contract:
+    // Connect "weth" contract:
     ///////////////////////////
     const weth = new Contract(
         c.wethAddr, 
@@ -55,6 +55,18 @@ export async function contractsPreFlight(c: DeployConfig): Promise<DeployConfig>
     )
     c.weth = weth
     console.log(`WETH connected at: ${weth.address.toLowerCase()}`);
+
+
+     ///////////////////////////
+    // Connect "paxg" contract:
+    ///////////////////////////
+    const paxg = new Contract(
+        c.paxgAddr, 
+        ERC20,
+        c.sovReignOwnerAcct 
+    )
+    c.paxg = paxg
+    console.log(`PAXG connected at: ${paxg.address.toLowerCase()}`);
 
 
     ///////////////////////////

@@ -3,6 +3,7 @@ import * as deploy from "../../test/helpers/deploy";
 import {
     PoolRouter,
     ERC20,
+    BasketBalancer,
 } from "../../typechain";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
 import {tenPow18} from "../../test/helpers/helpers";
@@ -14,18 +15,23 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
 
     console.log(`\n --- SETUP CONFIGURABLE RIGHTS POOL ---`);
 
-    const weth = c.weth as ERC20;
+    const dai = c.dai as ERC20;
     const wbtc = c.wbtc as ERC20;
     const usdc = c.usdc as ERC20;
     const smartPoolFactory = c.smartPoolFactory as Contract;
+    const reignDiamond = c.reignDiamond as Contract;
+    const reignDAO = c.reignDAO as Contract;
 
 
     ///////////////////////////
     // Transfer Tokens Necessary to Owner
     ///////////////////////////
-    weth.connect(c.user1Acct).transfer(c.sovReignOwnerAddr, BigNumber.from(10).mul(tenPow18))
-    wbtc.connect(c.user2Acct).transfer(c.sovReignOwnerAddr, 2_00000000)
-    usdc.connect(c.user3Acct).transfer(c.sovReignOwnerAddr, 20000_000000)
+    let wbtcAmount = 1000000000    // ~ 330'000 $
+    let usdcAmount = 330000000000 // ~ 330'000 $
+    let daiAmount = BigNumber.from(330000).mul(tenPow18)// ~ 330'000 $
+    await wbtc.connect(c.user2Acct).transfer(c.sovReignOwnerAddr, wbtcAmount*2) 
+    await usdc.connect(c.user3Acct).transfer(c.sovReignOwnerAddr, usdcAmount*2) 
+    await dai.connect(c.user4Acct).transfer(c.sovReignOwnerAddr, daiAmount.mul(2))  
 
 
 
@@ -35,10 +41,22 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     const callDatasParams = [
                 'SVRLP',
                 'SoVReign Pool LP',
-                [weth.address, wbtc.address, usdc.address],
-                [BigNumber.from(10).mul(tenPow18), 1_00000000, 10000_000000],
-                [BigNumber.from(26).mul(tenPow18), BigNumber.from(4).mul(tenPow18), BigNumber.from(10).mul(tenPow18)],
-                5000000000000000
+                [
+                    wbtc.address, 
+                    usdc.address,
+                    dai.address, 
+                ],
+                [
+                    wbtcAmount, 
+                    usdcAmount,
+                    daiAmount, 
+                ],
+                [
+                    BigNumber.from(130).mul(BigNumber.from(10).pow(17)), 
+                    BigNumber.from(130).mul(BigNumber.from(10).pow(17)), 
+                    BigNumber.from(130).mul(BigNumber.from(10).pow(17))
+                ],
+                5_000000000000000 // 0.5% trading fee
             ]
         
 
@@ -72,10 +90,12 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     c.smartPool = smartPool
     console.log(`SmartPool connected at ${smartPoolAddr}`);
 
+
+
     
-    await weth.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, BigNumber.from(10).mul(tenPow18));
-    await wbtc.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, 10_00000000);
-    await usdc.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, 10000_000000);
+    await dai.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, daiAmount);
+    await wbtc.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, wbtcAmount);
+    await usdc.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, usdcAmount);
 
 
     await smartPool.connect(c.sovReignOwnerAcct).createPool(
@@ -119,6 +139,29 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     smartPool.connect(c.sovReignOwnerAcct).setCap(lpSupply.mul(10000));
     console.log(`Cap Set at ${lpSupply.mul(1000).div(tenPow18).toString()} LP Tokens`);
+
+
+    console.log(`\n --- DEPLOY BASKET BALANCER ---`);
+
+    ///////////////////////////
+    // Deploy "BasketBalancer" contract:
+    ///////////////////////////
+    const basketBalancer = await deploy.deployContract(
+        'BasketBalancer',
+        [
+            reignDiamond.address,
+            reignDAO.address,
+            poolRouter.address,
+            BigNumber.from(20).mul(BigNumber.from(10).pow(17)), //20% max delta
+        ]
+    ) as BasketBalancer;
+    c.basketBalancer = basketBalancer;
+    let tokens = await basketBalancer.getTokens();
+    console.log(`BasketBalancer deployed at: ${basketBalancer.address.toLowerCase()}`);
+    console.log(`BasketBalancer tracking at: ${tokens}`);
+    console.log(`BasketBalancer weighting at: ${await basketBalancer.getTargetAllocation(tokens[0])}`);
+    console.log(`BasketBalancer weighting at: ${await basketBalancer.getTargetAllocation(tokens[1])}`);
+    console.log(`BasketBalancer weighting at: ${await basketBalancer.getTargetAllocation(tokens[2])}`);
 
     return c;
 }

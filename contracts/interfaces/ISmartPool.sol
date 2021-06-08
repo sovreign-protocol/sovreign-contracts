@@ -103,7 +103,7 @@ abstract contract ISmartPool is BalancerOwnable {
         uint256[] memory,
         uint256,
         uint256
-    ) external virtual returns (address);
+    ) external virtual;
 
     function joinswapExternAmountIn(
         address tokenIn,
@@ -175,4 +175,12 @@ abstract contract SmartPoolManager {
             uint256 pAiAfterExitFee,
             uint256[] memory actualAmountsOut
         );
+
+    function joinswapExternAmountIn(
+        ConfigurableRightsPool self,
+        BPool bPool,
+        address tokenIn,
+        uint256 tokenAmountIn,
+        uint256 minPoolAmountOut
+    ) external view virtual returns (uint256 poolAmountOut);
 }

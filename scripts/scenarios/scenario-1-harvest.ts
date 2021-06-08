@@ -1,50 +1,150 @@
 import {DeployConfig} from "../config";
 import {BigNumber, Contract} from "ethers";
 import {
-        PoolRewards,
-        Pool,
+        WrappingRewards,
+        WrapSVR,
+        PoolRouter,
         ReignToken,
-        SvrToken,
         BasketBalancer,
-        UniswapPairOracle,
-        ChainlinkOracleAdapter,
         Staking, 
         LPRewards,
-        GovRewards
+        GovRewards,
     } from "../../typechain";
 
 import {getLatestBlockTimestamp, mineBlocks, moveAtTimestamp, tenPow18} from "../../test/helpers/helpers";
 import ERC20 from "../deployment/ContractABIs/ERC20.json"
+import { wrap } from "module";
 
 export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
-    const svrToken = c.svrToken as SvrToken;
+    const wrapSVR = c.wrapSVR as WrapSVR;
+    const wrappingRewards = c.wrappingRewards as WrappingRewards;
     const reignToken = c.reignToken as ReignToken;
     const staking = c.staking as Staking;
     const balancer = c.basketBalancer as BasketBalancer;
-    const pool1 = c.pool1 as Pool;
-    const pool2 = c.pool2 as Pool;
+    const poolRouter = c.poolRouter as PoolRouter;
     const uniswapFactory = c.uniswapFactory as Contract;
+    const uniswapRouter = c.uniswapRouter as Contract;
     const reignLpRewards = c.reignLpRewards as LPRewards;
+    const svrLpRewards = c.svrLpRewards as LPRewards;
     const govRewards = c.govRewards as GovRewards;
-    const pool1Rewards = c.pool1Rewards as PoolRewards;
-    const pool2Rewards = c.pool2Rewards as PoolRewards;
     const wbtc = c.wbtc as Contract;
     const weth = c.weth as Contract;
-    const oracle1 = c.oracle1 as ChainlinkOracleAdapter;
-    const oracle2 = c.oracle2 as ChainlinkOracleAdapter;
-    const reignTokenOracle = c.reignTokenOracle as UniswapPairOracle;
+    const usdc = c.usdc as Contract;
 
     let reignPairAddress = await uniswapFactory.getPair(reignToken.address, c.wethAddr)
+    let svrPairAddress = await uniswapFactory.getPair(wrapSVR.address, c.usdcAddr)
 
-    let reignUsdPair = new Contract(
+    let reignWethPair = new Contract(
         reignPairAddress, 
         ERC20,
         c.sovReignOwnerAcct 
     )
 
+    let svrUsdcPair = new Contract(
+        svrPairAddress, 
+        ERC20,
+        c.sovReignOwnerAcct 
+    )
 
-    console.log(`\n --- USERS VOTE ON ALLOCATION ---`);
+
+    console.log(`\n --- START STAKING EPOCHS---`);
+
+    console.log(`Epoch: `, (await wrapSVR.getCurrentEpoch()).toNumber())
+
+
+    await wrapSVR.initEpochForTokens(0)
+    await staking.initEpochForTokens([reignWethPair.address, svrUsdcPair.address], 0)
+
+    await wrapSVR.initEpochForTokens(1)
+    await staking.initEpochForTokens([reignWethPair.address, svrUsdcPair.address], 1)
+
+    await wrapSVR.initEpochForTokens(2)
+    await staking.initEpochForTokens([reignWethPair.address, svrUsdcPair.address], 2)
+
+    await wrapSVR.initEpochForTokens(3)
+    await staking.initEpochForTokens([reignWethPair.address, svrUsdcPair.address], 3)
+
+
+
+    console.log(`\n --- USERS STAKE UNISWAP REIGN/WETH LP ---`);
+
+    let balance = await reignWethPair.balanceOf(c.user1Addr)
+    await reignWethPair.connect(c.user1Acct).approve(staking.address, balance)
+    await staking.connect(c.user1Acct).deposit(reignPairAddress, balance)
+    console.log(`User1 Staked ${balance} REIGN/WETH LP `);
+
+
+
+    console.log(`\n --- USERS DEPOSIT ASSETS INTO POOLS ---`);
+
+
+    ///////////////////////////
+    // Mint SVR by depositing WBTC
+    ///////////////////////////
+
+    let depositAmountWbtc = 50000000 // 0.5 BTC
+    await wbtc.connect(c.user2Acct).approve(poolRouter.address, depositAmountWbtc)
+    console.log(`User2 approved 0.5 WBTC`)
+
+    let allowance = await wbtc.allowance(c.user2Addr,poolRouter.address)
+    console.log(`User2 allowance '${allowance}'`)
+    
+    await poolRouter.connect(c.user2Acct).deposit(c.wbtcAddr, depositAmountWbtc, 1, 100000)
+    console.log(`User2 deposits 0.5 WBTC`)
+    let svrBalance = await wrapSVR.balanceOf(c.user2Addr)
+    console.log(`User SVR Balance '${svrBalance}'`)
+
+    ///////////////////////////
+    // Mint SVR by depositing WBTC
+    ///////////////////////////
+    let depositAmountUsdc = 20_000_000000 // 20'000 USDC
+    await usdc.connect(c.user3Acct).approve(poolRouter.address, depositAmountUsdc)
+    console.log(`User3 approved 20'000 USDC`)
+
+     allowance = await usdc.allowance(c.user3Addr,poolRouter.address)
+    console.log(`User3 allowance '${allowance}'`)
+    
+    await poolRouter.connect(c.user3Acct).deposit(c.usdcAddr, depositAmountUsdc, 1, 100000)
+    console.log(`User3 deposits 20'000 USDC`)
+    let svrBalanceU3 = await wrapSVR.balanceOf(c.user3Addr)
+    console.log(`User3 SVR Balance '${svrBalanceU3}'`)
+
+   
+
+    
+    console.log(`\n --- USERS ADD LIQUIDITY TO UNISWAP SVR/USDC LP ---`);
+
+    ///////////////////////////
+    // Deposit liquidity into the SVR/USDC pair 
+    ///////////////////////////
+    let usdcAmount = 10_000_000000
+    await usdc.connect(c.user3Acct).transfer(c.user2Addr, usdcAmount);
+    let tx = await wrapSVR.connect(c.user2Acct).approve(uniswapRouter.address, svrBalance)
+    await tx.wait();
+    tx = await usdc.connect(c.user2Acct).approve(uniswapRouter.address, usdcAmount);
+    await tx.wait();
+    tx = await uniswapRouter.connect(c.user2Acct).addLiquidity(
+        wrapSVR.address,
+            usdc.address,
+            svrBalance,
+            usdcAmount,
+            1,
+            1,
+            c.user2Addr,
+            Date.now() + 1000
+        )
+    await tx.wait();
+    console.log(`Liquidity added to SVR/USDC Pair`);
+
+
+    console.log(`\n --- USERS STAKE UNISWAP SVR/USDC LP ---`);
+
+    balance = await svrUsdcPair.balanceOf(c.user2Addr)
+    await svrUsdcPair.connect(c.user2Acct).approve(staking.address, balance)
+    await staking.connect(c.user2Acct).deposit(svrPairAddress, balance)
+    console.log(`User2 Staked ${balance} SVR/USDC LP `);
+   
 
     ///////////////////////////
     // Time warp: go to the next Epoch
@@ -53,156 +153,28 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
     await moveAtTimestamp(await getLatestBlockTimestamp() + timeWarpInSeconds)
 
-    await reignTokenOracle.update()
 
-
-    await balancer.connect(c.user1Acct).updateBasketBalance()
-
+    console.log(`\n --- USERS HARVEST WRAPPING REWARDS ---`);
 
     ///////////////////////////
-    // All Users Vote on Basket Allocation
+    // Harvest from Wrapping Rewards contracts
     ///////////////////////////
-    await balancer.connect(c.user1Acct).updateAllocationVote([pool1.address,pool2.address], [510000000,490000000])
-    await balancer.connect(c.user2Acct).updateAllocationVote([pool1.address,pool2.address], [510000000,490000000])
-    await balancer.connect(c.sovReignOwnerAcct).updateAllocationVote([pool1.address,pool2.address], [510000000,490000000])
-    let votePool1 = await balancer.continuousVote(pool1.address)
-    console.log(`Continuous Vote Tally Pool1: ${votePool1}`);
-    let votePool2 = await balancer.continuousVote(pool2.address)
-    console.log(`Continuous Vote Tally Pool2: ${votePool2}`);
-    
+    let reignBalanceBefore1 = await reignToken.balanceOf(c.user2Addr)
+
+    await wrappingRewards.connect(c.user2Acct).massHarvest()
+
+    let reignBalanceAfter1 = await reignToken.balanceOf(c.user2Addr)
+
+    console.log(`User2 Wrapping Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).div(tenPow18)}' REIGN`)
 
 
+    reignBalanceBefore1 = await reignToken.balanceOf(c.user3Addr)
 
-    await staking.initEpochForTokens([pool1.address, pool2.address,reignPairAddress ], 0)
-    await staking.initEpochForTokens([pool1.address, pool2.address,reignPairAddress ], 1)
-    await staking.initEpochForTokens([pool1.address, pool2.address,reignPairAddress ], 2)
-    console.log((await staking.getCurrentEpoch()).toNumber())
+    await wrappingRewards.connect(c.user3Acct).massHarvest()
 
-    console.log(`\n --- USERS STAKE UNISWAP LP ---`);
+    reignBalanceAfter1 = await reignToken.balanceOf(c.user3Addr)
 
-    let balance = await reignUsdPair.balanceOf(c.user1Addr)
-    await reignUsdPair.connect(c.user1Acct).approve(staking.address, balance)
-    await staking.connect(c.user1Acct).deposit(reignPairAddress, balance)
-    console.log(`User1 Staked ${balance} REIGN/WETH LP `);
-
-
-
-    console.log(`\n --- USERS DEPOSIT ASSETS INTO POOLS ---`);
-
-    ///////////////////////////
-    // Deposit WETH into Pool
-    ///////////////////////////
-    let depositAmountWeth = BigNumber.from(50).mul(tenPow18) // 50 ETH
-    await weth.connect(c.user1Acct).approve(pool1.address, depositAmountWeth)
-    console.log(`User1 deposit 50 WETH `)
-
-    let allowance = await weth.allowance(c.user1Addr,pool1.address)
-    console.log(`User1 allowance'${allowance}'`)
-    
-
-    ///////////////////////////
-    // Mint SVR & LP from WETH Pool
-    ///////////////////////////
-    await pool1.connect(c.user1Acct).mint(c.user1Addr, depositAmountWeth)
-    let svrBalance1 = await svrToken.balanceOf(c.user1Addr)
-    console.log(`User1 SVR Balance '${svrBalance1}'`)
-    let poolLpBalance1 = await  pool1.balanceOf(c.user1Addr)
-    console.log(`User1 Pool1 LP Balance '${poolLpBalance1}'`)
-
-    ///////////////////////////
-    // Deposit into WBTC Pool
-    ///////////////////////////
-    let WETHPrice = await oracle1.consult(c.wethAddr,BigNumber.from(10).pow(await weth.decimals()))
-    let WBTCPrice = await oracle2.consult(c.wbtcAddr,BigNumber.from(10).pow(await wbtc.decimals()))
-    let depositAmountWbtc = depositAmountWeth.mul(WETHPrice).div(WBTCPrice).div(10**10) // Same value in WBTC
-    await wbtc.connect(c.user2Acct).approve(pool2.address, depositAmountWbtc)
-    console.log(`User1 deposit '${depositAmountWbtc.toNumber() / 10**8}' WBTC `)
-
-
-    ///////////////////////////
-    // Mint SVR & LP from WBTC Pools
-    ///////////////////////////
-    await pool2.connect(c.user2Acct).mint(c.user2Addr, depositAmountWbtc)
-    let svrBalance2 = await svrToken.balanceOf(c.user2Addr)
-    console.log(`User2 SVR Balance '${svrBalance2}'`)
-    let poolLpBalance2 = await pool2.balanceOf(c.user2Addr)
-    console.log(`User2 Pool2 LP Balance '${poolLpBalance2}'`)
-
-
-    ///////////////////////////
-    // Burn SVR & LP from WBTC Pools
-    ///////////////////////////
-    await pool2.connect(c.user2Acct).burn(poolLpBalance2.div(8))
-    let svrBalance2After = await svrToken.balanceOf(c.user2Addr)
-    console.log(`User2 SVR Balance After Burn '${svrBalance2After}'`)
-    let poolLpBalance2After = await pool2.balanceOf(c.user2Addr)
-    console.log(`User2 Pool2 LP Balance After Burn '${poolLpBalance2After}'`)
-
-    
-    console.log(`\n --- USERS STAKE LP TOKENS ---`)
-
-    
-
-
-    ///////////////////////////
-    // Deposit Into staking contract
-    ///////////////////////////
-    await pool1.connect(c.user1Acct).approve(staking.address, poolLpBalance1)
-    await staking.connect(c.user1Acct).deposit(pool1.address, poolLpBalance1)
-    console.log(`User1 deposits '${poolLpBalance1} into staking'`)
-
-    await pool2.connect(c.user2Acct).approve(staking.address, poolLpBalance2After)
-    await staking.connect(c.user2Acct).deposit(pool2.address, poolLpBalance2After)
-    console.log(`User2 deposits '${poolLpBalance2After} into staking'`)
-
-    await mineBlocks(8340) // a bit less then 1 day in blocks
-
-    
-    await reignTokenOracle.update()
-
-    ///////////////////////////
-    // Interact with pool contracts to accrue interest
-    ///////////////////////////
-    await staking.connect(c.user1Acct).withdraw(pool1.address, 10)
-
-    let withdrawFee = await pool1.getWithdrawFeeReign(10);
-    await reignToken.connect(c.user1Acct).approve(pool1.address, withdrawFee)
-    console.log(`User1 pays '${withdrawFee}' REIGN to withdraw 10 WEI`)
-    await pool1.connect(c.user1Acct).burn(10)
-
-    await staking.connect(c.user2Acct).withdraw(pool2.address, 10)
-
-    withdrawFee = await pool2.getWithdrawFeeReign(10);
-    await reignToken.connect(c.user1Acct).approve(pool2.address, withdrawFee)
-    console.log(`User2 pays '${withdrawFee}' REIGN to withdraw 10 Satoshi`)
-    await pool2.connect(c.user2Acct).burn(10)
-
-    ///////////////////////////
-    // Time warp: go to the next Epoch
-    ///////////////////////////
-    timeWarpInSeconds = c.epochDuration+100
-    console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
-    await moveAtTimestamp(await getLatestBlockTimestamp() + timeWarpInSeconds)
-
-    await reignTokenOracle.update()
-
-
-    console.log(`\n --- USERS HARVEST POOL REWARDS ---`);
-
-    ///////////////////////////
-    // Harvest from Pool Rewards contracts
-    ///////////////////////////
-    let reignBalanceBefore1 = await reignToken.balanceOf(c.user1Addr)
-    let reignBalanceBefore2 = await reignToken.balanceOf(c.user2Addr)
-
-    await pool1Rewards.connect(c.user1Acct).massHarvest()
-    await pool2Rewards.connect(c.user2Acct).massHarvest()
-
-    let reignBalanceAfter1 = await reignToken.balanceOf(c.user1Addr)
-    let reignBalanceAfter2 = await reignToken.balanceOf(c.user2Addr)
-
-    console.log(`User1 Pool1 Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).div(tenPow18)}' REIGN`)
-    console.log(`User2 Pool2 Rewards: '${reignBalanceAfter2.sub(reignBalanceBefore2).div(tenPow18)}' REIGN`)
+    console.log(`User3 Wrapping Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).div(tenPow18)}' REIGN`)
 
 
     console.log(`\n --- USERS HARVEST LP REWARDS ---`);
@@ -210,12 +182,21 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Harvest from LP Rewards contracts
     ///////////////////////////
-    reignBalanceBefore1 = await reignToken.balanceOf(c.user3Addr)
+    reignBalanceBefore1 = await reignToken.balanceOf(c.user1Addr)
 
-    await reignLpRewards.connect(c.user3Acct).massHarvest()
+    await reignLpRewards.connect(c.user1Acct).massHarvest()
 
-    reignBalanceAfter1 = await reignToken.balanceOf(c.user3Addr)
-    console.log(`User3 REIGN/USDC LP Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).div(tenPow18)}' REIGN`)
+    reignBalanceAfter1 = await reignToken.balanceOf(c.user1Addr)
+    console.log(`User1 REIGN/WETH LP Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).div(tenPow18)}' REIGN`)
+
+
+    reignBalanceBefore1 = await reignToken.balanceOf(c.user2Addr)
+
+    await svrLpRewards.connect(c.user2Acct).massHarvest()
+
+    reignBalanceAfter1 = await reignToken.balanceOf(c.user2Addr)
+    console.log(`User2 SVR/USDC LP Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).div(tenPow18)}' REIGN`)
+
 
     console.log(`\n --- USERS HARVEST GOV REWARDS ---`);
 
@@ -228,6 +209,51 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
     reignBalanceAfter1 = await reignToken.balanceOf(c.user1Addr)
     console.log(`User1 Governance Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).div(tenPow18)}' REIGN`)
+
+
+
+    console.log(`\n --- USERS REDEEM SVR FOR ANOTHER UNDERLYING ---`);
+
+    await wrapSVR.connect(c.user3Acct).approve(poolRouter.address, svrBalanceU3);
+    await poolRouter.connect(c.user3Acct).withdraw(c.wbtcAddr,svrBalanceU3, 1);
+    console.log(`User3 Withdraws BTC`)
+    svrBalanceU3 = await wrapSVR.balanceOf(c.user3Addr)
+    console.log(`User3 SVR Balance After '${svrBalanceU3}'`)
+    let wbtcBalance = await wbtc.balanceOf(c.user3Addr)
+    console.log(`User3 WBTC Balance After '${wbtcBalance}'`)
+
+
+     ///////////////////////////
+    // Time warp: go to the next Epoch
+    ///////////////////////////
+    timeWarpInSeconds = c.epochDuration+100
+    console.log(`Time warping in '${timeWarpInSeconds}' seconds...`)
+    await moveAtTimestamp(await getLatestBlockTimestamp() + timeWarpInSeconds)
+
+
+    console.log(`\n --- USERS HARVEST WRAPPING REWARDS ---`);
+
+    ///////////////////////////
+    // Harvest from Wrapping Rewards contracts
+    ///////////////////////////
+    reignBalanceBefore1 = await reignToken.balanceOf(c.user2Addr)
+
+    await wrappingRewards.connect(c.user2Acct).massHarvest()
+
+    reignBalanceAfter1 = await reignToken.balanceOf(c.user2Addr)
+
+    console.log(`User2 Wrapping Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).div(tenPow18)}' REIGN`)
+
+
+    reignBalanceBefore1 = await reignToken.balanceOf(c.user3Addr)
+
+    await wrappingRewards.connect(c.user3Acct).massHarvest()
+
+    reignBalanceAfter1 = await reignToken.balanceOf(c.user3Addr)
+
+    console.log(`User3 Wrapping Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).div(tenPow18)}' REIGN`)
+
+
 
 
 

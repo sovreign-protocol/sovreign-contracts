@@ -6,8 +6,9 @@ import {uniswapSetup} from "./deployment/define-2.5-uniswap-setup";
 import {setupSmartPool} from "./deployment/define-3-pool-setup";
 import {activateSoVReign} from "./deployment/define-4-activate-SoVReign";
 import {transferOwnership} from "./deployment/define-5-transfer-ownership";
-import {createPools} from "./deployment/define-6-add-token";
+import {addToken} from "./deployment/define-6-add-token";
 import {createRewards} from "./deployment/define-7-create-rewards";
+import {updateWeights} from "./deployment/define-8-weigths-update";
 
 deployConfig()
     .then(c => contractsPreFlight(c))
@@ -17,8 +18,9 @@ deployConfig()
     .then(c => setupSmartPool(c))
     .then(c => activateSoVReign(c))
     .then(c => transferOwnership(c))
-    .then(c => createPools(c))
-    //.then(c => createRewards(c))
+    .then(c => addToken(c))
+    .then(c => createRewards(c))
+    .then(c => updateWeights(c))
     .catch(error => {
         console.error(error);
         process.exit(1);

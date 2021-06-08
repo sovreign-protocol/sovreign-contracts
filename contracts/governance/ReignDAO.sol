@@ -157,10 +157,10 @@ contract ReignDAO is Bridge {
         basketBalancer.updateBasketBalance();
 
         // get etsablished weights
-        address[] memory pools = basketBalancer.getPools();
-        uint256[] memory weights = new uint256[](pools.length);
-        for (uint256 i = 0; i < pools.length; i++) {
-            weights[i] = basketBalancer.getTargetAllocation(pools[i]);
+        address[] memory token = basketBalancer.getTokens();
+        uint256[] memory weights = new uint256[](token.length);
+        for (uint256 i = 0; i < token.length; i++) {
+            weights[i] = basketBalancer.getTargetAllocation(token[i]);
         }
 
         //update weights gradually in smartPool

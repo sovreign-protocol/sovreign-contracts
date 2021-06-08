@@ -18,7 +18,6 @@ contract WrappingRewards {
 
     // addreses
     address public treasoury;
-    address private _poolLP;
     address private _rewardsVault;
     address private _balancer;
     // contracts
@@ -51,14 +50,12 @@ contract WrappingRewards {
     // constructor
     constructor(
         address reignTokenAddress,
-        address poolLP,
         address balancer,
         address wrappingContract,
         address rewardsVault,
         address _treasury
     ) {
         _reignToken = IERC20(reignTokenAddress);
-        _poolLP = poolLP;
         _wrapper = IWrapSVR(wrappingContract);
         _rewardsVault = rewardsVault;
         _balancer = balancer;

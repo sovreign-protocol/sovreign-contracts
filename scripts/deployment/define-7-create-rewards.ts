@@ -5,7 +5,10 @@ import {
     Staking, 
     ReignDAO,
     ReignToken, 
-    RewardsVault, 
+    RewardsVault,
+    WrapSVR,
+    WrappingRewards,
+    BasketBalancer, 
     } from "../../typechain";
 
 import {hour, minute} from "../../test/helpers/time";
@@ -18,119 +21,59 @@ export async function createRewards(c: DeployConfig): Promise<DeployConfig> {
 
     const reignToken = c.reignToken as ReignToken;
     const reignDiamond = c.reignDiamond as Contract;
-    const staking = c.staking as Staking;
+    const wrapSVR = c.wrapSVR as WrapSVR;
     const reignDAO = c.reignDAO as ReignDAO;
+    const basketBalancer = c.basketBalancer as BasketBalancer;
     const rewardsVault = c.rewardsVault as RewardsVault;
 
 
     const tokenDistribution = await deploy.deployContract('LibRewardsDistribution' ) as LibRewardsDistribution;
     
-    
-/*
-    console.log(`\n --- DEPLOY POOL REWARDS ---`);
+
+    console.log(`\n --- DEPLOY REWARDS ---`);
 
     ///////////////////////////
     // User1 deploy PoolRewards for Pool1
     ///////////////////////////
-    const pool1Rewards = await deploy.deployContract(
-        'PoolRewards',
+    const wrappingRewards = await deploy.deployContract(
+        'WrappingRewards',
         [
             reignToken.address,
-            pool1.address,
-            poolController.address,
-            staking.address,
+            basketBalancer.address,
+            wrapSVR.address,
             rewardsVault.address,
-            liquidityBuffer.address
+            reignDiamond.address
         ]
-    ) as PoolRewards;
-    c.pool1Rewards = pool1Rewards;
-    console.log(`PoolRewards 1 deployed at: ${pool1Rewards.address.toLowerCase()}`);
+    ) as WrappingRewards;
+    c.wrappingRewards = wrappingRewards;
+    console.log(`WrappingRewards deployed at: ${wrappingRewards.address.toLowerCase()}`);
 
-   ///////////////////////////
-    // User1 deploy PoolRewards for Pool1
-    ///////////////////////////
-    const pool2Rewards = await deploy.deployContract(
-        'PoolRewards',
-        [
-            reignToken.address,
-            pool2.address,
-            poolController.address,
-            staking.address,
-            rewardsVault.address,
-            liquidityBuffer.address
-        ]
-    ) as PoolRewards;
-    c.pool2Rewards = pool2Rewards;
-    console.log(`PoolRewards 2 deployed at: ${pool2Rewards.address.toLowerCase()}`);
+  
 
 
     console.log(`\n --- CREATE PROPOSAL  ---`);
 
-
-
     const targets = [
         rewardsVault.address,
-        rewardsVault.address,
-        liquidityBuffer.address,
-        liquidityBuffer.address,
     ];
-    const values = ['0', '0', '0', '0'];
+    const values = ['0'];
     const signatures = [
-        'setAllowance(address,uint256)', 
-        'setAllowance(address,uint256)', 
-        'setAllowance(address,uint256)', 
         'setAllowance(address,uint256)', 
     ]
     const callDatas = [
-        // for the first pool (Pool1):
         ejs.utils.defaultAbiCoder.encode(
             [
                 'address',
                 'uint256'
             ],
             [
-                pool1Rewards.address,
-                (await tokenDistribution.POOL_TOKENS()).div(2),
-            ]
-        ),
-
-        // for the second pool (Pool2):
-        ejs.utils.defaultAbiCoder.encode(
-            [
-                'address',
-                'uint256'
-            ],
-            [
-                pool2Rewards.address,
-                (await tokenDistribution.POOL_TOKENS()).div(2),
-            ]
-        ),
-        // for the first pool (Pool1):
-        ejs.utils.defaultAbiCoder.encode(
-            [
-                'address',
-                'uint256'
-            ],
-            [
-                pool1Rewards.address,
-                (await tokenDistribution.LIQUIDITY_BUFFER()).div(2),
-            ]
-        ),
-
-        // for the second pool (Pool2):
-        ejs.utils.defaultAbiCoder.encode(
-            [
-                'address',
-                'uint256'
-            ],
-            [
-                pool2Rewards.address,
-                (await tokenDistribution.LIQUIDITY_BUFFER()).div(2),
+                wrappingRewards.address,
+                (await tokenDistribution.WRAPPING_TOKENS()),
             ]
         ),
     ];
 
-    console.log(`User1 proposes to allow spending for LP Rewards`)
+    console.log(`User1 proposes to allow spending for Wrapping Rewards`)
     await reignDAO
         .connect(c.user1Acct)
         .propose(
@@ -138,7 +81,7 @@ export async function createRewards(c: DeployConfig): Promise<DeployConfig> {
             values,
             signatures,
             callDatas,
-            'Allow Spending',
+            'Allow Spending for Wrapping',
             'Proposal2'
         );
 
@@ -221,7 +164,7 @@ export async function createRewards(c: DeployConfig): Promise<DeployConfig> {
         .connect(c.user1Acct)
         .execute(proposalId);
     console.log(`User1 executes the proposal '${proposalId}'`);
-*/
+
 
     return c;
 }

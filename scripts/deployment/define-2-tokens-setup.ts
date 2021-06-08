@@ -160,7 +160,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
             staking.address,  
             rewardsVault.address, 
             lpRewardAllocation.div(2)])) as LPRewards;
-    console.log(`LPRewards for Uniswap SVR/dai LP deployed at: ${svrLpRewards.address}`);
+    console.log(`LPRewards for Uniswap SVR/USDC LP deployed at: ${svrLpRewards.address}`);
     c.svrLpRewards = svrLpRewards
 
     ///////////////////////////
@@ -204,28 +204,6 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     await treasurySaleVault.connect(c.sovReignOwnerAcct).setAllowance(reignDAO.address, treasurySaleAllocation)
     console.log(`Calling setAllowance() from (TreasurySaleVault contract) to (Reign DAO contract)`);
 
-
-
-    console.log(`\n --- DEPLOY BASKET BALANCER ---`);
-
-    ///////////////////////////
-    // Deploy "BasketBalancer" contract:
-    ///////////////////////////
-    const basketBalancer = await deploy.deployContract(
-        'BasketBalancer',
-        [
-            // empty since new pools can be added later (initial state)
-            [],
-            // empty since new allocations can be added later (initial state)
-            [],
-            reignDiamond.address,
-            reignDAO.address,
-            c.sovReignOwnerAddr,
-            100000000,
-        ]
-    ) as BasketBalancer;
-    c.basketBalancer = basketBalancer;
-    console.log(`BasketBalancer deployed at: ${basketBalancer.address.toLowerCase()}`);
 
     return c;
 }

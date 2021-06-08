@@ -69,7 +69,6 @@ describe("Wrapping Rewards", function () {
 
         wrappingRewards = (await deployContract("WrappingRewards", [
             reignToken.address,
-            smartPool.address,
             basketBalancer.address,
             wrapper.address,
             rewardsVault.address,

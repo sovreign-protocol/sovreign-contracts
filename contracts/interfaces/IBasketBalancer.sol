@@ -2,17 +2,17 @@
 pragma solidity 0.7.6;
 
 interface IBasketBalancer {
-    function addPool(address pool) external returns (uint256);
+    function addToken(address, uint256) external returns (uint256);
 
     function hasVotedInEpoch(address, uint128) external view returns (bool);
 
-    function getTargetAllocation(address pool) external view returns (uint256);
+    function getTargetAllocation(address) external view returns (uint256);
 
-    function FULL_ALLOCATION() external view returns (uint256);
+    function full_allocation() external view returns (uint256);
 
     function updateBasketBalance() external;
 
     function reignAddress() external view returns (address);
 
-    function getPools() external view returns (address[] memory);
+    function getTokens() external view returns (address[] memory);
 }

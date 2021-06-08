@@ -2,36 +2,35 @@
 pragma solidity 0.7.6;
 
 import "../interfaces/IReign.sol";
-import "../interfaces/IBasketBalancer.sol";
+import "../interfaces/IPoolRouter.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract BasketBalancer is IBasketBalancer {
+contract BasketBalancer {
     using SafeMath for uint256;
 
     uint256 public epoch1Start;
     uint256 public epochDuration; // ca. one week in seconds
 
-    uint256 public override FULL_ALLOCATION = 1000000000; // 9 decimals precision, 100%
-    uint256 public UPDATE_PERIOD = 172800; // ca. two days in seconds
+    uint256 public full_allocation;
 
     uint128 public lastEpochUpdate;
     uint256 public lastEpochEnd;
 
     uint256 public maxDelta;
 
-    address[] public allPools;
+    address[] public allTokens;
 
     bool initialized = false;
 
     mapping(address => uint256) public continuousVote;
-    mapping(address => uint256) private poolAllocation;
-    mapping(address => uint256) private poolAllocationBefore;
+    mapping(address => uint256) private tokenAllocation;
+    mapping(address => uint256) private tokenAllocationBefore;
 
     mapping(address => mapping(uint128 => bool)) private votedInEpoch;
 
     IReign private reign;
-    address public override reignAddress;
-    address public controller;
+    address public reignAddress;
+    address public poolRouter;
 
     event UpdateAllocation(
         uint128 indexed epoch,
@@ -39,20 +38,14 @@ contract BasketBalancer is IBasketBalancer {
         uint256 indexed allocation
     );
     event VoteOnAllocation(
-        uint128 indexed epoch,
+        address indexed sender,
         address indexed pool,
-        uint256 indexed allocation
+        uint256 indexed allocation,
+        uint128 epoch
     );
 
-    event NewPool(address indexed pool);
-
-    modifier onlyController() {
-        require(
-            msg.sender == controller,
-            "Only the Controller can execute this"
-        );
-        _;
-    }
+    event NewToken(address indexed pool, uint256 indexed allocation);
+    event RemoveToken(address indexed pool);
 
     address public reignDAO;
 
@@ -61,77 +54,62 @@ contract BasketBalancer is IBasketBalancer {
         _;
     }
 
-    // The _newPools and _newAllocation will be set empty for the first deployment but can be used
+    // The _newtokens and _newAllocation will be set empty for the first deployment but can be used
     // if the BasketBalancer is updated and existing allocation values need to be migrated to a new instance.
     // The _maxDelta is the max difference of the allocation amount/percentage that user can vote for.
     constructor(
-        address[] memory _newPools,
-        uint256[] memory _newAllocation,
         address _reignDiamond,
         address _reignDAO,
-        address _controller,
+        address _poolRouter,
         uint256 _maxDelta
     ) {
         uint256 amountAllocated = 0;
 
-        require(
-            _newPools.length == _newAllocation.length,
-            "Need to have same length"
-        );
-        if (_newPools.length != 0 && _newAllocation.length != 0) {
-            for (uint256 i = 0; i < _newPools.length; i++) {
-                uint256 poolPercentage = _newAllocation[i];
-                amountAllocated = amountAllocated.add(poolPercentage);
-                continuousVote[_newPools[i]] = poolPercentage;
-                poolAllocation[_newPools[i]] = poolPercentage;
-                poolAllocationBefore[_newPools[i]] = poolPercentage;
-            }
-            require(
-                amountAllocated == FULL_ALLOCATION,
-                "Allocation is not complete"
-            );
+        address[] memory tokens = IPoolRouter(_poolRouter).getPoolTokens();
+        uint256[] memory weights = IPoolRouter(_poolRouter).getTokenWeights();
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenAllocation[tokens[i]] = weights[i];
+            tokenAllocationBefore[tokens[i]] = weights[i];
+            continuousVote[tokens[i]] = weights[i];
+            amountAllocated = amountAllocated.add(weights[i]);
         }
+        full_allocation = amountAllocated;
+
         lastEpochUpdate = 0;
         maxDelta = _maxDelta;
-        allPools = _newPools;
+        allTokens = tokens;
         reign = IReign(_reignDiamond);
         reignAddress = _reignDiamond;
-        controller = _controller;
         reignDAO = _reignDAO;
+        poolRouter = _poolRouter;
         epoch1Start = reign.getEpoch1Start();
         epochDuration = reign.getEpochDuration();
     }
 
-    // Counts votes and sets the outcome allocation for each pool, can be called by anyone after an epoch ends.
+    // Counts votes and sets the outcome allocation for each pool, can be called by anyone through DAO an epoch ends.
     // The new allocation value is the average of the vote outcome and the current value
-    // Note: this is not the actual target value that will be used by the pools,
+    // Note: this is not the actual target value that will be used by the tokens,
     // the actual target will be returned by getTargetAllocation and includes update period adjustments
-    function updateBasketBalance() public override {
+    function updateBasketBalance() public onlyDAO {
         uint128 _epochId = getCurrentEpoch();
         require(lastEpochUpdate < _epochId, "Epoch is not over");
 
-        // This is to prevent flashloan attacks to increase voting power,
-        //users can not deposit into staking and initialize epoch in the same block
-        require(
-            reign.userLastAction(msg.sender) < block.timestamp,
-            "Can not end epoch if deposited in same block"
-        );
-
-        for (uint256 i = 0; i < allPools.length; i++) {
-            uint256 _currentValue = continuousVote[allPools[i]]; // new vote outcome
-            uint256 _previousValue = poolAllocation[allPools[i]]; // before this vote
+        for (uint256 i = 0; i < allTokens.length; i++) {
+            uint256 _currentValue = continuousVote[allTokens[i]]; // new vote outcome
+            uint256 _previousValue = tokenAllocation[allTokens[i]]; // before this vote
 
             // the new current value is the average between the 2 values
-            poolAllocation[allPools[i]] = (_currentValue.add(_previousValue))
+            tokenAllocation[allTokens[i]] = (_currentValue.add(_previousValue))
                 .div(2);
 
             // update the previous value
-            poolAllocationBefore[allPools[i]] = _previousValue;
+            tokenAllocationBefore[allTokens[i]] = _previousValue;
 
             emit UpdateAllocation(
                 _epochId,
-                allPools[i],
-                poolAllocation[allPools[i]]
+                allTokens[i],
+                tokenAllocation[allTokens[i]]
             );
         }
 
@@ -140,20 +118,22 @@ contract BasketBalancer is IBasketBalancer {
     }
 
     // Allows users to update their vote by giving a desired allocation for each pool
-    // pools and allocations need to share the index, pool at index 1 will get allocation at index 1
+    // tokens and allocations need to share the index, pool at index 1 will get allocation at index 1
     function updateAllocationVote(
-        address[] calldata pools,
+        address[] calldata tokens,
         uint256[] calldata allocations
     ) external {
-        require(pools.length == allPools.length, "Need to vote for all pools");
-        require(pools.length == allocations.length, "Need to have same length");
+        require(
+            tokens.length == allTokens.length,
+            "Need to vote for all tokens"
+        );
+        require(
+            tokens.length == allocations.length,
+            "Need to have same length"
+        );
         require(reign.balanceOf(msg.sender) > 0, "Not allowed to vote");
 
         uint128 _epoch = getCurrentEpoch();
-
-        if (lastEpochUpdate < _epoch) {
-            updateBasketBalance();
-        }
 
         require(
             votedInEpoch[msg.sender][_epoch] == false,
@@ -167,11 +147,11 @@ contract BasketBalancer is IBasketBalancer {
         uint256 _remainingPower = _totalPower.sub(_votingPower);
 
         uint256 amountAllocated = 0;
-        for (uint256 i = 0; i < allPools.length; i++) {
-            //Pools need to have the same order as allPools
-            require(allPools[i] == pools[i], "Pools have incorrect order");
+        for (uint256 i = 0; i < allTokens.length; i++) {
+            //tokens need to have the same order as allTokens
+            require(allTokens[i] == tokens[i], "tokens have incorrect order");
             uint256 _votedFor = allocations[i];
-            uint256 _current = continuousVote[allPools[i]];
+            uint256 _current = continuousVote[allTokens[i]];
             amountAllocated = amountAllocated.add(_votedFor);
 
             // The difference between the voted for allocation and the current value can not exceed maxDelta
@@ -181,17 +161,17 @@ contract BasketBalancer is IBasketBalancer {
                 require(_current - _votedFor <= maxDelta, "Above Max Delta");
             }
             // if all checks have passed, we update the allocation vote
-            continuousVote[allPools[i]] = (
+            continuousVote[allTokens[i]] = (
                 _current.mul(_remainingPower).add(_votedFor.mul(_votingPower))
             )
                 .div(_totalPower);
 
-            emit UpdateAllocation(_epoch, allPools[i], _votedFor);
+            emit VoteOnAllocation(msg.sender, allTokens[i], _votedFor, _epoch);
         }
 
         //transaction will revert if allocation is not complete
         require(
-            amountAllocated == FULL_ALLOCATION,
+            amountAllocated == full_allocation,
             "Allocation is not complete"
         );
 
@@ -200,27 +180,56 @@ contract BasketBalancer is IBasketBalancer {
         //emit event
     }
 
-    // adds a new pool to the list, can only be called by PoolController as a new Pool is created
-    function addPool(address pool)
+    function addToken(address token, uint256 allocation)
         external
-        override
-        onlyController
+        onlyDAO
         returns (uint256)
     {
-        allPools.push(pool);
-        poolAllocation[pool] = 0;
+        allTokens.push(token);
+        tokenAllocationBefore[token] = allocation;
+        tokenAllocation[token] = allocation;
+        continuousVote[token] = allocation;
 
-        emit NewPool(pool);
+        full_allocation = full_allocation.add(allocation);
 
-        return allPools.length;
+        emit NewToken(token, allocation);
+
+        return allTokens.length;
+    }
+
+    function removeToken(address token) external onlyDAO returns (uint256) {
+        require(tokenAllocation[token] != 0, "Token is not part of Basket");
+
+        full_allocation = full_allocation.sub(continuousVote[token]);
+
+        uint256 index;
+        for (uint256 i = 0; i < allTokens.length; i++) {
+            if (allTokens[i] == token) {
+                index = i;
+                break;
+            }
+        }
+
+        for (uint256 i = index; i < allTokens.length - 1; i++) {
+            allTokens[i] = allTokens[i + 1];
+        }
+        allTokens.pop();
+
+        tokenAllocationBefore[token] = 0;
+        tokenAllocation[token] = 0;
+        continuousVote[token] = 0;
+
+        emit RemoveToken(token);
+
+        return allTokens.length;
     }
 
     /*
      *   SETTERS
      */
 
-    function setController(address _controller) public onlyController {
-        controller = _controller;
+    function setRouter(address _poolRouter) public onlyDAO {
+        poolRouter = _poolRouter;
     }
 
     function setReignDAO(address _reignDAO) public onlyDAO {
@@ -231,33 +240,14 @@ contract BasketBalancer is IBasketBalancer {
         maxDelta = _maxDelta;
     }
 
-    function setInitialAllocation(uint256[] calldata allocations)
-        external
-        onlyDAO
-    {
-        require(initialized == false, "Already Initialized");
-        for (uint256 i = 0; i < allPools.length; i++) {
-            continuousVote[allPools[i]] = allocations[i];
-            poolAllocation[allPools[i]] = allocations[i];
-            poolAllocationBefore[allPools[i]] = allocations[i];
-        }
-
-        initialized = true;
-    }
-
     /*
      *   VIEWS
      */
 
     // gets the current target allocation taking into account the update period in which the allocation changes
     // from the previous one to the one last voted with a linear change each block
-    function getTargetAllocation(address pool)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        return poolAllocation[pool];
+    function getTargetAllocation(address pool) public view returns (uint256) {
+        return tokenAllocation[pool];
     }
 
     //Returns the id of the current epoch derived from block.timestamp
@@ -265,14 +255,13 @@ contract BasketBalancer is IBasketBalancer {
         return reign.getCurrentEpoch();
     }
 
-    function getPools() external view override returns (address[] memory) {
-        return allPools;
+    function getTokens() external view returns (address[] memory) {
+        return allTokens;
     }
 
     function hasVotedInEpoch(address user, uint128 epoch)
         external
         view
-        override
         returns (bool)
     {
         return votedInEpoch[user][epoch];
