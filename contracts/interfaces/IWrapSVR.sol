@@ -22,9 +22,9 @@ interface IWrapSVR {
 
     function liquidationFee(address) external view returns (uint256);
 
-    function maxLiquidationFee() external view returns (uint256);
+    function epochDuration() external view returns (uint256);
 
-    function getEpochId(uint256 timestamp) external view returns (uint256); // get epoch id
+    function epoch1Start() external view returns (uint256);
 
     function getEpochUserBalance(address user, uint128 epoch)
         external
@@ -32,13 +32,4 @@ interface IWrapSVR {
         returns (uint256);
 
     function getEpochPoolSize(uint128 epoch) external view returns (uint256);
-
-    function epoch1Start() external view returns (uint256);
-
-    function epochDuration() external view returns (uint256);
-
-    function getRewardsForEpoch(uint128, address)
-        external
-        view
-        returns (uint256, uint256);
 }

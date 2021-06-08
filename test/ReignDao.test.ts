@@ -125,6 +125,21 @@ describe('ReignDAO', function () {
         });
     })
 
+    describe('applyAddToken', function () {
+        it('calls', async function () {
+            await reign.setBondStaked(BigNumber.from(4000000).mul(helpers.tenPow18));
+            await reignDAO.activate();
+
+            await reignDAO.triggerApplyAddToken();
+
+            expect(await smartPool.calledApplyAddToken()).to.be.eq(1)
+        });
+
+        it('reverts if smart pool is set through initial', async function () {
+            await expect(reignDAO.setSmartPoolInitial( reignDAO.address)).to.be.revertedWith("Can only initialize smartPool address once")
+        });
+    })
+
     describe('propose', function () {
         before(async function () {
             await expect(

@@ -10,6 +10,7 @@ contract SmartPoolMock is ERC20Mock {
     uint256 calledExitswapPoolAmountIn = 0;
     uint256 calledJoin = 0;
     uint256 calledExit = 0;
+    uint256 public calledApplyAddToken = 0;
 
     BPool bpool;
     address smartPoolManager;
@@ -73,6 +74,10 @@ contract SmartPoolMock is ERC20Mock {
             IERC20(tokens[i]).transfer(msg.sender, minAmountsOut[i]);
         }
         _burn(msg.sender, poolAmountIn);
+    }
+
+    function applyAddToken() public {
+        calledApplyAddToken += 1;
     }
 
     function bPool() public view returns (BPool) {

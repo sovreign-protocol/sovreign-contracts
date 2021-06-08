@@ -4,8 +4,6 @@ pragma solidity 0.7.6;
 import "./Parameters.sol";
 import "../interfaces/ISmartPool.sol";
 
-import "hardhat/console.sol";
-
 abstract contract Bridge is Parameters {
     mapping(bytes32 => bool) public queuedTransactions;
 

@@ -124,7 +124,7 @@ describe('Reign', function () {
         
 
         it('works with multiple deposit in same block', async function () {
-            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, reignToken.address, helpers.zeroAddress])) as MulticallMock;
+            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, reignToken.address])) as MulticallMock;
 
             await reignToken.mint(multicall.address, amount.mul(5));
 
@@ -1131,7 +1131,7 @@ describe('Reign', function () {
         });
 
         it('works with multiple calls in the same block', async function () {
-            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, reignToken.address, helpers.zeroAddress])) as MulticallMock;
+            const multicall = (await deploy.deployContract('MulticallMock', [reign.address, reignToken.address])) as MulticallMock;
 
             await reignToken.mint(multicall.address, amount);
 

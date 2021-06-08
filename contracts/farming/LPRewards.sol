@@ -26,7 +26,7 @@ contract LPRewards {
     uint256[] private _sizeAtEpoch = new uint256[](NR_OF_EPOCHS + 1);
 
     address private _depositLP;
-    address private _communityVault;
+    address private _rewarewardsVault;
 
     mapping(address => uint128) private _lastEpochIdHarvested;
 
@@ -53,13 +53,13 @@ contract LPRewards {
         address reignTokenAddress,
         address depositLP,
         address stakeContract,
-        address communityVault,
+        address rewardsVault,
         uint256 totalDistribution
     ) {
         _reignToken = IERC20(reignTokenAddress);
         _depositLP = depositLP;
         _staking = IStaking(stakeContract);
-        _communityVault = communityVault;
+        _rewarewardsVault = rewardsVault;
         totalAmountPerEpoch = LibRewardsDistribution.rewardsPerEpochLPRewards(
             totalDistribution,
             NR_OF_EPOCHS
@@ -100,7 +100,7 @@ contract LPRewards {
 
         if (totalDistributedValue > 0) {
             _reignToken.safeTransferFrom(
-                _communityVault,
+                _rewarewardsVault,
                 msg.sender,
                 totalDistributedValue
             );
@@ -124,7 +124,7 @@ contract LPRewards {
         uint256 userReward = _harvest(epochId);
         if (userReward > 0) {
             _reignToken.safeTransferFrom(
-                _communityVault,
+                _rewarewardsVault,
                 msg.sender,
                 userReward
             );

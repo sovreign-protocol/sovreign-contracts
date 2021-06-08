@@ -7,11 +7,11 @@ This repo has all smart contracts used by SoVReign.
 The `./contracts` folder has the following structure:
 
 - `./facets/`: contains the Diamond Facets utilized
+- `./farming/`: contains all yield-farming contracts and the main staking vault
 - `./governance/`: contains contracts related to the ReignDAO, the Diamond Proxy and Governance Rewards
 - `./interfaces/`: contains all interfaces used across the protocol
 - `./libraries/`: contains all libraries
 - `./mocks/`: contains mock contracts used for testing
-- `./staking/`: contains all yield-farming and staking contracts
 - `./tokens/`: contains the SVR and REIGN Token contracts
 - `./vesting/`: contains vesting contracts for the team and early investors
 - `./wrapper/`: contains all functionality related to wrapping the Balancer LP into SVR

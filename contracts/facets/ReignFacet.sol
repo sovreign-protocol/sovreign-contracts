@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract ReignFacet {
     using SafeMath for uint256;
 
-    uint256 public constant MAX_LOCK = 365 days * 2;
+    uint256 public constant MAX_LOCK = 365 days * 2; //two years
     uint256 public constant BASE_STAKE_MULTIPLIER = 1 * 10**18;
     uint128 private constant BASE_BALANCE_MULTIPLIER = uint128(1 * 10**18);
 
@@ -838,10 +838,12 @@ contract ReignFacet {
     {
         uint256 diff = to.sub(from); // underflow is checked for in lock()
 
-        return
+        // for two year lock(MAX_LOCK) users get 50% boost, for 1 year they get 25%
+        return (
             BASE_STAKE_MULTIPLIER.add(
                 (diff.mul(BASE_STAKE_MULTIPLIER).div(MAX_LOCK)).div(2)
-            );
+            )
+        );
     }
 
     //initialises and epoch, and stores the init time

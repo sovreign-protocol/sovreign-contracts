@@ -5,19 +5,18 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../interfaces/IWrapSVR.sol";
 import "../interfaces/ISmartPool.sol";
-import "../interfaces/IBPool.sol";
 
 contract PoolRouter {
     using SafeMath for uint256;
 
     ISmartPool smartPool;
     IWrapSVR wrappingContract;
-    address reignDao;
-    address treasoury;
+    address public reignDao;
+    address public treasoury;
 
-    uint256 protocolFee = 99950; // 100% - 0.050% -> 100000 is 100%
+    uint256 public protocolFee = 99950; // 100% - 0.050%
 
-    uint256 FEE_DECIMALS = 1000000;
+    uint256 public constant FEE_DECIMALS = 1000000;
 
     constructor(
         address _smartPool,
@@ -31,6 +30,12 @@ contract PoolRouter {
         protocolFee = _protocolFee;
     }
 
+    /**
+        This methods performs the following actions:
+            1. pull token for user
+            2. joinswap into balancer pool, recieving lp
+            3. stake lp tokens into Wrapping Contrat which mints SVR to User
+    */
     function deposit(
         address tokenIn,
         uint256 tokenAmountIn,
@@ -60,6 +65,12 @@ contract PoolRouter {
         wrappingContract.deposit(msg.sender, balance, liquidationFee);
     }
 
+    /**
+        This methods performs the following actions:
+            1. pull tokens for user
+            2. join into balancer pool, recieving lp
+            3. stake lp tokens into Wrapping Contrat which mints SVR to User
+    */
     function depositAll(
         uint256[] memory maxTokensAmountIn,
         uint256 poolAmountOut,
@@ -100,6 +111,12 @@ contract PoolRouter {
         wrappingContract.deposit(msg.sender, balance, liquidationFee);
     }
 
+    /**
+        This methods performs the following actions:
+            1. burn SVR from user and unstake lp
+            2. exitswap lp into one of the underlyings
+            3. send the underlying to the User
+    */
     function withdraw(
         address tokenOut,
         uint256 poolAmountIn,
@@ -124,6 +141,12 @@ contract PoolRouter {
         IERC20(tokenOut).transfer(msg.sender, amountMinusFee);
     }
 
+    /**
+        This methods performs the following actions:
+            1. burn SVR from user and unstake lp
+            2. exitswap lp into all of the underlyings
+            3. send the underlyings to the User
+    */
     function withdrawAll(uint256 poolAmountIn, uint256[] memory minAmountsOut)
         public
     {
@@ -160,6 +183,13 @@ contract PoolRouter {
         }
     }
 
+    /**
+        This methods performs the following actions:
+            1. burn SVR from caller and unstake lp of liquidatedUser
+            2. exitswap lp into one of the underlyings
+            3. send the underlying to the caller
+            4. transfer fee from caller to liquidatedUser
+    */
     function liquidate(
         address liquidatedUser,
         address tokenOut,
@@ -210,6 +240,10 @@ contract PoolRouter {
         IERC20(token).transfer(treasoury, balance);
     }
 
+    /**
+        VIEWS
+     */
+
     // gets all tokens currently in the pool
     function getPoolTokens() public view returns (address[] memory) {
         BPool bPool = smartPool.bPool();
@@ -227,7 +261,7 @@ contract PoolRouter {
         return weights;
     }
 
-    // The follwing lines are not covered by unit test, they just forwards the data from SmartPoolManager
+    // NOTE: The follwing lines are not covered by unit test, they just forwards the data from SmartPoolManager
 
     // gets current LP exchange rate for all
     function getAmountsTokensIn(

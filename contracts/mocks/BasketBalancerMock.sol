@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.7.6;
 
-import "../interfaces/IBasketBalancer.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract BasketBalancerMock is IBasketBalancer {
+contract BasketBalancerMock {
     using SafeMath for uint128;
     using SafeMath for uint256;
 
-    uint256 public override full_allocation;
+    uint256 public full_allocation;
 
-    address public override reignAddress;
+    address public reignAddress;
     address[] allTokens;
     mapping(address => uint256) tokenAllocation;
 
@@ -33,14 +32,13 @@ contract BasketBalancerMock is IBasketBalancer {
         uint256[] calldata allocations
     ) public {}
 
-    function updateBasketBalance() external override {}
+    function updateBasketBalance() external {}
 
     function computeAllocation() public pure returns (uint256[] memory) {}
 
     function hasVotedInEpoch(address user, uint128 epoch)
         external
         pure
-        override
         returns (bool)
     {
         if (epoch.mod(2) == 0) {
@@ -60,26 +58,11 @@ contract BasketBalancerMock is IBasketBalancer {
         )
     {}
 
-    function getTargetAllocation(address token)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function getTargetAllocation(address token) public view returns (uint256) {
         return tokenAllocation[token];
     }
 
-    function addToken(address token, uint256 allocation)
-        public
-        override
-        returns (uint256)
-    {
-        tokenAllocation[token] = allocation;
-        full_allocation = full_allocation.add(allocation);
-        return allTokens.length;
-    }
-
-    function getTokens() public view override returns (address[] memory) {
+    function getTokens() public view returns (address[] memory) {
         return allTokens;
     }
 }

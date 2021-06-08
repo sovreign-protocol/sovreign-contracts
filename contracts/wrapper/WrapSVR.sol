@@ -9,38 +9,11 @@ import "../tokens/SvrToken.sol";
 contract WrapSVR is SvrToken, ReentrancyGuard {
     using SafeMath for uint256;
 
-    uint128 private constant BASE_MULTIPLIER = uint128(1 * 10**18);
-
-    // timestamp for the epoch 1
-    // everything before that is considered epoch 0 which won't have a reward but allows for the initial stake
-    uint256 public epoch1Start;
-
-    // duration of each epoch
-    uint256 public epochDuration;
-    address reignDao;
-
-    //balancer LP Token
-    address balancerLP;
-
-    // the percentage fee the holder want's to get for liquidation, 6 decimals of precision
-    mapping(address => uint256) public liquidationFee;
-
-    //max liquidation fee is 10%
-    uint256 public maxLiquidationFee = 100000;
-
-    //the router address is the only allowed to deposit/withdraw on behalf of users
-    address poolRouter;
-
-    // holds the current balance of the user for each token
-    mapping(address => uint256) private balances;
-
+    // pool Information
     struct Pool {
         uint256 size;
         bool set;
     }
-
-    // for each token, we store the total pool size
-    mapping(uint256 => Pool) private poolSize;
 
     // a checkpoint of the valid balance of a user for an epoch
     struct Checkpoint {
@@ -50,10 +23,39 @@ contract WrapSVR is SvrToken, ReentrancyGuard {
         uint256 newDeposits;
     }
 
+    // timestamp for the epoch 1
+    // everything before that is considered epoch 0 which won't have a reward but allows for the initial stake
+    uint256 public epoch1Start;
+    uint256 public epochDuration;
+
+    // the DAO !
+    address public reignDao;
+
+    //balancer LP Token
+    address public balancerLP;
+
+    //max liquidation fee is 10%
+    uint256 public maxLiquidationFee = 100000;
+
+    //the router address is the only allowed to deposit/withdraw on behalf of users
+    address public poolRouter;
+
+    // las epoch a user has withdrawn
+    uint128 public lastWithdrawEpochId;
+
+    // the percentage fee the holder want's to get for liquidation, 6 decimals of precision
+    mapping(address => uint256) public liquidationFee;
+
+    // for each token, we store the total pool size
+    mapping(uint256 => Pool) private poolSize;
+
+    // holds the current balance of the user for each token
+    mapping(address => uint256) private balances;
+
     // balanceCheckpoints[user][]
     mapping(address => Checkpoint[]) private balanceCheckpoints;
 
-    uint128 lastWithdrawEpochId;
+    uint128 private constant BASE_MULTIPLIER = uint128(1 * 10**18);
 
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
@@ -67,6 +69,11 @@ contract WrapSVR is SvrToken, ReentrancyGuard {
 
     event InitEpochForTokens(address indexed caller, uint128 indexed epochId);
     event EmergencyWithdraw(address indexed user, uint256 amount);
+
+    modifier onlyRouter() {
+        require(msg.sender == poolRouter, "Only Router can do this");
+        _;
+    }
 
     constructor() {}
 
@@ -84,17 +91,16 @@ contract WrapSVR is SvrToken, ReentrancyGuard {
         poolRouter = _poolRouter;
     }
 
-    /*
-     * Stores `amount` of `tokenAddress` tokens for the `user` into the vault
-     * If deposit is made with 0 amount it just updates the liquidation fee
+    /**
+      Stores `amount`  tokens for the `lpOwner` into the vault
+      Mints SVR to lpOwner
+      If deposit is made with 0 amount it just updates the liquidation fee
      */
     function deposit(
         address lpOwner,
         uint256 amount,
         uint256 liquidationPremium
-    ) public nonReentrant {
-        require(msg.sender == poolRouter, "Only Router can do this");
-
+    ) public nonReentrant onlyRouter {
         require(
             liquidationPremium <= maxLiquidationFee,
             "Liquidation fee above max value"
@@ -226,30 +232,33 @@ contract WrapSVR is SvrToken, ReentrancyGuard {
         emit Deposit(lpOwner, amount);
     }
 
+    /*
+     * Wraps the withdraw function but emits a difefrent event
+     */
     function liquidate(
         address liquidator,
         address lpOwner,
         uint256 amount
-    ) public nonReentrant {
-        require(msg.sender == poolRouter, "Only Router can do this");
-
+    ) public nonReentrant onlyRouter {
         // burn liquidators SVR and withdraw lpOwnser's tokens to router
         _withdraw(liquidator, lpOwner, amount);
 
         emit Liquidate(liquidator, lpOwner, liquidationFee[lpOwner], amount);
     }
 
+    /*
+     *  Withdraws the lp tokens from the lpOwner, burns SVR from svrHolder
+     */
     function withdraw(
         address svrHolder,
         address lpOwner,
         uint256 amount
-    ) public nonReentrant {
-        require(msg.sender == poolRouter, "Only Router can do this");
+    ) public nonReentrant onlyRouter {
         _withdraw(svrHolder, lpOwner, amount);
     }
 
     /*
-     * Removes the deposit of the user and sends the amount of `tokenAddress` back to the `user`
+     * Removes the deposit of the user and sends the amount of `tokenAddress` back to the `lpOwner`
      */
     function _withdraw(
         address svrHolder,
@@ -390,6 +399,10 @@ contract WrapSVR is SvrToken, ReentrancyGuard {
         emit InitEpochForTokens(msg.sender, epochId);
     }
 
+    /**
+        Allows anyone to take out the LP tokens if there have been no withdraws for 1o0 epochs
+        This does not burn SVR as it is an emergency action
+     */
     function emergencyWithdraw() public {
         require(
             (getCurrentEpoch() - lastWithdrawEpochId) >= 10,
@@ -407,11 +420,17 @@ contract WrapSVR is SvrToken, ReentrancyGuard {
         emit EmergencyWithdraw(msg.sender, totalUserBalance);
     }
 
+    /**
+        Allows DAO to update max liquidation fee, does not affect existing positions
+     */
     function setMaxLiquidationFee(uint256 newFee) public {
         require(msg.sender == reignDao, "Only DAO can call this");
         maxLiquidationFee = newFee;
     }
 
+    /**
+        Allows users to update their liquidation fee
+     */
     function setLiquidationFee(uint256 value) public {
         require(value <= maxLiquidationFee, "Liquidation fee above max value");
         liquidationFee[msg.sender] = value;
