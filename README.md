@@ -79,12 +79,6 @@ npx hardhat run scripts/run-deploy-all.ts
 npx hardhat run ./scripts/run-scenario1.ts
 ```
 
-- Run the `scenario2`:
-
-```shell script
-npx hardhat run ./scripts/run-scenario2.ts
-```
-
 ## Run Remix-IDE and point to your local folder
 
 ```shell script
