@@ -62,7 +62,7 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
 
     const callDatasRights =
         [
-            true, false, true, true, true, true,
+            true, true, true, true, true, true,
         ]
 
 
