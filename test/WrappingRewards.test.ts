@@ -4,14 +4,15 @@ import { moveAtEpoch, tenPow18,mineBlocks,setTime,getCurrentUnix, moveAtTimestam
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
 import { 
-        RewardsVault, ERC20Mock, WrapSVR, WrappingRewards, 
+        RewardsVault, ERC20Mock, SovWrapper, SovToken, WrappingRewards, 
         SmartPoolMock, ReignBalancerMock,
         BasketBalancerMock, EpochClockMock, PoolRouter
     } from "../typechain";
 
 describe("Wrapping Rewards", function () {
-    let wrapper: WrapSVR;
+    let wrapper: SovWrapper;
     let reignToken: ERC20Mock;
+    let sovToken: SovToken;
     let underlyingToken: ERC20Mock;
     let smartPool:SmartPoolMock;
     let router:PoolRouter;
@@ -41,21 +42,26 @@ describe("Wrapping Rewards", function () {
 
         epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
 
+        sovToken = (await deployContract("SovToken",[userAddr,userAddr])) as SovToken;
         reignToken = (await deployContract("ERC20Mock")) as ERC20Mock;
         underlyingToken = (await deployContract("ERC20Mock")) as ERC20Mock;
 
         reignMock = (await deployContract("ReignBalancerMock")) as ReignBalancerMock;
         basketBalancer = (await deployContract("BasketBalancerMock", [[],[],await reignMock.address])) as BasketBalancerMock;
         
-        wrapper = (await deployContract("WrapSVR", [])) as WrapSVR;
+        wrapper = (await deployContract("SovWrapper", [])) as SovWrapper;
     
         smartPool = (await deployContract("SmartPoolMock", [underlyingToken.address, zeroAddress])) as SmartPoolMock;
         router = (await deployContract("PoolRouter", [
             smartPool.address,
             wrapper.address,
             treasuryAddr,
+            sovToken.address,
             100000 //no fees for this test
         ])) as PoolRouter;
+
+        sovToken.connect(user).setMinter(router.address, true)
+        sovToken.connect(user).setMinter(userAddr, false)
 
         await wrapper.initialize(
             epochClock.address,  

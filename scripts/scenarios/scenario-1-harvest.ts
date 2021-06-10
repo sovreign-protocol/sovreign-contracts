@@ -2,7 +2,8 @@ import {DeployConfig} from "../config";
 import {BigNumber, Contract} from "ethers";
 import {
         WrappingRewards,
-        WrapSVR,
+        SovWrapper,
+        SovToken,
         PoolRouter,
         ReignToken,
         BasketBalancer,
@@ -17,23 +18,24 @@ import { wrap } from "module";
 
 export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
-    const wrapSVR = c.wrapSVR as WrapSVR;
+    const sovWrapper = c.sovWrapper as SovWrapper;
     const wrappingRewards = c.wrappingRewards as WrappingRewards;
     const reignToken = c.reignToken as ReignToken;
+    const sovToken = c.sovToken as SovToken;
     const staking = c.staking as Staking;
     const balancer = c.basketBalancer as BasketBalancer;
     const poolRouter = c.poolRouter as PoolRouter;
     const uniswapFactory = c.uniswapFactory as Contract;
     const uniswapRouter = c.uniswapRouter as Contract;
     const reignLpRewards = c.reignLpRewards as LPRewards;
-    const svrLpRewards = c.svrLpRewards as LPRewards;
+    const sovLpRewards = c.sovLpRewards as LPRewards;
     const govRewards = c.govRewards as GovRewards;
     const wbtc = c.wbtc as Contract;
     const weth = c.weth as Contract;
     const usdc = c.usdc as Contract;
 
     let reignPairAddress = await uniswapFactory.getPair(reignToken.address, c.wethAddr)
-    let svrPairAddress = await uniswapFactory.getPair(wrapSVR.address, c.usdcAddr)
+    let sovPairAddress = await uniswapFactory.getPair(sovToken.address, c.usdcAddr)
 
     let reignWethPair = new Contract(
         reignPairAddress, 
@@ -41,8 +43,8 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
         c.sovReignOwnerAcct 
     )
 
-    let svrUsdcPair = new Contract(
-        svrPairAddress, 
+    let sovUsdcPair = new Contract(
+        sovPairAddress, 
         ERC20,
         c.sovReignOwnerAcct 
     )
@@ -50,20 +52,20 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
     console.log(`\n --- START STAKING EPOCHS---`);
 
-    console.log(`Epoch: `, (await wrapSVR.getCurrentEpoch()).toNumber())
+    console.log(`Epoch: `, (await sovWrapper.getCurrentEpoch()).toNumber())
 
 
-    await wrapSVR.initEpochForTokens(0)
-    await staking.initEpochForTokens([reignWethPair.address, svrUsdcPair.address], 0)
+    await sovWrapper.initEpochForTokens(0)
+    await staking.initEpochForTokens([reignWethPair.address, sovUsdcPair.address], 0)
 
-    await wrapSVR.initEpochForTokens(1)
-    await staking.initEpochForTokens([reignWethPair.address, svrUsdcPair.address], 1)
+    await sovWrapper.initEpochForTokens(1)
+    await staking.initEpochForTokens([reignWethPair.address, sovUsdcPair.address], 1)
 
-    await wrapSVR.initEpochForTokens(2)
-    await staking.initEpochForTokens([reignWethPair.address, svrUsdcPair.address], 2)
+    await sovWrapper.initEpochForTokens(2)
+    await staking.initEpochForTokens([reignWethPair.address, sovUsdcPair.address], 2)
 
-    await wrapSVR.initEpochForTokens(3)
-    await staking.initEpochForTokens([reignWethPair.address, svrUsdcPair.address], 3)
+    await sovWrapper.initEpochForTokens(3)
+    await staking.initEpochForTokens([reignWethPair.address, sovUsdcPair.address], 3)
 
 
 
@@ -80,7 +82,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
 
     ///////////////////////////
-    // Mint SVR by depositing WBTC
+    // Mint SOV by depositing WBTC
     ///////////////////////////
 
     let depositAmountWbtc = 50000000 // 0.5 BTC
@@ -92,11 +94,11 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     
     await poolRouter.connect(c.user2Acct).deposit(c.wbtcAddr, depositAmountWbtc, 1, 100000)
     console.log(`User2 deposits 0.5 WBTC`)
-    let svrBalance = await wrapSVR.balanceOf(c.user2Addr)
-    console.log(`User SVR Balance '${svrBalance}'`)
+    let sovBalance = await sovToken.balanceOf(c.user2Addr)
+    console.log(`User SOV Balance '${sovBalance}'`)
 
     ///////////////////////////
-    // Mint SVR by depositing WBTC
+    // Mint SOV by depositing WBTC
     ///////////////////////////
     let depositAmountUsdc = 20_000_000000 // 20'000 USDC
     await usdc.connect(c.user3Acct).approve(poolRouter.address, depositAmountUsdc)
@@ -107,27 +109,27 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     
     await poolRouter.connect(c.user3Acct).deposit(c.usdcAddr, depositAmountUsdc, 1, 100000)
     console.log(`User3 deposits 20'000 USDC`)
-    let svrBalanceU3 = await wrapSVR.balanceOf(c.user3Addr)
-    console.log(`User3 SVR Balance '${svrBalanceU3}'`)
+    let sovBalanceU3 = await sovToken.balanceOf(c.user3Addr)
+    console.log(`User3 SOV Balance '${sovBalanceU3}'`)
 
    
 
     
-    console.log(`\n --- USERS ADD LIQUIDITY TO UNISWAP SVR/USDC LP ---`);
+    console.log(`\n --- USERS ADD LIQUIDITY TO UNISWAP SOV/USDC LP ---`);
 
     ///////////////////////////
-    // Deposit liquidity into the SVR/USDC pair 
+    // Deposit liquidity into the SOV/USDC pair 
     ///////////////////////////
     let usdcAmount = 10_000_000000
     await usdc.connect(c.user3Acct).transfer(c.user2Addr, usdcAmount);
-    let tx = await wrapSVR.connect(c.user2Acct).approve(uniswapRouter.address, svrBalance)
+    let tx = await sovToken.connect(c.user2Acct).approve(uniswapRouter.address, sovBalance)
     await tx.wait();
     tx = await usdc.connect(c.user2Acct).approve(uniswapRouter.address, usdcAmount);
     await tx.wait();
     tx = await uniswapRouter.connect(c.user2Acct).addLiquidity(
-        wrapSVR.address,
+        sovToken.address,
             usdc.address,
-            svrBalance,
+            sovBalance,
             usdcAmount,
             1,
             1,
@@ -135,15 +137,15 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
             Date.now() + 1000
         )
     await tx.wait();
-    console.log(`Liquidity added to SVR/USDC Pair`);
+    console.log(`Liquidity added to SOV/USDC Pair`);
 
 
-    console.log(`\n --- USERS STAKE UNISWAP SVR/USDC LP ---`);
+    console.log(`\n --- USERS STAKE UNISWAP SOV/USDC LP ---`);
 
-    balance = await svrUsdcPair.balanceOf(c.user2Addr)
-    await svrUsdcPair.connect(c.user2Acct).approve(staking.address, balance)
-    await staking.connect(c.user2Acct).deposit(svrPairAddress, balance)
-    console.log(`User2 Staked ${balance} SVR/USDC LP `);
+    balance = await sovUsdcPair.balanceOf(c.user2Addr)
+    await sovUsdcPair.connect(c.user2Acct).approve(staking.address, balance)
+    await staking.connect(c.user2Acct).deposit(sovPairAddress, balance)
+    console.log(`User2 Staked ${balance} SOV/USDC LP `);
    
 
     ///////////////////////////
@@ -192,10 +194,10 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
     reignBalanceBefore1 = await reignToken.balanceOf(c.user2Addr)
 
-    await svrLpRewards.connect(c.user2Acct).massHarvest()
+    await sovLpRewards.connect(c.user2Acct).massHarvest()
 
     reignBalanceAfter1 = await reignToken.balanceOf(c.user2Addr)
-    console.log(`User2 SVR/USDC LP Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).div(tenPow18)}' REIGN`)
+    console.log(`User2 SOV/USDC LP Rewards: '${reignBalanceAfter1.sub(reignBalanceBefore1).div(tenPow18)}' REIGN`)
 
 
     console.log(`\n --- USERS HARVEST GOV REWARDS ---`);
@@ -212,13 +214,12 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
 
 
-    console.log(`\n --- USERS REDEEM SVR FOR ANOTHER UNDERLYING ---`);
+    console.log(`\n --- USERS REDEEM SOV FOR ANOTHER UNDERLYING ---`);
 
-    await wrapSVR.connect(c.user3Acct).approve(poolRouter.address, svrBalanceU3);
-    await poolRouter.connect(c.user3Acct).withdraw(c.wbtcAddr,svrBalanceU3, 1);
+    await poolRouter.connect(c.user3Acct).withdraw(c.wbtcAddr,sovBalanceU3, 1);
     console.log(`User3 Withdraws BTC`)
-    svrBalanceU3 = await wrapSVR.balanceOf(c.user3Addr)
-    console.log(`User3 SVR Balance After '${svrBalanceU3}'`)
+    sovBalanceU3 = await sovToken.balanceOf(c.user3Addr)
+    console.log(`User3 SOV Balance After '${sovBalanceU3}'`)
     let wbtcBalance = await wbtc.balanceOf(c.user3Addr)
     console.log(`User3 WBTC Balance After '${wbtcBalance}'`)
 

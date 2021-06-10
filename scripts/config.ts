@@ -12,7 +12,8 @@ import {
     ReignToken,
     RewardsVault,
     Staking,
-    WrapSVR,
+    SovWrapper,
+    SovToken,
     PoolRouter,
     WrappingRewards,
 } from "../typechain";
@@ -122,12 +123,13 @@ export class DeployConfig {
     public weth?: Contract;
     public paxg?: Contract;
     public reignToken?: ReignToken;
+    public sovToken?: SovToken;
     public govRewards?: GovRewards;
     public staking?: Staking;
-    public svrLpRewards?: LPRewards;
+    public sovLpRewards?: LPRewards;
     public reignLpRewards?: LPRewards;
     public reignDAO?: ReignDAO;
-    public wrapSVR?:WrapSVR;
+    public sovWrapper?:SovWrapper;
     public wrappingRewards?:WrappingRewards;
     public poolRouter?:PoolRouter;
     public basketBalancer?: BasketBalancer;

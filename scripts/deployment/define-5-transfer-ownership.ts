@@ -6,6 +6,7 @@ import {
     PoolRouter,
     ReignDAO,
     ReignToken,
+    SovToken,
     RewardsVault,
 } from "../../typechain";
 
@@ -14,6 +15,7 @@ export async function transferOwnership(c: DeployConfig): Promise<DeployConfig> 
 
 
     const reignDAO = c.reignDAO as ReignDAO;
+    const sovToken = c.sovToken as SovToken;
     const reignToken = c.reignToken as ReignToken;
     const rewardsVault = c.rewardsVault as RewardsVault;
     const devVault = c.devVault as RewardsVault;
@@ -33,6 +35,13 @@ export async function transferOwnership(c: DeployConfig): Promise<DeployConfig> 
     await reignToken.connect(c.sovReignOwnerAcct).setOwner(reignDAO.address)
     console.log(`ReignToken owner set: '${reignDAO.address.toLowerCase()}' (Reign DAO)`);
 
+
+    await sovToken.connect(c.sovReignOwnerAcct).setMinter(poolRouter.address, true)
+    console.log(`SovToken minter set: '${poolRouter.address.toLowerCase()}' (Pool Router)`);
+
+    await sovToken.connect(c.sovReignOwnerAcct).setReignDAO(reignDAO.address)
+    console.log(`SovToken owner set: '${reignDAO.address.toLowerCase()}' (Reign DAO)`);
+    
     await rewardsVault.connect(c.sovReignOwnerAcct).transferOwnership(reignDAO.address)
     console.log(`Rewards Vault owner set: '${reignDAO.address.toLowerCase()}' (Reign DAO)`);
 

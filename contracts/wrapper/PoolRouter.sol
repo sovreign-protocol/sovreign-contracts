@@ -3,30 +3,35 @@ pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../interfaces/IWrapSVR.sol";
+import "../interfaces/ISovWrapper.sol";
 import "../interfaces/ISmartPool.sol";
+import "../interfaces/IMintableERC20.sol";
 
 contract PoolRouter {
     using SafeMath for uint256;
 
-    ISmartPool smartPool;
-    IWrapSVR wrappingContract;
+    ISmartPool public smartPool;
+    ISovWrapper public wrappingContract;
+    IMintableERC20 public sovToken;
     address public reignDao;
-    address public treasoury;
+    address public treasury;
 
     uint256 public protocolFee = 99950; // 100% - 0.050%
 
-    uint256 public constant FEE_DECIMALS = 1000000;
+    uint256 public constant LIQ_FEE_DECIMALS = 1000000;
+    uint256 public constant PROTOCOL_FEE_DECIMALS = 100000;
 
     constructor(
         address _smartPool,
         address _wrappingContract,
-        address _treasoury,
+        address _treasury,
+        address _sovToken,
         uint256 _protocolFee
     ) {
         smartPool = ISmartPool(_smartPool);
-        wrappingContract = IWrapSVR(_wrappingContract);
-        treasoury = _treasoury;
+        wrappingContract = ISovWrapper(_wrappingContract);
+        sovToken = IMintableERC20(_sovToken);
+        treasury = _treasury;
         protocolFee = _protocolFee;
     }
 
@@ -34,7 +39,7 @@ contract PoolRouter {
         This methods performs the following actions:
             1. pull token for user
             2. joinswap into balancer pool, recieving lp
-            3. stake lp tokens into Wrapping Contrat which mints SVR to User
+            3. stake lp tokens into Wrapping Contrat which mints SOV to User
     */
     function deposit(
         address tokenIn,
@@ -46,9 +51,10 @@ contract PoolRouter {
         IERC20(tokenIn).transferFrom(msg.sender, address(this), tokenAmountIn);
 
         //take fee before swap
-        uint256 amountMinusFee = tokenAmountIn.mul(protocolFee).div(100000);
+        uint256 amountMinusFee =
+            tokenAmountIn.mul(protocolFee).div(PROTOCOL_FEE_DECIMALS);
         uint256 poolAmountMinusFee =
-            minPoolAmountOut.mul(protocolFee).div(100000);
+            minPoolAmountOut.mul(protocolFee).div(PROTOCOL_FEE_DECIMALS);
 
         IERC20(tokenIn).approve(address(smartPool), amountMinusFee);
 
@@ -59,17 +65,20 @@ contract PoolRouter {
             poolAmountMinusFee
         );
 
-        // deposit LP for sender and mint SVR to sender
+        // deposit LP for sender
         uint256 balance = smartPool.balanceOf(address(this));
         smartPool.approve(address(wrappingContract), balance);
         wrappingContract.deposit(msg.sender, balance, liquidationFee);
+
+        // mint SOV
+        sovToken.mint(msg.sender, balance);
     }
 
     /**
         This methods performs the following actions:
             1. pull tokens for user
             2. join into balancer pool, recieving lp
-            3. stake lp tokens into Wrapping Contrat which mints SVR to User
+            3. stake lp tokens into Wrapping Contrat which mints SOV to User
     */
     function depositAll(
         uint256[] memory maxTokensAmountIn,
@@ -93,27 +102,32 @@ contract PoolRouter {
             );
 
             //take fee before swap
-            uint256 amountMinusFee = tokenAmountIn.mul(protocolFee).div(100000);
+            uint256 amountMinusFee =
+                tokenAmountIn.mul(protocolFee).div(PROTOCOL_FEE_DECIMALS);
 
             amountsInMinusFee[i] = amountMinusFee;
 
             IERC20(tokenIn).approve(address(smartPool), amountMinusFee);
         }
 
-        uint256 poolAmountMinusFee = poolAmountOut.mul(protocolFee).div(100000);
+        uint256 poolAmountMinusFee =
+            poolAmountOut.mul(protocolFee).div(PROTOCOL_FEE_DECIMALS);
 
         // swap underlying token for LP
         smartPool.joinPool(poolAmountMinusFee, amountsInMinusFee);
 
-        // deposit LP for sender and mint SVR to sender
+        // deposit LP for sender
         uint256 balance = smartPool.balanceOf(address(this));
         smartPool.approve(address(wrappingContract), balance);
         wrappingContract.deposit(msg.sender, balance, liquidationFee);
+
+        // mint SOV
+        sovToken.mint(msg.sender, balance);
     }
 
     /**
         This methods performs the following actions:
-            1. burn SVR from user and unstake lp
+            1. burn SOV from user and unstake lp
             2. exitswap lp into one of the underlyings
             3. send the underlying to the User
     */
@@ -122,7 +136,14 @@ contract PoolRouter {
         uint256 poolAmountIn,
         uint256 minAmountOut
     ) public {
-        //burns SVR from sender and recieve LP from sender to here
+        require(
+            sovToken.balanceOf(msg.sender) >= poolAmountIn,
+            "Not enought SOV tokens"
+        );
+        // burns SOV from sender
+        sovToken.burn(msg.sender, poolAmountIn);
+
+        //recieve LP from sender to here
         wrappingContract.withdraw(msg.sender, msg.sender, poolAmountIn);
 
         //get balance before exitswap
@@ -136,14 +157,16 @@ contract PoolRouter {
 
         //take fee before transfer out
         uint256 amountMinusFee =
-            (balanceAfter.sub(balanceBefore)).mul(protocolFee).div(100000);
+            (balanceAfter.sub(balanceBefore)).mul(protocolFee).div(
+                PROTOCOL_FEE_DECIMALS
+            );
 
         IERC20(tokenOut).transfer(msg.sender, amountMinusFee);
     }
 
     /**
         This methods performs the following actions:
-            1. burn SVR from user and unstake lp
+            1. burn SOV from user and unstake lp
             2. exitswap lp into all of the underlyings
             3. send the underlyings to the User
     */
@@ -154,7 +177,14 @@ contract PoolRouter {
 
         uint256[] memory balancesBefore = new uint256[](tokens.length);
 
-        //burns SVR from sender and recieve LP from sender to here
+        require(
+            sovToken.balanceOf(msg.sender) >= poolAmountIn,
+            "Not enought SOV tokens"
+        );
+        // burns SOV from sender
+        sovToken.burn(msg.sender, poolAmountIn);
+
+        //recieve LP from sender to here
         wrappingContract.withdraw(msg.sender, msg.sender, poolAmountIn);
 
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -185,7 +215,7 @@ contract PoolRouter {
 
     /**
         This methods performs the following actions:
-            1. burn SVR from caller and unstake lp of liquidatedUser
+            1. burn SOV from caller and unstake lp of liquidatedUser
             2. exitswap lp into one of the underlyings
             3. send the underlying to the caller
             4. transfer fee from caller to liquidatedUser
@@ -196,7 +226,14 @@ contract PoolRouter {
         uint256 poolAmountIn,
         uint256 minAmountOut
     ) public {
-        //burns SVR from sender and recieve LP to here
+        require(
+            sovToken.balanceOf(msg.sender) >= poolAmountIn,
+            "Not enought SOV tokens"
+        );
+        // burns SOV from sender
+        sovToken.burn(msg.sender, poolAmountIn);
+
+        // recieve LP to here
         wrappingContract.liquidate(msg.sender, liquidatedUser, poolAmountIn);
 
         //get balance before exitswap
@@ -218,7 +255,7 @@ contract PoolRouter {
         uint256 liquidationFeeAmount =
             (balanceAfter.sub(balanceBefore))
                 .mul(wrappingContract.liquidationFee(liquidatedUser))
-                .div(FEE_DECIMALS);
+                .div(LIQ_FEE_DECIMALS);
 
         require(
             IERC20(tokenOut).allowance(msg.sender, address(this)) >=
@@ -234,10 +271,10 @@ contract PoolRouter {
         );
     }
 
-    // transfer the entire fees collected in this contract to DAO treasoury
+    // transfer the entire fees collected in this contract to DAO treasury
     function collectFeesToDAO(address token) public {
         uint256 balance = IERC20(token).balanceOf(address(this));
-        IERC20(token).transfer(treasoury, balance);
+        IERC20(token).transfer(treasury, balance);
     }
 
     /**

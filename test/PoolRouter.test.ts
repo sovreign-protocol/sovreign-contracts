@@ -1,18 +1,19 @@
 import { ethers } from 'hardhat';
 import { BigNumber, Signer, version } from 'ethers';
 import { expect } from 'chai';
-import { moveAtEpoch, setTime, tenPow18, getCurrentUnix } from "./helpers/helpers";
+import { moveAtEpoch, setTime, tenPow18, getCurrentUnix, zeroAddress } from "./helpers/helpers";
 
 import { 
-    PoolRouter, SmartPoolMock, ERC20Mock, WrapSVR, EpochClockMock} from "../typechain";
+    PoolRouter, SmartPoolMock, ERC20Mock, SovWrapper, SovToken, EpochClockMock} from "../typechain";
     import { deployContract } from "./helpers/deploy";
 import { prependOnceListener } from 'process';
 
 
 describe('PoolRouter', function () {
-    let wrapper: WrapSVR;
+    let wrapper: SovWrapper;
     let smartPool: SmartPoolMock;
     let router: PoolRouter;
+    let sovToken: SovToken;
     let underlyingToken: ERC20Mock;
     let underlyingToken2: ERC20Mock;
     let creator: Signer, owner: Signer, user:Signer, treasury: Signer, userNew:Signer;
@@ -49,9 +50,10 @@ describe('PoolRouter', function () {
         await setTime(await getCurrentUnix());
 
         epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
-        wrapper = (await deployContract("WrapSVR")) as WrapSVR;
+        wrapper = (await deployContract("SovWrapper")) as SovWrapper;
 
 
+        sovToken = (await deployContract("SovToken", [ownerAddr, zeroAddress])) as SovToken; 
 
         underlyingToken = (await deployContract("ERC20Mock")) as ERC20Mock; 
         underlyingToken2 = (await deployContract("ERC20Mock")) as ERC20Mock; 
@@ -68,8 +70,11 @@ describe('PoolRouter', function () {
             smartPool.address, 
             wrapper.address,
             treasuryAddr,
+            sovToken.address,
             protocolFee
         ])) as PoolRouter;
+
+        sovToken.connect(owner).setMinter(router.address, true)
 
         await wrapper.initialize(
             epochClock.address,  
@@ -115,8 +120,8 @@ describe('PoolRouter', function () {
             expect(await wrapper.balanceLocked(userAddr)).to.be.eq(amountLP.mul(protocolFee).div(100000))
         })
 
-        it('mints the correct amount of SVR to the user', async function () {
-            expect(await wrapper.balanceOf(userAddr)).to.be.eq(amountLP.mul(protocolFee).div(100000))
+        it('mints the correct amount of SOV to the user', async function () {
+            expect(await sovToken.balanceOf(userAddr)).to.be.eq(amountLP.mul(protocolFee).div(100000))
         })
 
         it('pulls the underlying form the user', async function () {
@@ -145,8 +150,8 @@ describe('PoolRouter', function () {
             )
         })
 
-        it('burns the correct amount of SVR from the user', async function () {
-            expect(await wrapper.balanceOf(userAddr)).to.be.eq(
+        it('burns the correct amount of SOV from the user', async function () {
+            expect(await sovToken.balanceOf(userAddr)).to.be.eq(
                 amountLPBefore.sub(amountLP.div(2))
             )
         })
@@ -162,6 +167,15 @@ describe('PoolRouter', function () {
                 routerBalanceBefore.add(amount.div(2).mul(50).div(100000))
             )
         })
+
+        it("Can not withdraw if has not necessary SOVs", async function () {
+            
+            await router.connect(user).deposit(underlyingToken.address, amount, amountLP, liquidationFee);
+            await sovToken.connect(user).transfer(zeroAddress, amountLP)
+            await expect(
+                router.connect(user).withdraw(userAddr, userAddr, amount)
+            ).to.be.revertedWith("Not enought SOV tokens");
+        });
     })
 
     describe('DepositAll', async function () {
@@ -176,8 +190,8 @@ describe('PoolRouter', function () {
             expect(await wrapper.connect(userNew).balanceLocked(userNewAddr)).to.be.eq(amountLP.mul(protocolFee).div(100000))
         })
 
-        it('mints the correct amount of SVR to the user', async function () {
-            expect(await wrapper.connect(userNew).balanceOf(userNewAddr)).to.be.eq(amountLP.mul(protocolFee).div(100000))
+        it('mints the correct amount of SOV to the user', async function () {
+            expect(await sovToken.connect(userNew).balanceOf(userNewAddr)).to.be.eq(amountLP.mul(protocolFee).div(100000))
         })
 
         it('pulls the underlying form the user', async function () {
@@ -212,8 +226,8 @@ describe('PoolRouter', function () {
             )
         })
 
-        it('burns the correct amount of SVR from the user', async function () {
-            expect(await wrapper.connect(userNew).balanceOf(userNewAddr)).to.be.eq(
+        it('burns the correct amount of SOV from the user', async function () {
+            expect(await sovToken.connect(userNew).balanceOf(userNewAddr)).to.be.eq(
                 amountLPBefore.sub(amountLP.div(2))
             )
         })
@@ -235,6 +249,13 @@ describe('PoolRouter', function () {
                 routerBalanceBefore2.add(amount.div(2).mul(50).div(100000))
             )
         })
+
+        it("Can not withdraw if has not necessary SOVs", async function () {
+            
+            await expect(
+                router.connect(user).withdrawAll(userAddr, [amount])
+            ).to.be.revertedWith("Not enought SOV tokens");
+        });
     })
 
     
@@ -248,8 +269,8 @@ describe('PoolRouter', function () {
 
             await underlyingToken.mint(ownerAddr, totalAmount)
 
-            //owner needs SVR tokens to liquidate, lets assume user sends the necessary SVR to owner
-            await wrapper.connect(user).transfer(ownerAddr, amountLP.div(4))
+            //owner needs SOV tokens to liquidate, lets assume user sends the necessary SOV to owner
+            await sovToken.connect(user).transfer(ownerAddr, amountLP.div(4))
 
             //approve underlying to pay fee
             await underlyingToken.connect(owner).approve(router.address, (amount.div(4)).div(10))
@@ -272,8 +293,8 @@ describe('PoolRouter', function () {
             )
         })
 
-        it('burns the correct amount of SVR from the liquidator', async function () {
-            expect(await wrapper.balanceOf(ownerAddr)).to.be.eq(0)
+        it('burns the correct amount of SOV from the liquidator', async function () {
+            expect(await sovToken.balanceOf(ownerAddr)).to.be.eq(0)
         })
 
         it('sends the underlying to the liquidator and subtracts fee', async function () {
@@ -290,6 +311,13 @@ describe('PoolRouter', function () {
                 .add(feeAmount) // fee received
             )
         })
+
+        it("Can not liquidate if has not necessary SOVs", async function () {
+            
+            await expect(
+                router.connect(owner).liquidate(userAddr, userAddr, amountLP, amount)
+            ).to.be.revertedWith("Not enought SOV tokens");
+        });
     })
 
     describe('Collect Protocol Fees', async function () {
@@ -306,9 +334,9 @@ describe('PoolRouter', function () {
     describe('Liquidate With no Allowance', async function () {
 
         it('transfered fee to liquidated user', async function () {
-            //owner needs SVR tokens to liquidate, lets assume user sends the necessary SVR to owner
+            //owner needs SOV tokens to liquidate, lets assume user sends the necessary SOV to owner
             await router.connect(user).deposit(underlyingToken.address, amount, amountLP, liquidationFee);
-            await wrapper.connect(user).transfer(ownerAddr, amountLP)
+            await sovToken.connect(user).transfer(ownerAddr, amountLP)
 
 
             //liquidate half of the remaining position

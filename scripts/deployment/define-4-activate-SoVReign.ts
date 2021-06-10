@@ -9,7 +9,7 @@ import {
     ReignFacet,
     ReignToken,
     Staking,
-    WrapSVR
+    SovWrapper
 } from "../../typechain";
 import * as helpers from "../../test/helpers/governance-helpers";
 import {diamondAsFacet} from "../../test/helpers/diamond";
@@ -21,9 +21,9 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     const reignDAO = c.reignDAO as ReignDAO;
     const reignToken = c.reignToken as ReignToken;
     const staking = c.staking as Staking;
-    const wrapSVR = c.wrapSVR as WrapSVR;
+    const sovWrapper = c.sovWrapper as SovWrapper;
     const poolRouter = c.poolRouter as PoolRouter;
-    const svrLpRewards = c.svrLpRewards as LPRewards;
+    const sovLpRewards = c.sovLpRewards as LPRewards;
     const reignLpRewards = c.reignLpRewards as LPRewards;
     const govRewards = c.govRewards as GovRewards;
     const basketBalancer = c.basketBalancer as BasketBalancer;
@@ -59,21 +59,22 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
         );
 
     ///////////////////////////
-    // Init "WrapSVR":
+    // Init "SovWrapper":
     ///////////////////////////
-    console.log(`Calling initialize() at '${wrapSVR.address.toLowerCase()}' (WrapSVR contract)`);
-    await wrapSVR.connect(c.sovReignOwnerAcct).initialize(
+    console.log(`Calling initialize() at '${sovWrapper.address.toLowerCase()}' (SovWrapper contract)`);
+    await sovWrapper.connect(c.sovReignOwnerAcct).initialize(
         reignDiamond.address,
         reignDAO.address,
         smartPool.address,
         poolRouter.address
         );
 
+
     ///////////////////////////
-    // Init "svrLPRewards":
+    // Init "sovLPRewards":
     ///////////////////////////
-    console.log(`Calling initialize() at '${svrLpRewards.address.toLowerCase()}' (SVR LP Rewards contract)`);
-    await svrLpRewards.connect(c.sovReignOwnerAcct).initialize();
+    console.log(`Calling initialize() at '${sovLpRewards.address.toLowerCase()}' (SOV LP Rewards contract)`);
+    await sovLpRewards.connect(c.sovReignOwnerAcct).initialize();
 
     ///////////////////////////
     // Init "reignLpRewards":

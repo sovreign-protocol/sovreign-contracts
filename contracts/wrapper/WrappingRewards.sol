@@ -2,7 +2,7 @@
 pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "../interfaces/IWrapSVR.sol";
+import "../interfaces/ISovWrapper.sol";
 import "../interfaces/IBasketBalancer.sol";
 import "../interfaces/IReignPoolRewards.sol";
 import "../libraries/LibRewardsDistribution.sol";
@@ -17,12 +17,12 @@ contract WrappingRewards {
     // state variables
 
     // addreses
-    address public treasoury;
+    address public treasury;
     address private _rewardsVault;
     address private _balancer;
     // contracts
     IERC20 private _reignToken;
-    IWrapSVR private _wrapper;
+    ISovWrapper private _wrapper;
 
     uint256 BASE_MULTIPLIER = 10**18;
     uint256 public NO_BOOST_PENALTY = 3 * 10**16; // -3%
@@ -56,12 +56,12 @@ contract WrappingRewards {
         address _treasury
     ) {
         _reignToken = IERC20(reignTokenAddress);
-        _wrapper = IWrapSVR(wrappingContract);
+        _wrapper = ISovWrapper(wrappingContract);
         _rewardsVault = rewardsVault;
         _balancer = balancer;
         epochDuration = _wrapper.epochDuration();
         epochStart = _wrapper.epoch1Start() + epochDuration;
-        treasoury = _treasury;
+        treasury = _treasury;
     }
 
     // public method to harvest all the unharvested epochs until current epoch - 1
@@ -114,10 +114,10 @@ contract WrappingRewards {
         return userReward;
     }
 
-    // transfer the entire fees collected in this contract to DAO treasoury
+    // transfer the entire fees collected in this contract to DAO treasury
     function collectFeesToDAO() public {
         uint256 balance = IERC20(_reignToken).balanceOf(address(this));
-        IERC20(_reignToken).transfer(treasoury, balance);
+        IERC20(_reignToken).transfer(treasury, balance);
     }
 
     /*

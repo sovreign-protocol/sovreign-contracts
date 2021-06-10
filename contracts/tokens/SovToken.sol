@@ -4,15 +4,56 @@ pragma solidity 0.7.6;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-abstract contract SvrToken is IERC20 {
+contract SovToken is IERC20 {
     using SafeMath for uint256;
 
-    string public constant name = "Store Of Value Reserve Token";
-    string public constant symbol = "SVR";
-    uint8 public decimals = 18;
-    uint256 public override totalSupply = 0;
+    string public constant name = "Store-Of-Value Token";
+    string public constant symbol = "SOV";
+    uint8 public constant decimals = 18;
+    uint256 public override totalSupply;
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
+
+    mapping(address => bool) public isMinter;
+
+    event Mint(address indexed to, uint256 value);
+    event SetMinter(address indexed account, bool value);
+    event Burn(address indexed from, uint256 value);
+
+    address public reignDAO;
+
+    constructor(address _reignDAO, address _minter) {
+        reignDAO = _reignDAO;
+        isMinter[_minter] = true;
+    }
+
+    function setReignDAO(address _reignDAO) public {
+        require(msg.sender == reignDAO, "Only reignDAO can do this");
+        reignDAO = _reignDAO;
+    }
+
+    function setMinter(address _minter, bool value) public {
+        require(msg.sender == reignDAO, "Only reignDAO can do this");
+        isMinter[_minter] = value;
+
+        emit SetMinter(_minter, value);
+    }
+
+    function mint(address to, uint256 value) external returns (bool) {
+        require(isMinter[msg.sender] == true, "Only Minter can do this");
+
+        _mint(to, value);
+        emit Mint(to, value);
+        return true;
+    }
+
+    function burn(address from, uint256 value) external returns (bool) {
+        require(isMinter[msg.sender] == true, "Only Minter can do this");
+
+        _burn(from, value);
+        emit Burn(from, value);
+        return true;
+    }
 
     function _mint(address to, uint256 value) internal {
         totalSupply = totalSupply.add(value);

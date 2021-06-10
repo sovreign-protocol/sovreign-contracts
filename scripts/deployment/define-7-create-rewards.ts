@@ -6,7 +6,7 @@ import {
     ReignDAO,
     ReignToken, 
     RewardsVault,
-    WrapSVR,
+    SovWrapper,
     WrappingRewards,
     BasketBalancer, 
     } from "../../typechain";
@@ -21,7 +21,7 @@ export async function createRewards(c: DeployConfig): Promise<DeployConfig> {
 
     const reignToken = c.reignToken as ReignToken;
     const reignDiamond = c.reignDiamond as Contract;
-    const wrapSVR = c.wrapSVR as WrapSVR;
+    const sovWrapper = c.sovWrapper as SovWrapper;
     const reignDAO = c.reignDAO as ReignDAO;
     const basketBalancer = c.basketBalancer as BasketBalancer;
     const rewardsVault = c.rewardsVault as RewardsVault;
@@ -40,7 +40,7 @@ export async function createRewards(c: DeployConfig): Promise<DeployConfig> {
         [
             reignToken.address,
             basketBalancer.address,
-            wrapSVR.address,
+            sovWrapper.address,
             rewardsVault.address,
             reignDiamond.address
         ]

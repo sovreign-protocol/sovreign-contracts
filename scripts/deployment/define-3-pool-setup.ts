@@ -4,6 +4,7 @@ import {
     PoolRouter,
     ERC20,
     BasketBalancer,
+    SovToken
 } from "../../typechain";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
 import {tenPow18} from "../../test/helpers/helpers";
@@ -18,6 +19,7 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     const dai = c.dai as ERC20;
     const wbtc = c.wbtc as ERC20;
     const usdc = c.usdc as ERC20;
+    const sovToken = c.sovToken as SovToken;
     const smartPoolFactory = c.smartPoolFactory as Contract;
     const reignDiamond = c.reignDiamond as Contract;
     const reignDAO = c.reignDAO as Contract;
@@ -120,8 +122,9 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     const poolRouter = await deploy.deployContract('PoolRouter', [
         smartPoolAddr,
-        (c.wrapSVR as Contract).address,
+        (c.sovWrapper as Contract).address,
         (c.reignDiamond as Contract).address,
+        sovToken.address,
         99950
     ]) as PoolRouter;
     c.poolRouter = poolRouter;

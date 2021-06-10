@@ -4,9 +4,9 @@ pragma solidity ^0.7.6;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/IEpochClock.sol";
-import "../tokens/SvrToken.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract WrapSVR is SvrToken, ReentrancyGuard {
+contract SovWrapper is ReentrancyGuard {
     using SafeMath for uint256;
 
     // pool Information
@@ -93,7 +93,7 @@ contract WrapSVR is SvrToken, ReentrancyGuard {
 
     /**
       Stores `amount`  tokens for the `lpOwner` into the vault
-      Mints SVR to lpOwner
+      Mints SOV to lpOwner
       If deposit is made with 0 amount it just updates the liquidation fee
      */
     function deposit(
@@ -113,9 +113,6 @@ contract WrapSVR is SvrToken, ReentrancyGuard {
                 IERC20(balancerLP).allowance(msg.sender, address(this));
             require(allowance >= amount, "Wrapper: Token allowance too small");
             IERC20(balancerLP).transferFrom(msg.sender, address(this), amount);
-
-            // mint SVR tokens to the lpOwner calling the router
-            _mint(lpOwner, amount);
 
             balances[lpOwner] = balances[lpOwner].add(amount);
 
@@ -240,39 +237,32 @@ contract WrapSVR is SvrToken, ReentrancyGuard {
         address lpOwner,
         uint256 amount
     ) public nonReentrant onlyRouter {
-        // burn liquidators SVR and withdraw lpOwnser's tokens to router
+        // burn liquidators SOV and withdraw lpOwnser's tokens to router
         _withdraw(liquidator, lpOwner, amount);
 
         emit Liquidate(liquidator, lpOwner, liquidationFee[lpOwner], amount);
     }
 
     /*
-     *  Withdraws the lp tokens from the lpOwner, burns SVR from svrHolder
+     *  Withdraws the lp tokens from the lpOwner, burns SOV from SOVHolder
      */
     function withdraw(
-        address svrHolder,
+        address sovHolder,
         address lpOwner,
         uint256 amount
     ) public nonReentrant onlyRouter {
-        _withdraw(svrHolder, lpOwner, amount);
+        _withdraw(sovHolder, lpOwner, amount);
     }
 
     /*
      * Removes the deposit of the user and sends the amount of `tokenAddress` back to the `lpOwner`
      */
     function _withdraw(
-        address svrHolder,
+        address sovHolder,
         address lpOwner,
         uint256 amount
     ) internal {
         require(balances[lpOwner] >= amount, "Wrapper: balance too small");
-
-        // burn SVR from svrHolder
-        require(
-            this.balanceOf(svrHolder) >= amount,
-            "Insuffiecient SVR Balance"
-        );
-        _burn(svrHolder, amount);
 
         balances[lpOwner] = balances[lpOwner].sub(amount);
 
@@ -401,7 +391,7 @@ contract WrapSVR is SvrToken, ReentrancyGuard {
 
     /**
         Allows anyone to take out the LP tokens if there have been no withdraws for 1o0 epochs
-        This does not burn SVR as it is an emergency action
+        This does not burn SOV as it is an emergency action
      */
     function emergencyWithdraw() public {
         require(

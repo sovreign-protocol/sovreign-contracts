@@ -8,12 +8,12 @@ import {
     Staking,
     LPRewards,
     ReignToken,
-    WrapSVR,
+    SovToken,
+    SovWrapper,
     RewardsVault,
     LibRewardsDistribution,
-    BasketBalancer
 } from "../../typechain";
-import { string } from "hardhat/internal/core/params/argumentTypes";
+import { zeroAddress } from "../../test/helpers/helpers";
 
 
 export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
@@ -34,17 +34,28 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Deploy "ReignToken" contract:
     ///////////////////////////
-    const reignToken = await deploy.deployContract('ReignToken', [c.sovReignOwnerAddr]) as ReignToken;
+    const reignToken = await deploy.deployContract('ReignToken', [c.sovReignOwnerAddr,]) as ReignToken;
     c.reignToken = reignToken;
     console.log(`ReignToken deployed at: ${reignToken.address.toLowerCase()}`);
 
+    ///////////////////////////
+    // Deploy "SovToken" contract:
+    ///////////////////////////
+    const sovToken = await deploy.deployContract('SovToken', [c.sovReignOwnerAddr, zeroAddress]) as SovToken;
+    c.sovToken = sovToken;
+    console.log(`SovToken deployed at: ${sovToken.address.toLowerCase()}`);
+
+
+
+
+    console.log(`\n --- DEPLOY WRAPPER CONTRACT ---`);
 
     ///////////////////////////
-    // Deploy "WrapSVR" contract:
+    // Deploy "SovWrapper" contract:
     ///////////////////////////
-    const wrapSVR = await deploy.deployContract('WrapSVR') as WrapSVR;
-    c.wrapSVR = wrapSVR;
-    console.log(`WrapSVR deployed at: ${wrapSVR.address.toLowerCase()}`);
+    const sovWrapper = await deploy.deployContract('SovWrapper') as SovWrapper;
+    c.sovWrapper = sovWrapper;
+    console.log(`SovWrapper deployed at: ${sovWrapper.address.toLowerCase()}`);
 
 
 
@@ -133,12 +144,12 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
 
 
     ///////////////////////////
-    // Create a pair for SVR/USDC
+    // Create a pair for SOV/USDC
     ///////////////////////////
-    tx = await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(wrapSVR.address, c.usdcAddr)
+    tx = await uniswapFactory.connect(c.sovReignOwnerAcct).createPair(sovToken.address, c.usdcAddr)
     await tx.wait()
-    let svrPairAddress = await  uniswapFactory.getPair(wrapSVR.address, c.usdcAddr)
-    console.log(`Deployed a Uniswap pair for SVR/USDC: '${ svrPairAddress}'`);
+    let sovPairAddress = await  uniswapFactory.getPair(sovToken.address, c.usdcAddr)
+    console.log(`Deployed a Uniswap pair for SOV/USDC: '${ sovPairAddress}'`);
     
 
     console.log(`\n --- PREPARE REWARDS  ---`);
@@ -151,17 +162,17 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Staking contract deployed at: ${staking.address}`);
 
     ///////////////////////////
-    // Deploy "LPRewards" contract for SVR/dai:
+    // Deploy "LPRewards" contract for sov/dai:
     ///////////////////////////
-    const svrLpRewards = (await deploy.deployContract('LPRewards', 
+    const sovLpRewards = (await deploy.deployContract('LPRewards', 
         [
             reignToken.address, 
-            svrPairAddress, 
+            sovPairAddress, 
             staking.address,  
             rewardsVault.address, 
             lpRewardAllocation.div(2)])) as LPRewards;
-    console.log(`LPRewards for Uniswap SVR/USDC LP deployed at: ${svrLpRewards.address}`);
-    c.svrLpRewards = svrLpRewards
+    console.log(`LPRewards for Uniswap SOV/USDC LP deployed at: ${sovLpRewards.address}`);
+    c.sovLpRewards = sovLpRewards
 
     ///////////////////////////
     // Deploy "LPRewards" contract for REIGN/USD:
@@ -192,11 +203,11 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(govRewards.address, govRewardsAllocation)
     console.log(`Calling setAllowance() from (RewardsVault contract) to (GovRewards contract)`);
 
-    await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(svrLpRewards.address, lpRewardAllocation.div(2))
-    console.log(`Calling setAllowance() from (RewardsVault contract) to (SVR/USD LPRewards contract)`);
+    await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(sovLpRewards.address, lpRewardAllocation.div(2))
+    console.log(`Calling setAllowance() from (RewardsVault contract) to (SOV/USDC LPRewards contract)`);
 
     await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(reignLpRewards.address, lpRewardAllocation.div(2))
-    console.log(`Calling setAllowance() from (RewardsVault contract) to (REIGN/USD LPRewards contract)`);
+    console.log(`Calling setAllowance() from (RewardsVault contract) to (REIGN/WETH LPRewards contract)`);
 
     await devVault.connect(c.sovReignOwnerAcct).setAllowance(reignDAO.address, devAllocation)
     console.log(`Calling setAllowance() from (DevVault contract) to (Reign DAO contract)`);

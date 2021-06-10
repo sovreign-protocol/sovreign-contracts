@@ -3,10 +3,10 @@ import { BigNumber, BigNumberish, Signer } from "ethers";
 import { moveAtEpoch, setTime, tenPow18, getCurrentUnix, zeroAddress } from "./helpers/helpers";
 import { deployContract } from "./helpers/deploy";
 import { expect } from "chai";
-import { ERC20Mock, WrapSVR, EpochClockMock } from "../typechain";
+import { ERC20Mock, SovWrapper, EpochClockMock } from "../typechain";
 
-describe("WrapSVR", function () {
-    let wrapper: WrapSVR;
+describe("SovWrapper", function () {
+    let wrapper: SovWrapper;
     let balancerLP: ERC20Mock;
     let underlyingToken: ERC20Mock;
     let creator: Signer, owner: Signer, user:Signer, newUser: Signer;
@@ -34,7 +34,7 @@ describe("WrapSVR", function () {
         await setTime(await getCurrentUnix());
 
         epochClock = (await deployContract('EpochClockMock', [epochStart])) as EpochClockMock;
-        wrapper = (await deployContract("WrapSVR")) as WrapSVR;
+        wrapper = (await deployContract("SovWrapper")) as SovWrapper;
         balancerLP = (await deployContract("ERC20Mock")) as ERC20Mock;
 
         await wrapper.initialize(
@@ -80,55 +80,6 @@ describe("WrapSVR", function () {
         });
     })
 
-    describe('ERC-20', async function () {
-
-        it('transfers amounts correctly', async function () {
-            await deposit(user, amount)
-            let transfers = BigNumber.from(10)
-            await wrapper.connect(user).transfer(newUserAddr,transfers);
-            expect(await wrapper.balanceOf(newUserAddr)).to.be.eq(transfers)
-        })
-
-        it('reverts if transfers more then balance', async function () {
-            await deposit(user, amount)
-            let transfers = (await wrapper.balanceOf(userAddr)).add(1000)
-            await expect(
-                wrapper.connect(user).transfer(newUserAddr,transfers)
-            ).to.be.revertedWith("SafeMath: subtraction overflow")
-        })
-
-        it('set allowance amounts correctly', async function () {
-            await deposit(user, amount)
-            let allow = BigNumber.from(10)
-            await wrapper.connect(user).approve(newUserAddr,allow);
-            expect(await wrapper.allowance(userAddr,newUserAddr)).to.be.eq(allow)
-        })
-
-        it('makes TransferFrom correctly', async function () {
-            await deposit(user, amount)
-            let allow = BigNumber.from(10)
-            await wrapper.connect(user).approve(newUserAddr,allow);
-            await wrapper.connect(newUser).transferFrom(userAddr,newUserAddr, allow);
-            expect(await wrapper.balanceOf(newUserAddr)).to.be.eq(allow);
-        })
-
-        it('reverts if transferFrom is above allowance', async function () {
-            await deposit(user, amount)
-            let allow = BigNumber.from(10)
-            await wrapper.connect(user).approve(newUserAddr,allow);
-            await expect(
-                wrapper.connect(user).transferFrom(userAddr,newUserAddr,allow.add(1))
-            ).to.be.revertedWith("SafeMath: subtraction overflow")
-        })
-
-        it('TransferFrom reduces allowance', async function () {
-            await deposit(user, amount)
-            let allow = BigNumber.from(10)
-            await wrapper.connect(user).approve(newUserAddr,allow);
-            await wrapper.connect(newUser).transferFrom(userAddr,newUserAddr, allow.sub(5));
-            expect(await wrapper.allowance(userAddr,newUserAddr)).to.be.eq(allow.sub(5))
-        })
-    })
 
     describe("Deposit", function () {
         it("If deposit is 0 just set liquidation fee", async function () {
@@ -365,17 +316,6 @@ describe("WrapSVR", function () {
             ).to.be.revertedWith("Only Router can do this");
         });
 
-        it("Can not withdraw if has not necessary SVRs", async function () {
-            await balancerLP.mint(userAddr, amount);
-            await balancerLP.connect(user).approve(wrapper.address, amount);
-            await wrapper.connect(user).deposit(userAddr, amount,100000);
-
-            await wrapper.connect(user).transfer(zeroAddress, amount);
-
-            await expect(
-                wrapper.connect(user).withdraw(userAddr,userAddr, amount)
-            ).to.be.revertedWith("Insuffiecient SVR Balance");
-        });
 
         it("Sets the balance of the user to 0", async function () {
             // set-up the balance sheet
@@ -563,10 +503,6 @@ describe("WrapSVR", function () {
 
 
             let balanceBeforeLiquidation = await balancerLP.balanceOf(userAddr);
-
-            let userSVRBalance = await wrapper.balanceOf(userAddr);
-            wrapper.connect(user).transfer(ownerAddr, userSVRBalance)
-
 
             await expect(
                 wrapper.connect(user).liquidate(
