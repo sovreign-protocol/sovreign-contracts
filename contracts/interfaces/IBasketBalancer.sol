@@ -12,7 +12,7 @@ interface IBasketBalancer {
 
     function updateBasketBalance() external;
 
-    function reignAddress() external view returns (address);
+    function reignDiamond() external view returns (address);
 
     function getTokens() external view returns (address[] memory);
 }

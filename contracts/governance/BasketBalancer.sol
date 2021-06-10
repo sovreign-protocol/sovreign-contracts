@@ -25,6 +25,7 @@ contract BasketBalancer {
     IReign private reign;
     address public poolRouter;
     address public reignDAO;
+    address public reignDiamond;
 
     event UpdateAllocation(
         uint128 indexed epoch,
@@ -69,6 +70,7 @@ contract BasketBalancer {
         maxDelta = _maxDelta;
         allTokens = tokens;
         reign = IReign(_reignDiamond);
+        reignDiamond = _reignDiamond;
         reignDAO = _reignDAO;
         poolRouter = _poolRouter;
     }

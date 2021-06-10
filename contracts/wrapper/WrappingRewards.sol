@@ -206,7 +206,7 @@ contract WrappingRewards {
     // checks if the user has voted that epoch and returns accordingly
     function isBoosted(address user, uint128 epoch) public view returns (bool) {
         IBasketBalancer balancer = IBasketBalancer(_balancer);
-        address _reign = balancer.reignAddress();
+        address _reign = balancer.reignDiamond();
         // if user or users delegate has voted
         if (
             balancer.hasVotedInEpoch(

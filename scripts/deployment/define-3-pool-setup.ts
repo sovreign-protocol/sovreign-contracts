@@ -39,7 +39,7 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     // Create Pool
     ///////////////////////////
     const callDatasParams = [
-                'SVRLP',
+                'SOVLP',
                 'SoVReign Pool LP',
                 [
                     wbtc.address, 
