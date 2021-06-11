@@ -55,16 +55,16 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Epoch: `, (await sovWrapper.getCurrentEpoch()).toNumber())
 
 
-    await sovWrapper.initEpochForTokens(0)
+    await sovWrapper.initEpoch(0)
     await staking.initEpochForTokens([reignWethPair.address, sovUsdcPair.address], 0)
 
-    await sovWrapper.initEpochForTokens(1)
+    await sovWrapper.initEpoch(1)
     await staking.initEpochForTokens([reignWethPair.address, sovUsdcPair.address], 1)
 
-    await sovWrapper.initEpochForTokens(2)
+    await sovWrapper.initEpoch(2)
     await staking.initEpochForTokens([reignWethPair.address, sovUsdcPair.address], 2)
 
-    await sovWrapper.initEpochForTokens(3)
+    await sovWrapper.initEpoch(3)
     await staking.initEpochForTokens([reignWethPair.address, sovUsdcPair.address], 3)
 
 
