@@ -569,6 +569,7 @@ describe('Reign', function () {
             //This sometimes fails by 100 due to blocks messing up timestamps
 
             expect(
+                await getEpochUserBalance(userAddress, 3) == amount.mul(2).add(balanceEffective).sub(100).toString() || 
                 await getEpochUserBalance(userAddress, 3) == amount.mul(2).add(balanceEffective).toString() || 
                 await getEpochUserBalance(userAddress, 3) == amount.mul(2).add(balanceEffective).add(100).toString() 
                 ).to.be.true;

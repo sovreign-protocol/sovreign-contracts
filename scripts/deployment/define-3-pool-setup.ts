@@ -35,6 +35,8 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     await usdc.connect(c.user3Acct).transfer(c.sovReignOwnerAddr, usdcAmount*2) 
     await dai.connect(c.user4Acct).transfer(c.sovReignOwnerAddr, daiAmount.mul(2))  
 
+    console.log(`Deployer Account funded`);
+
 
 
     ///////////////////////////
@@ -94,17 +96,23 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
 
 
 
-    
-    await dai.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, daiAmount);
-    await wbtc.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, wbtcAmount);
-    await usdc.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, usdcAmount);
+    let tx = await dai.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, daiAmount);
+    await tx.wait();
+  
+    tx = await wbtc.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, wbtcAmount);
+    await tx.wait();
+
+    tx = await usdc.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, usdcAmount);
+    await tx.wait();
 
 
-    await smartPool.connect(c.sovReignOwnerAcct).createPool(
+    tx = await smartPool.connect(c.sovReignOwnerAcct).createPool(
         BigNumber.from(10000).mul(tenPow18),
         13292,   // 2 days for weights update
         250  //  ca. 55min token add lock time
     )
+    await tx.wait();
+    console.log(`Smart Pool Initialized !`);
 
 
     let lpSupply = (await smartPool.totalSupply())
@@ -133,14 +141,16 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Whitelist Router as LP
     ///////////////////////////
-    smartPool.connect(c.sovReignOwnerAcct).whitelistLiquidityProvider(poolRouter.address);
+    tx = await smartPool.connect(c.sovReignOwnerAcct).whitelistLiquidityProvider(poolRouter.address);
+    await tx.wait();
     console.log(`PoolRouter Whitelisted`);
 
 
     ///////////////////////////
     // Set Pool Cap
     ///////////////////////////
-    smartPool.connect(c.sovReignOwnerAcct).setCap(lpSupply.mul(10000));
+    tx = await smartPool.connect(c.sovReignOwnerAcct).setCap(lpSupply.mul(10000));
+    await tx.wait();
     console.log(`Cap Set at ${lpSupply.mul(1000).div(tenPow18).toString()} LP Tokens`);
 
 
