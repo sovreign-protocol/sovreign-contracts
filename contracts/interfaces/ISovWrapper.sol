@@ -8,11 +8,7 @@ interface ISovWrapper {
         uint256 liquidationPrice
     ) external;
 
-    function withdraw(
-        address svrHolder,
-        address lpOwner,
-        uint256 amount
-    ) external;
+    function withdraw(address lpOwner, uint256 amount) external;
 
     function liquidate(
         address liquidator,

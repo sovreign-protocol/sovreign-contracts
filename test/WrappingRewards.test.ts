@@ -120,7 +120,7 @@ describe("Wrapping Rewards", function () {
             ).to.equal(distributedAmount)
             expect(await wrappingRewards.getCurrentEpoch()).to.equal(2) // epoch on yield is wrapper - 1
 
-            let epoch1Rewards = (await wrappingRewards.getRewardsForEpoch(1));
+            let epoch1Rewards = (await wrappingRewards.getRewardsForEpoch());
             let boostMultiplier = await getUserBoost(userAddr, 1);
             
             // as the user didn't vote this epoch (see balancerMock) we need to apply Boost
@@ -153,7 +153,7 @@ describe("Wrapping Rewards", function () {
             await expect(wrappingRewards.harvest(3)).to.be.revertedWith('Can only harvest in order')
             await wrappingRewards.connect(user).harvest(1)
             let epoch1Rewards = 
-                (await wrappingRewards.getRewardsForEpoch(1))
+                (await wrappingRewards.getRewardsForEpoch())
 
             let boostMultiplier = await getUserBoost(userAddr, 1);
             
@@ -231,7 +231,7 @@ describe("Wrapping Rewards", function () {
             await wrappingRewards.connect(user).harvest(1)
             await wrappingRewards.connect(user).harvest(2)
             let epoch2Rewards = 
-                (await wrappingRewards.getRewardsForEpoch(2))
+                (await wrappingRewards.getRewardsForEpoch())
 
 
             await wrappingRewards.collectFeesToDAO();
@@ -272,7 +272,7 @@ describe("Wrapping Rewards", function () {
         if (isBoosted){
             return BigNumber.from(1).mul(tenPow18)
         }else{
-            return (BigNumber.from(1).mul(tenPow18)).sub(await wrappingRewards.NO_BOOST_PENALTY() )
+            return (BigNumber.from(1).mul(tenPow18)).sub(await wrappingRewards.NO_VOTE_PENALTY() )
         }
         
         
@@ -282,7 +282,7 @@ describe("Wrapping Rewards", function () {
         let total = BigNumber.from(0);
         for(let i = 1; i < n; i++){
             let epochBoost = await getUserBoost(userAddr, i);
-            let adjusted = epochBoost.mul(await wrappingRewards.getRewardsForEpoch(i)).div(tenPow18)
+            let adjusted = epochBoost.mul(await wrappingRewards.getRewardsForEpoch()).div(tenPow18)
             total = total.add(adjusted);
         }
         return total

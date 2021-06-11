@@ -23,6 +23,8 @@ contract SovWrapper is ReentrancyGuard {
         uint256 newDeposits;
     }
 
+    uint128 private constant BASE_MULTIPLIER = uint128(1 * 10**18);
+
     // timestamp for the epoch 1
     // everything before that is considered epoch 0 which won't have a reward but allows for the initial stake
     uint256 public epoch1Start;
@@ -55,8 +57,7 @@ contract SovWrapper is ReentrancyGuard {
     // balanceCheckpoints[user][]
     mapping(address => Checkpoint[]) private balanceCheckpoints;
 
-    uint128 private constant BASE_MULTIPLIER = uint128(1 * 10**18);
-
+    // events
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
 
@@ -67,7 +68,7 @@ contract SovWrapper is ReentrancyGuard {
         uint256 amount
     );
 
-    event InitEpochForTokens(address indexed caller, uint128 indexed epochId);
+    event InitEpoch(address indexed caller, uint128 indexed epochId);
     event EmergencyWithdraw(address indexed user, uint256 amount);
 
     modifier onlyRouter() {
@@ -75,6 +76,7 @@ contract SovWrapper is ReentrancyGuard {
         _;
     }
 
+    //empty constructor, could be removed but makes code more readable
     constructor() {}
 
     function initialize(
@@ -83,7 +85,7 @@ contract SovWrapper is ReentrancyGuard {
         address _balancerLP,
         address _poolRouter
     ) public {
-        require(epoch1Start == 0, "Can only be initialized once");
+        require(epoch1Start == 0, "Can only be initialized once"); //sufficient check
         epoch1Start = IEpochClock(_epochClock).getEpoch1Start();
         epochDuration = IEpochClock(_epochClock).getEpochDuration();
         reignDao = _reignDao;
@@ -93,7 +95,6 @@ contract SovWrapper is ReentrancyGuard {
 
     /**
       Stores `amount`  tokens for the `lpOwner` into the vault
-      Mints SOV to lpOwner
       If deposit is made with 0 amount it just updates the liquidation fee
      */
     function deposit(
@@ -121,7 +122,7 @@ contract SovWrapper is ReentrancyGuard {
             uint128 currentMultiplier = currentEpochMultiplier();
 
             if (!epochIsInitialized(currentEpoch)) {
-                initEpochForTokens(currentEpoch);
+                initEpoch(currentEpoch);
             }
 
             // update the next epoch pool size
@@ -230,38 +231,34 @@ contract SovWrapper is ReentrancyGuard {
     }
 
     /*
-     * Wraps the withdraw function but emits a difefrent event
+     * Wraps the withdraw function but emits a different event
      */
     function liquidate(
         address liquidator,
         address lpOwner,
         uint256 amount
     ) public nonReentrant onlyRouter {
-        // burn liquidators SOV and withdraw lpOwnser's tokens to router
-        _withdraw(liquidator, lpOwner, amount);
+        // withdraw lpOwnser's tokens to router
+        _withdraw(lpOwner, amount);
 
         emit Liquidate(liquidator, lpOwner, liquidationFee[lpOwner], amount);
     }
 
     /*
-     *  Withdraws the lp tokens from the lpOwner, burns SOV from SOVHolder
+     *  Withdraws the lp tokens from the lpOwner
      */
-    function withdraw(
-        address sovHolder,
-        address lpOwner,
-        uint256 amount
-    ) public nonReentrant onlyRouter {
-        _withdraw(sovHolder, lpOwner, amount);
+    function withdraw(address lpOwner, uint256 amount)
+        public
+        nonReentrant
+        onlyRouter
+    {
+        _withdraw(lpOwner, amount);
     }
 
     /*
      * Removes the deposit of the user and sends the amount of `tokenAddress` back to the `lpOwner`
      */
-    function _withdraw(
-        address sovHolder,
-        address lpOwner,
-        uint256 amount
-    ) internal {
+    function _withdraw(address lpOwner, uint256 amount) internal {
         require(balances[lpOwner] >= amount, "Wrapper: balance too small");
 
         balances[lpOwner] = balances[lpOwner].sub(amount);
@@ -276,7 +273,7 @@ contract SovWrapper is ReentrancyGuard {
         lastWithdrawEpochId = currentEpoch;
 
         if (!epochIsInitialized(currentEpoch)) {
-            initEpochForTokens(currentEpoch);
+            initEpoch(currentEpoch);
         }
 
         // update the pool size of the next epoch to its current balance
@@ -360,11 +357,11 @@ contract SovWrapper is ReentrancyGuard {
     }
 
     /*
-     * initEpochForTokens can be used by anyone to initialize an epoch based on the previous one
+     * initEpoch can be used by anyone to initialize an epoch based on the previous one
      * This is only applicable if there was no action (deposit/withdraw) in the current epoch.
      * Any deposit and withdraw will automatically initialize the current and next epoch.
      */
-    function initEpochForTokens(uint128 epochId) public {
+    function initEpoch(uint128 epochId) public {
         require(epochId <= getCurrentEpoch(), "can't init a future epoch");
 
         Pool storage p = poolSize[epochId];
@@ -386,7 +383,7 @@ contract SovWrapper is ReentrancyGuard {
             p.set = true;
         }
 
-        emit InitEpochForTokens(msg.sender, epochId);
+        emit InitEpoch(msg.sender, epochId);
     }
 
     /**

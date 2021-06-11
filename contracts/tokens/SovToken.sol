@@ -11,17 +11,18 @@ contract SovToken is IERC20 {
     string public constant symbol = "SOV";
     uint8 public constant decimals = 18;
     uint256 public override totalSupply;
+
+    address public reignDAO;
+
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
-
     mapping(address => bool) public isMinter;
 
     event Mint(address indexed to, uint256 value);
     event SetMinter(address indexed account, bool value);
     event Burn(address indexed from, uint256 value);
 
-    address public reignDAO;
-
+    // initialize with DAO ad one Minter (can be zero address if not minter is needed)
     constructor(address _reignDAO, address _minter) {
         reignDAO = _reignDAO;
         isMinter[_minter] = true;
@@ -55,6 +56,34 @@ contract SovToken is IERC20 {
         return true;
     }
 
+    function approve(address spender, uint256 value)
+        external
+        override
+        returns (bool)
+    {
+        _approve(msg.sender, spender, value);
+        return true;
+    }
+
+    function transfer(address to, uint256 value)
+        external
+        override
+        returns (bool)
+    {
+        _transfer(msg.sender, to, value);
+        return true;
+    }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 value
+    ) external override returns (bool) {
+        allowance[from][msg.sender] = allowance[from][msg.sender].sub(value);
+        _transfer(from, to, value);
+        return true;
+    }
+
     function _mint(address to, uint256 value) internal {
         totalSupply = totalSupply.add(value);
         balanceOf[to] = balanceOf[to].add(value);
@@ -84,33 +113,5 @@ contract SovToken is IERC20 {
         balanceOf[from] = balanceOf[from].sub(value);
         balanceOf[to] = balanceOf[to].add(value);
         emit Transfer(from, to, value);
-    }
-
-    function approve(address spender, uint256 value)
-        external
-        override
-        returns (bool)
-    {
-        _approve(msg.sender, spender, value);
-        return true;
-    }
-
-    function transfer(address to, uint256 value)
-        external
-        override
-        returns (bool)
-    {
-        _transfer(msg.sender, to, value);
-        return true;
-    }
-
-    function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    ) external override returns (bool) {
-        allowance[from][msg.sender] = allowance[from][msg.sender].sub(value);
-        _transfer(from, to, value);
-        return true;
     }
 }

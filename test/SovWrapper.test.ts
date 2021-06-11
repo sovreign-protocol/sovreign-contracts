@@ -174,7 +174,7 @@ describe("SovWrapper", function () {
 
             it("Deposit at random points inside an epoch sets the correct effective balance", async function () {
                 await moveAtEpoch(epochStart, epochDuration, 1);
-                await wrapper.initEpochForTokens(0);
+                await wrapper.initEpoch(0);
 
                 const NUM_CHECKS = 5;
                 for (let i = 0; i < NUM_CHECKS; i++) {
@@ -199,7 +199,7 @@ describe("SovWrapper", function () {
 
             it("deposit in middle of epoch 1", async function () {
                 await moveAtEpoch(epochStart, epochDuration, 1);
-                await wrapper.initEpochForTokens(0);
+                await wrapper.initEpoch(0);
 
                 await setTime(getEpochStart(1) + Math.floor(epochDuration / 2));
 
@@ -217,13 +217,13 @@ describe("SovWrapper", function () {
 
             it("deposit epoch 1, deposit epoch 4", async function () {
                 await moveAtEpoch(epochStart, epochDuration, 1);
-                await wrapper.initEpochForTokens(0);
+                await wrapper.initEpoch(0);
 
                 await setTime(getEpochStart(1) + Math.floor(epochDuration / 2));
                 await deposit(user, amount);
 
                 await moveAtEpoch(epochStart, epochDuration, 4);
-                await wrapper.initEpochForTokens(3);
+                await wrapper.initEpoch(3);
 
                 await setTime(getEpochStart(4) + Math.floor(epochDuration / 2));
 
@@ -244,7 +244,7 @@ describe("SovWrapper", function () {
 
             it("deposit epoch 1, deposit epoch 2", async function () {
                 await moveAtEpoch(epochStart, epochDuration, 1);
-                await wrapper.initEpochForTokens(0);
+                await wrapper.initEpoch(0);
                 await setTime(getEpochStart(1) + Math.floor(epochDuration / 2));
                 await deposit(user, amount);
 
@@ -268,13 +268,13 @@ describe("SovWrapper", function () {
 
             it("deposit epoch 1, deposit epoch 5, deposit epoch 5", async function () {
                 await moveAtEpoch(epochStart, epochDuration, 1);
-                await wrapper.initEpochForTokens(0);
+                await wrapper.initEpoch(0);
                 await setTime(getEpochStart(1) + Math.floor(epochDuration / 2));
                 await deposit(user, amount);
 
                 await moveAtEpoch(epochStart, epochDuration, 5);
-                await wrapper.initEpochForTokens(3);
-                await wrapper.initEpochForTokens(4);
+                await wrapper.initEpoch(3);
+                await wrapper.initEpoch(4);
 
                 await setTime(getEpochStart(5) + Math.floor(epochDuration / 2));
                 await deposit(user, amount);
@@ -306,13 +306,13 @@ describe("SovWrapper", function () {
     describe("Withdraw", function () {
         it("Reverts if user has no balance", async function () {
             await expect(
-                wrapper.connect(user).withdraw(userAddr,userAddr, amount)
+                wrapper.connect(user).withdraw(userAddr, amount)
             ).to.be.revertedWith("Wrapper: balance too small");
         });
 
         it("Can not withdraw if is not Router", async function () {
             await expect(
-                wrapper.connect(owner).withdraw(ownerAddr,ownerAddr, amount)
+                wrapper.connect(owner).withdraw(ownerAddr, amount)
             ).to.be.revertedWith("Only Router can do this");
         });
 
@@ -353,13 +353,13 @@ describe("SovWrapper", function () {
 
             it("deposit epoch 1, withdraw epoch 5", async function () {
                 await moveAtEpoch(epochStart, epochDuration, 1);
-                await wrapper.initEpochForTokens(0);
+                await wrapper.initEpoch(0);
 
                 await deposit(user, amount);
 
                 await moveAtEpoch(epochStart, epochDuration, 5);
-                await wrapper.initEpochForTokens(3);
-                await wrapper.initEpochForTokens(4);
+                await wrapper.initEpoch(3);
+                await wrapper.initEpoch(4);
 
                 const ts = getEpochStart(1) + 24 * 60 * 60;
                 await setTime(ts);
@@ -372,7 +372,7 @@ describe("SovWrapper", function () {
 
             it("deposit epoch 1, withdraw epoch 2", async function () {
                 await moveAtEpoch(epochStart, epochDuration, 1);
-                await wrapper.initEpochForTokens(0);
+                await wrapper.initEpoch(0);
 
                 await deposit(user, amount);
 
@@ -389,13 +389,13 @@ describe("SovWrapper", function () {
 
             it("deposit epoch 1, deposit epoch 5, withdraw epoch 5 half amount", async function () {
                 await moveAtEpoch(epochStart, epochDuration, 1);
-                await wrapper.initEpochForTokens(0);
+                await wrapper.initEpoch(0);
 
                 await deposit(user, amount);
 
                 await moveAtEpoch(epochStart, epochDuration, 5);
-                await wrapper.initEpochForTokens(3);
-                await wrapper.initEpochForTokens(4);
+                await wrapper.initEpoch(3);
+                await wrapper.initEpoch(4);
 
                 const ts = getEpochStart(1) + 24 * 60 * 60;
                 await setTime(ts);
@@ -430,13 +430,13 @@ describe("SovWrapper", function () {
 
             it("deposit epoch 1, deposit epoch 5, withdraw epoch 5 more than deposited", async function () {
                 await moveAtEpoch(epochStart, epochDuration, 1);
-                await wrapper.initEpochForTokens(0);
+                await wrapper.initEpoch(0);
 
                 await deposit(user, amount);
 
                 await moveAtEpoch(epochStart, epochDuration, 5);
-                await wrapper.initEpochForTokens(3);
-                await wrapper.initEpochForTokens(4);
+                await wrapper.initEpoch(3);
+                await wrapper.initEpoch(4);
 
                 const ts = getEpochStart(1) + 24 * 60 * 60;
                 await setTime(ts);
@@ -568,7 +568,7 @@ describe("SovWrapper", function () {
             expect(await getEpochUserBalance(userAddr, 1)).to.be.equal(amount.toString());
 
             await moveAtEpoch(epochStart, epochDuration, 3);
-            await wrapper.initEpochForTokens(2);
+            await wrapper.initEpoch(2);
 
             await withdraw(user, amount);
 
@@ -591,9 +591,9 @@ describe("SovWrapper", function () {
 
         it("deposit in epoch 3, withdraw in epoch 3", async function () {
             await moveAtEpoch(epochStart, epochDuration, 3);
-            await wrapper.initEpochForTokens(0);
-            await wrapper.initEpochForTokens(1);
-            await wrapper.initEpochForTokens(2);
+            await wrapper.initEpoch(0);
+            await wrapper.initEpoch(1);
+            await wrapper.initEpoch(2);
 
             await deposit(user, amount);
 
@@ -608,8 +608,8 @@ describe("SovWrapper", function () {
 
         it("deposit in epoch 2, withdraw in epoch 3", async function () {
             await moveAtEpoch(epochStart, epochDuration, 2);
-            await wrapper.initEpochForTokens(0);
-            await wrapper.initEpochForTokens(1);
+            await wrapper.initEpoch(0);
+            await wrapper.initEpoch(1);
 
             await deposit(user, amount);
 
@@ -666,7 +666,7 @@ describe("SovWrapper", function () {
 
         it("multiple deposits in same epoch", async function () {
             await moveAtEpoch(epochStart, epochDuration, 1);
-            await wrapper.initEpochForTokens(0);
+            await wrapper.initEpoch(0);
 
             await deposit(user, amount);
             await deposit(user, amount);
@@ -678,9 +678,9 @@ describe("SovWrapper", function () {
         it("deposit epoch 2, deposit epoch 3, withdraw epoch 3", async function () {
             await moveAtEpoch(epochStart, epochDuration, 2);
 
-            await wrapper.initEpochForTokens(0);
-            await wrapper.initEpochForTokens(1);
-            await wrapper.initEpochForTokens(2);
+            await wrapper.initEpoch(0);
+            await wrapper.initEpoch(1);
+            await wrapper.initEpoch(2);
 
             await deposit(user, amount);
             expect(await getEpochUserBalance(userAddr, 3)).to.be.equal(amount.toString());
@@ -698,7 +698,7 @@ describe("SovWrapper", function () {
 
         it("deposit epoch 1, deposit epoch 3, withdraw epoch 3", async function () {
             await moveAtEpoch(epochStart, epochDuration, 1);
-            await wrapper.initEpochForTokens(0);
+            await wrapper.initEpoch(0);
 
             await deposit(user, amount);
             expect(await getEpochUserBalance(userAddr, 2)).to.be.equal(amount.toString());
@@ -717,14 +717,14 @@ describe("SovWrapper", function () {
 
         it("deposit epoch 1, deposit epoch 4, deposit epoch 5, withdraw epoch 5", async function () {
             await moveAtEpoch(epochStart, epochDuration, 1);
-            await wrapper.initEpochForTokens(0);
+            await wrapper.initEpoch(0);
 
             await deposit(user, amount);
             expect(await getEpochUserBalance(userAddr, 2)).to.be.equal(amount.toString());
             expect(await getEpochPoolSize(2)).to.be.equal(amount.toString());
 
             await moveAtEpoch(epochStart, epochDuration, 4);
-            await wrapper.initEpochForTokens(3);
+            await wrapper.initEpoch(3);
 
             await deposit(user, amount);
 
@@ -744,16 +744,16 @@ describe("SovWrapper", function () {
 
         it("reverts if future epoch is init", async function () {
             await moveAtEpoch(epochStart, epochDuration, 2);
-            await expect(wrapper.initEpochForTokens(4)).to.be.revertedWith("can't init a future epoch")
+            await expect(wrapper.initEpoch(4)).to.be.revertedWith("can't init a future epoch")
 
         })
 
         it("reverts if epoch is already init", async function () {
             await moveAtEpoch(epochStart, epochDuration, 2);
-            await wrapper.initEpochForTokens(0)
-            await wrapper.initEpochForTokens(1)
-            await wrapper.initEpochForTokens(2)
-            await expect(wrapper.initEpochForTokens(2)).to.be.revertedWith("Wrapper: epoch already initialized")
+            await wrapper.initEpoch(0)
+            await wrapper.initEpoch(1)
+            await wrapper.initEpoch(2)
+            await expect(wrapper.initEpoch(2)).to.be.revertedWith("Wrapper: epoch already initialized")
 
         })
     });
@@ -772,7 +772,7 @@ describe("SovWrapper", function () {
 
         it("Returns pool size when epoch is initialized", async function () {
             await moveAtEpoch(epochStart, epochDuration, 1);
-            await wrapper.initEpochForTokens(0);
+            await wrapper.initEpoch(0);
             await deposit(user, amount);
 
             expect(await getEpochPoolSize(2)).to.be.equal(amount.toString());
@@ -788,7 +788,7 @@ describe("SovWrapper", function () {
 
         it("Returns correct balance where there was an action at some point", async function () {
             await moveAtEpoch(epochStart, epochDuration, 1);
-            await wrapper.initEpochForTokens(0);
+            await wrapper.initEpoch(0);
             await deposit(user, amount);
 
             expect(await getEpochPoolSize(79)).to.be.equal(amount.toString());
@@ -894,14 +894,14 @@ describe("SovWrapper", function () {
         it("Withdraw emits Withdraw event", async function () {
             await deposit(user, amount);
 
-            await expect(wrapper.connect(user).withdraw(userAddr,userAddr, 10))
+            await expect(wrapper.connect(user).withdraw(userAddr, 10))
                 .to.emit(wrapper, "Withdraw");
         });
 
-        it("InitEpochForTokens emits InitEpochForTokens event", async function () {
+        it("InitEpoch emits InitEpoch event", async function () {
             await moveAtEpoch(epochStart, epochDuration, 1);
-            await expect(wrapper.initEpochForTokens(0))
-                .to.emit(wrapper, "InitEpochForTokens");
+            await expect(wrapper.initEpoch(0))
+                .to.emit(wrapper, "InitEpoch");
         });
 
         it("EmergencyWithdraw emits EmergencyWithdraw event", async function () {
@@ -957,7 +957,7 @@ describe("SovWrapper", function () {
     }
 
     async function withdraw(u: Signer, x: BigNumber) {
-        return await wrapper.connect(u).withdraw(userAddr,userAddr, x);
+        return await wrapper.connect(u).withdraw(userAddr, x);
     }
 
     async function getEpochPoolSize(epochId: number) {

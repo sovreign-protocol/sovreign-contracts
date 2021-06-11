@@ -16,22 +16,24 @@ contract WrappingRewards {
 
     // state variables
 
-    // addreses
+    uint256 public constant NO_VOTE_PENALTY = 3 * 10**16; // -3%
+    uint256 private constant BASE_MULTIPLIER = 10**18;
+
+    // addresses
     address public treasury;
-    address private _rewardsVault;
-    address private _balancer;
+    address public rewardsVault;
+    address public balancer;
+
     // contracts
-    IERC20 private _reignToken;
-    ISovWrapper private _wrapper;
+    IERC20 public reignToken;
+    ISovWrapper public wrapper;
 
-    uint256 BASE_MULTIPLIER = 10**18;
-    uint256 public NO_BOOST_PENALTY = 3 * 10**16; // -3%
-
-    mapping(uint128 => uint256) private _sizeAtEpoch;
     uint128 public lastInitializedEpoch;
-    mapping(address => uint128) private _lastEpochIdHarvested;
     uint256 public epochDuration; // init from staking contract
     uint256 public epochStart; // init from staking contract
+
+    mapping(uint128 => uint256) private _sizeAtEpoch;
+    mapping(address => uint128) private _lastEpochIdHarvested;
 
     // events
     event MassHarvest(
@@ -49,18 +51,18 @@ contract WrappingRewards {
 
     // constructor
     constructor(
-        address reignTokenAddress,
-        address balancer,
-        address wrappingContract,
-        address rewardsVault,
+        address _reignTokenAddress,
+        address _balancer,
+        address _wrappingContract,
+        address _rewardsVault,
         address _treasury
     ) {
-        _reignToken = IERC20(reignTokenAddress);
-        _wrapper = ISovWrapper(wrappingContract);
-        _rewardsVault = rewardsVault;
-        _balancer = balancer;
-        epochDuration = _wrapper.epochDuration();
-        epochStart = _wrapper.epoch1Start() + epochDuration;
+        reignToken = IERC20(_reignTokenAddress);
+        wrapper = ISovWrapper(_wrappingContract);
+        rewardsVault = _rewardsVault;
+        balancer = _balancer;
+        epochDuration = wrapper.epochDuration();
+        epochStart = wrapper.epoch1Start() + epochDuration;
         treasury = _treasury;
     }
 
@@ -80,8 +82,8 @@ contract WrappingRewards {
         }
 
         if (totalDistributedValue > 0) {
-            _reignToken.safeTransferFrom(
-                _rewardsVault,
+            reignToken.safeTransferFrom(
+                rewardsVault,
                 msg.sender,
                 totalDistributedValue
             );
@@ -107,7 +109,7 @@ contract WrappingRewards {
 
         uint256 userReward = _harvest(epochId);
         if (userReward > 0) {
-            _reignToken.safeTransferFrom(_rewardsVault, msg.sender, userReward);
+            reignToken.safeTransferFrom(rewardsVault, msg.sender, userReward);
         }
 
         emit Harvest(msg.sender, epochId, userReward);
@@ -116,57 +118,8 @@ contract WrappingRewards {
 
     // transfer the entire fees collected in this contract to DAO treasury
     function collectFeesToDAO() public {
-        uint256 balance = IERC20(_reignToken).balanceOf(address(this));
-        IERC20(_reignToken).transfer(treasury, balance);
-    }
-
-    /*
-     * internal methods
-     */
-
-    function _harvest(uint128 epochId) internal returns (uint256) {
-        // try to initialize an epoch
-        if (lastInitializedEpoch < epochId) {
-            _initEpoch(epochId);
-        }
-        // Set user state for last harvested
-        _lastEpochIdHarvested[msg.sender] = epochId;
-
-        // exit if there is no stake on the epoch
-        if (_sizeAtEpoch[epochId] == 0) {
-            return 0;
-        }
-
-        uint256 epochRewards = getRewardsForEpoch(epochId);
-        bool boost = isBoosted(msg.sender, epochId);
-
-        // get users share of rewards
-        uint256 userEpochRewards =
-            epochRewards.mul(_getUserBalancePerEpoch(msg.sender, epochId)).div(
-                _sizeAtEpoch[epochId]
-            );
-
-        //if user is not boosted pull penalty into this contract and reduce user rewards
-        if (!boost) {
-            uint256 penalty =
-                userEpochRewards.mul(NO_BOOST_PENALTY).div(BASE_MULTIPLIER); // decrease by 3%
-
-            userEpochRewards = userEpochRewards.sub(penalty);
-
-            _reignToken.safeTransferFrom(_rewardsVault, address(this), penalty);
-        }
-
-        return userEpochRewards;
-    }
-
-    function _initEpoch(uint128 epochId) internal {
-        //epochs can only be harvested in order, therfore they can also only be initialised in order
-        // i.e it's impossible that we init epoch 5 after 3 as to harvest 5 user needs to first harvets 4
-        _sizeAtEpoch[epochId] = _getPoolSize(epochId);
-        lastInitializedEpoch = epochId;
-        // call the staking smart contract to init the epoch
-
-        emit InitEpoch(msg.sender, epochId);
+        uint256 balance = IERC20(reignToken).balanceOf(address(this));
+        IERC20(reignToken).safeTransfer(treasury, balance);
     }
 
     /*
@@ -179,9 +132,9 @@ contract WrappingRewards {
     }
 
     // gets the total amount of rewards accrued to a pool during an epoch
-    function getRewardsForEpoch(uint128 epochId) public view returns (uint256) {
+    function getRewardsForEpoch() public view returns (uint256) {
         uint256 epochRewards =
-            LibRewardsDistribution.wrappingRewardsPerEpochTotal(epochStart);
+            LibRewardsDistribution.wrappingRewardsPerEpochTotal(epochStart); //this accounts for2 year halving already
         return epochRewards;
     }
 
@@ -205,7 +158,7 @@ contract WrappingRewards {
 
     // checks if the user has voted that epoch and returns accordingly
     function isBoosted(address user, uint128 epoch) public view returns (bool) {
-        IBasketBalancer balancer = IBasketBalancer(_balancer);
+        IBasketBalancer balancer = IBasketBalancer(balancer);
         address _reign = balancer.reignDiamond();
         // if user or users delegate has voted
         if (
@@ -215,18 +168,67 @@ contract WrappingRewards {
             ) ||
             balancer.hasVotedInEpoch(
                 IReignPoolRewards(_reign).userDelegatedTo(user),
-                epoch + 1 // _balancer epoch is 1 higher then pool
+                epoch + 1 // balancer epoch is 1 higher then pool
             )
         ) {
             return true;
         } else {
-            return false; // -3%
+            return false; // apply -3%
         }
+    }
+
+    /**
+        INTERNAL
+     */
+
+    function _harvest(uint128 epochId) internal returns (uint256) {
+        // try to initialize an epoch
+        if (lastInitializedEpoch < epochId) {
+            _initEpoch(epochId);
+        }
+        // Set user state for last harvested
+        _lastEpochIdHarvested[msg.sender] = epochId;
+
+        // exit if there is no stake on the epoch
+        if (_sizeAtEpoch[epochId] == 0) {
+            return 0;
+        }
+
+        uint256 epochRewards = getRewardsForEpoch();
+        bool boost = isBoosted(msg.sender, epochId);
+
+        // get users share of rewards
+        uint256 userEpochRewards =
+            epochRewards.mul(_getUserBalancePerEpoch(msg.sender, epochId)).div(
+                _sizeAtEpoch[epochId]
+            );
+
+        //if user is not boosted pull penalty into this contract and reduce user rewards
+        if (!boost) {
+            uint256 penalty =
+                userEpochRewards.mul(NO_VOTE_PENALTY).div(BASE_MULTIPLIER); // decrease by 3%
+
+            userEpochRewards = userEpochRewards.sub(penalty);
+
+            reignToken.safeTransferFrom(rewardsVault, address(this), penalty);
+        }
+
+        return userEpochRewards;
+    }
+
+    function _initEpoch(uint128 epochId) internal {
+        //epochs can only be harvested in order, therfore they can also only be initialised in order
+        // i.e it's impossible that we init epoch 5 after 3 as to harvest 5 user needs to first harvets 4
+        _sizeAtEpoch[epochId] = _getPoolSize(epochId);
+        lastInitializedEpoch = epochId;
+        // call the staking smart contract to init the epoch
+
+        emit InitEpoch(msg.sender, epochId);
     }
 
     function _getPoolSize(uint128 epochId) internal view returns (uint256) {
         // retrieve unilp token balance
-        return _wrapper.getEpochPoolSize(_wrapperEpochId(epochId));
+        return wrapper.getEpochPoolSize(_wrapperEpochId(epochId));
     }
 
     function _getUserBalancePerEpoch(address userAddress, uint128 epochId)
@@ -236,7 +238,7 @@ contract WrappingRewards {
     {
         // retrieve unilp token balance per user per epoch
         return
-            _wrapper.getEpochUserBalance(userAddress, _wrapperEpochId(epochId));
+            wrapper.getEpochUserBalance(userAddress, _wrapperEpochId(epochId));
     }
 
     // compute epoch id from blocktimestamp and

@@ -10,13 +10,15 @@ contract ReignToken is IERC20 {
     string public constant name = "SoVReign Governance Token";
     string public constant symbol = "REIGN";
     uint8 public constant decimals = 18;
+
     uint256 public override totalSupply;
+
+    address public owner;
+
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
 
     event Mint(address indexed to, uint256 value);
-
-    address public owner;
 
     constructor(address _owner) {
         owner = _owner;
@@ -28,37 +30,12 @@ contract ReignToken is IERC20 {
         owner = _owner;
     }
 
-    function _mint(address to, uint256 value) internal {
-        totalSupply = totalSupply.add(value);
-        balanceOf[to] = balanceOf[to].add(value);
-        emit Transfer(address(0), to, value);
-    }
-
     function mint(address to, uint256 value) external returns (bool) {
         require(msg.sender == owner, "Only Owner can do this");
 
         _mint(to, value);
         emit Mint(to, value);
         return true;
-    }
-
-    function _approve(
-        address owner,
-        address spender,
-        uint256 value
-    ) private {
-        allowance[owner][spender] = value;
-        emit Approval(owner, spender, value);
-    }
-
-    function _transfer(
-        address from,
-        address to,
-        uint256 value
-    ) private {
-        balanceOf[from] = balanceOf[from].sub(value);
-        balanceOf[to] = balanceOf[to].add(value);
-        emit Transfer(from, to, value);
     }
 
     function approve(address spender, uint256 value)
@@ -87,5 +64,34 @@ contract ReignToken is IERC20 {
         allowance[from][msg.sender] = allowance[from][msg.sender].sub(value);
         _transfer(from, to, value);
         return true;
+    }
+
+    function _mint(address to, uint256 value) internal {
+        totalSupply = totalSupply.add(value);
+        balanceOf[to] = balanceOf[to].add(value);
+        emit Transfer(address(0), to, value);
+    }
+
+    /**
+        INTERNAL
+     */
+
+    function _approve(
+        address owner,
+        address spender,
+        uint256 value
+    ) private {
+        allowance[owner][spender] = value;
+        emit Approval(owner, spender, value);
+    }
+
+    function _transfer(
+        address from,
+        address to,
+        uint256 value
+    ) private {
+        balanceOf[from] = balanceOf[from].sub(value);
+        balanceOf[to] = balanceOf[to].add(value);
+        emit Transfer(from, to, value);
     }
 }

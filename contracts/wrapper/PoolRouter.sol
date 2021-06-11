@@ -10,16 +10,17 @@ import "../interfaces/IMintableERC20.sol";
 contract PoolRouter {
     using SafeMath for uint256;
 
-    ISmartPool public smartPool;
-    ISovWrapper public wrappingContract;
-    IMintableERC20 public sovToken;
-    address public reignDao;
-    address public treasury;
+    uint256 public constant LIQ_FEE_DECIMALS = 1000000; // 6 decimals
+    uint256 public constant PROTOCOL_FEE_DECIMALS = 100000; // 5 decimals
 
     uint256 public protocolFee = 99950; // 100% - 0.050%
 
-    uint256 public constant LIQ_FEE_DECIMALS = 1000000;
-    uint256 public constant PROTOCOL_FEE_DECIMALS = 100000;
+    ISmartPool public smartPool;
+    ISovWrapper public wrappingContract;
+    IMintableERC20 public sovToken;
+
+    address public reignDao;
+    address public treasury;
 
     constructor(
         address _smartPool,
@@ -144,7 +145,7 @@ contract PoolRouter {
         sovToken.burn(msg.sender, poolAmountIn);
 
         //recieve LP from sender to here
-        wrappingContract.withdraw(msg.sender, msg.sender, poolAmountIn);
+        wrappingContract.withdraw(msg.sender, poolAmountIn);
 
         //get balance before exitswap
         uint256 balanceBefore = IERC20(tokenOut).balanceOf(address(this));
@@ -185,7 +186,7 @@ contract PoolRouter {
         sovToken.burn(msg.sender, poolAmountIn);
 
         //recieve LP from sender to here
-        wrappingContract.withdraw(msg.sender, msg.sender, poolAmountIn);
+        wrappingContract.withdraw(msg.sender, poolAmountIn);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             address tokenOut = tokens[i];

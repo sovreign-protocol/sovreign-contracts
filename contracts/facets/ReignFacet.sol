@@ -13,11 +13,10 @@ contract ReignFacet {
 
     uint256 public constant MAX_LOCK = 365 days * 2; //two years
     uint256 public constant BASE_STAKE_MULTIPLIER = 1 * 10**18;
-    uint128 private constant BASE_BALANCE_MULTIPLIER = uint128(1 * 10**18);
+    uint128 public constant BASE_BALANCE_MULTIPLIER = uint128(1 * 10**18);
 
     mapping(uint128 => bool) isInitialized;
     mapping(uint128 => uint256) initialisedAt;
-    // holds the current balance of the user for each token
     mapping(address => uint256) balances;
 
     event Deposit(address indexed user, uint256 amount, uint256 newBalance);
