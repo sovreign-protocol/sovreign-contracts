@@ -5,7 +5,9 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 library LibReignStorage {
-    bytes32 constant STORAGE_POSITION = keccak256("ch.dialectic.reign.storage");
+    bytes32 constant STORAGE_POSITION =
+        keccak256("sovreign.diamond.reign.storage");
+
     struct Checkpoint {
         uint256 timestamp;
         uint256 amount;
@@ -39,7 +41,7 @@ library LibReignStorage {
         // mapping of user address to history of delegated power
         // every delegate/stopDelegate call create a new checkpoint (max one per block)
         mapping(address => Checkpoint[]) delegatedPowerHistory;
-        IERC20 reign;
+        IERC20 reign; // the reign Token
         uint256 epoch1Start;
         uint256 epochDuration;
     }

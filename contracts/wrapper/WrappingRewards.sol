@@ -2,11 +2,11 @@
 pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../interfaces/ISovWrapper.sol";
 import "../interfaces/IBasketBalancer.sol";
-import "../interfaces/IReignPoolRewards.sol";
+import "../interfaces/IReign.sol";
 import "../libraries/LibRewardsDistribution.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 contract WrappingRewards {
     // lib
@@ -22,7 +22,7 @@ contract WrappingRewards {
     // addresses
     address public treasury;
     address public rewardsVault;
-    address public balancer;
+    address public basketBalancer;
 
     // contracts
     IERC20 public reignToken;
@@ -52,7 +52,7 @@ contract WrappingRewards {
     // constructor
     constructor(
         address _reignTokenAddress,
-        address _balancer,
+        address _basketBalancer,
         address _wrappingContract,
         address _rewardsVault,
         address _treasury
@@ -60,7 +60,7 @@ contract WrappingRewards {
         reignToken = IERC20(_reignTokenAddress);
         wrapper = ISovWrapper(_wrappingContract);
         rewardsVault = _rewardsVault;
-        balancer = _balancer;
+        basketBalancer = _basketBalancer;
         epochDuration = wrapper.epochDuration();
         epochStart = wrapper.epoch1Start() + epochDuration;
         treasury = _treasury;
@@ -158,17 +158,17 @@ contract WrappingRewards {
 
     // checks if the user has voted that epoch and returns accordingly
     function isBoosted(address user, uint128 epoch) public view returns (bool) {
-        IBasketBalancer balancer = IBasketBalancer(balancer);
-        address _reign = balancer.reignDiamond();
+        IBasketBalancer basketBalancer = IBasketBalancer(basketBalancer);
+        address _reign = basketBalancer.reignDiamond();
         // if user or users delegate has voted
         if (
-            balancer.hasVotedInEpoch(
+            basketBalancer.hasVotedInEpoch(
                 user,
-                epoch + 1 // balancer epoch is 1 higher then pool
+                epoch + 1 // basketBalancer epoch is 1 higher then this
             ) ||
-            balancer.hasVotedInEpoch(
-                IReignPoolRewards(_reign).userDelegatedTo(user),
-                epoch + 1 // balancer epoch is 1 higher then pool
+            basketBalancer.hasVotedInEpoch(
+                IReign(_reign).userDelegatedTo(user),
+                epoch + 1 // basketBalancer epoch is 1 higher then this
             )
         ) {
             return true;

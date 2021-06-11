@@ -3,7 +3,7 @@ pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "../libraries/LibReignStorage.sol";
-import "../libraries/LibOwnership.sol";
+import "diamond-libraries/contracts/libraries/LibOwnership.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract EpochClockFacet {

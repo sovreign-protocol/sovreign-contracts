@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../interfaces/IReign.sol";
 import "../libraries/LibReignStorage.sol";
-import "../libraries/LibOwnership.sol";
+import "diamond-libraries/contracts/libraries/LibOwnership.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 

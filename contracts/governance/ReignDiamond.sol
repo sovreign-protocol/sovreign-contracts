@@ -2,13 +2,11 @@
 pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IDiamondCut.sol";
-import "../interfaces/IDiamondLoupe.sol";
-import "../libraries/LibDiamond.sol";
-import "../libraries/LibOwnership.sol";
-import "../libraries/LibDiamondStorage.sol";
-import "../interfaces/IERC165.sol";
-import "../interfaces/IERC173.sol";
+import "diamond-libraries/contracts/libraries/LibDiamond.sol";
+import "diamond-libraries/contracts/libraries/LibOwnership.sol";
+import "diamond-libraries/contracts/interfaces/IDiamondLoupe.sol";
+import "diamond-libraries/contracts/interfaces/IERC165.sol";
+import "diamond-libraries/contracts/interfaces/IERC173.sol";
 
 contract ReignDiamond {
     constructor(IDiamondCut.FacetCut[] memory _diamondCut, address _owner)
