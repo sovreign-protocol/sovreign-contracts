@@ -5,8 +5,8 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 library LibReignStorage {
-    bytes32 constant STORAGE_POSITION =
-        keccak256("sovreign.diamond.reign.storage");
+
+    bytes32 constant STORAGE_POSITION = keccak256("org.sovreign.reign.storage");
 
     struct Checkpoint {
         uint256 timestamp;
