@@ -110,9 +110,9 @@ export async function addToken(c: DeployConfig): Promise<DeployConfig> {
     ];
     const values = ['0','0','0'];
     const signatures = [
-        'approve(address,uint256)',
-        'commitAddToken(address,uint256,uint256)' ,
-        'addToken(address,uint256)' 
+        'approve(address,uint256)', // approve WETH to pool
+        'commitAddToken(address,uint256,uint256)' , // add token
+        'addToken(address,uint256)' // add to basket balancer
     ]
     const callDatas = [
         // for the first pool (Pool1):

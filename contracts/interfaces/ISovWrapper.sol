@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.7.6;
 
-interface IWrapSVR {
+interface ISovWrapper {
     function deposit(
         address user,
         uint256 amount,
         uint256 liquidationPrice
     ) external;
 
-    function withdraw(
-        address svrHolder,
-        address lpOwner,
-        uint256 amount
-    ) external;
+    function withdraw(address lpOwner, uint256 amount) external;
 
     function liquidate(
         address liquidator,

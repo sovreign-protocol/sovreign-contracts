@@ -1,8 +1,8 @@
 ![Build and Test](https://github.com/dialecticch/sovreign-contracts/actions/workflows/build.yml/badge.svg?branch=master)
 
-# 👑 SoVReign: Contracts 👑
+# 👑 Sovreign: Contracts 👑
 
-This repo has all smart contracts used by SoVReign.
+This repo has all smart contracts used by Sovreign.
 
 The `./contracts` folder has the following structure:
 
@@ -12,7 +12,7 @@ The `./contracts` folder has the following structure:
 - `./interfaces/`: contains all interfaces used across the protocol
 - `./libraries/`: contains all libraries
 - `./mocks/`: contains mock contracts used for testing
-- `./tokens/`: contains the SVR and REIGN Token contracts
+- `./tokens/`: contains the SOV and REIGN Token contracts
 - `./vesting/`: contains vesting contracts for the team and early investors
 - `./wrapper/`: contains all functionality related to wrapping the Balancer LP into SVR
 
@@ -98,7 +98,7 @@ This repository was composed being based on the following repositories:
 
 We're pretty thankful for their hard work! 👏 🚀
 
-Modifications from the original work can be found in subsequent commits on this repository, made by the [SovReign Team](https://sovreign.org). 🙏
+Modifications from the original work can be found in subsequent commits on this repository, made by the [Sovreign Team](https://sovreign.org). 🙏
 
 ## License
 
@@ -108,4 +108,4 @@ See [LICENSE](LICENSE) for more information.
 
 ---
 
-Made with :heart: by [SovReign Team](https://sovreign.org)
+Made with :heart: by [Sovreign Team](https://sovreign.org)

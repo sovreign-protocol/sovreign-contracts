@@ -2,9 +2,8 @@
 pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IDiamondCut.sol";
-import "../libraries/LibDiamond.sol";
-import "../libraries/LibOwnership.sol";
+import "diamond-libraries/contracts/libraries/LibDiamond.sol";
+import "diamond-libraries/contracts/libraries/LibOwnership.sol";
 
 contract DiamondCutFacet is IDiamondCut {
     /// @notice Add/replace/remove any number of functions and optionally execute
@@ -20,8 +19,13 @@ contract DiamondCutFacet is IDiamondCut {
     ) external override {
         LibOwnership.enforceIsContractOwner();
 
-        uint256 selectorCount = LibDiamondStorage.diamondStorage().selectors.length;
-        for (uint256 facetIndex; facetIndex < _diamondCut.length; facetIndex++) {
+        uint256 selectorCount =
+            LibDiamondStorage.diamondStorage().selectors.length;
+        for (
+            uint256 facetIndex;
+            facetIndex < _diamondCut.length;
+            facetIndex++
+        ) {
             FacetCut memory cut;
             cut.action = _diamondCut[facetIndex].action;
             cut.facetAddress = _diamondCut[facetIndex].facetAddress;

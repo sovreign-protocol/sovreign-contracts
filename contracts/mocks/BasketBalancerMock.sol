@@ -9,14 +9,14 @@ contract BasketBalancerMock {
 
     uint256 public full_allocation;
 
-    address public reignAddress;
+    address public reignDiamond;
     address[] allTokens;
     mapping(address => uint256) tokenAllocation;
 
     constructor(
         address[] memory newtokens,
         uint256[] memory newAllocation,
-        address _reignAddress
+        address _reignDiamond
     ) {
         for (uint256 i = 0; i < newtokens.length; i++) {
             uint256 tokenPercentage = newAllocation[i];
@@ -24,7 +24,7 @@ contract BasketBalancerMock {
             full_allocation = full_allocation.add(tokenPercentage);
         }
         allTokens = newtokens;
-        reignAddress = _reignAddress;
+        reignDiamond = _reignDiamond;
     }
 
     function updateAllocationVote(

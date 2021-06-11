@@ -9,22 +9,21 @@ contract BasketBalancer {
     using SafeMath for uint256;
 
     uint256 public full_allocation;
-
     uint128 public lastEpochUpdate;
     uint256 public lastEpochEnd;
-
     uint256 public maxDelta;
 
     address[] public allTokens;
 
     mapping(address => uint256) public continuousVote;
-    mapping(address => uint256) private tokenAllocation;
-    mapping(address => uint256) private tokenAllocationBefore;
-    mapping(address => mapping(uint128 => bool)) private votedInEpoch;
+    mapping(address => uint256) public tokenAllocation;
+    mapping(address => uint256) public tokenAllocationBefore;
+    mapping(address => mapping(uint128 => bool)) public votedInEpoch;
 
     IReign private reign;
     address public poolRouter;
     address public reignDAO;
+    address public reignDiamond;
 
     event UpdateAllocation(
         uint128 indexed epoch,
@@ -69,6 +68,7 @@ contract BasketBalancer {
         maxDelta = _maxDelta;
         allTokens = tokens;
         reign = IReign(_reignDiamond);
+        reignDiamond = _reignDiamond;
         reignDAO = _reignDAO;
         poolRouter = _poolRouter;
     }

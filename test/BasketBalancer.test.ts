@@ -4,7 +4,7 @@ import * as helpers from './helpers/helpers';
 import {diamondAsFacet} from "./helpers/diamond";
 import { expect } from 'chai';
 import * as deploy from './helpers/deploy';
-import {BasketBalancer, ERC20Mock,ReignFacet, MulticallMock, SmartPoolMock, PoolRouter, WrapSVR } from '../typechain';
+import {BasketBalancer, ERC20Mock,ReignFacet, SovToken, SmartPoolMock, PoolRouter, SovWrapper } from '../typechain';
 import { deployContract } from 'ethereum-waffle';
 
 const address1 = '0x0000000000000000000000000000000000000001';
@@ -14,7 +14,8 @@ const address3 = '0x0000000000000000000000000000000000000003';
 describe('BasketBalancer', function () {
 
     let reign: ReignFacet, reignToken:ERC20Mock, balancer: BasketBalancer, smartPool:SmartPoolMock;
-    let router: PoolRouter, wrapper: WrapSVR;
+    let router: PoolRouter, wrapper: SovWrapper;
+    let sovToken:SovToken;
 
     let user: Signer, userAddress: string;
     let happyPirate: Signer, happyPirateAddress: string;
@@ -34,9 +35,12 @@ describe('BasketBalancer', function () {
     var maxAllocation = BigNumber.from(10).mul(helpers.tenPow18).mul(2);
 
     before(async function () {
-        reignToken = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
 
         await setupSigners();
+
+        
+        reignToken = (await deploy.deployContract('ERC20Mock')) as ERC20Mock;
+        sovToken = (await deploy.deployContract('SovToken', [userAddress, userAddress])) as SovToken;
 
 
         const cutFacet = await deploy.deployContract('DiamondCutFacet');
@@ -50,7 +54,7 @@ describe('BasketBalancer', function () {
             userAddress,
         );
 
-        wrapper = await deploy.deployContract('WrapSVR', []) as WrapSVR;
+        wrapper = await deploy.deployContract('SovWrapper', []) as SovWrapper;
         reign = await diamondAsFacet(diamond, 'ReignFacet') as ReignFacet;
         smartPool = await deploy.deployContract('SmartPoolMock', [tokens[0], tokens[1]]) as SmartPoolMock;
 
@@ -58,10 +62,14 @@ describe('BasketBalancer', function () {
             smartPool.address,
             wrapper.address,
             await treasury.getAddress(),
+            sovToken.address,
             100000 //no fees for this test
         ])) as PoolRouter;
 
 
+
+        await sovToken.connect(user).setMinter(router.address, true);
+        await sovToken.connect(user).setMinter(userAddress, false);
         await reign.initReign(reignToken.address, epochStart, epochDuration);
 
 

@@ -4,37 +4,55 @@ pragma solidity 0.7.6;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract ReignToken is IERC20 {
+contract SovToken is IERC20 {
     using SafeMath for uint256;
 
-    string public constant name = "SoVReign Governance Token";
-    string public constant symbol = "REIGN";
+    string public constant name = "Store-Of-Value Token";
+    string public constant symbol = "SOV";
     uint8 public constant decimals = 18;
-
     uint256 public override totalSupply;
 
-    address public owner;
+    address public reignDAO;
 
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
+    mapping(address => bool) public isMinter;
 
     event Mint(address indexed to, uint256 value);
+    event SetMinter(address indexed account, bool value);
+    event Burn(address indexed from, uint256 value);
 
-    constructor(address _owner) {
-        owner = _owner;
+    // initialize with DAO ad one Minter (can be zero address if not minter is needed)
+    constructor(address _reignDAO, address _minter) {
+        reignDAO = _reignDAO;
+        isMinter[_minter] = true;
     }
 
-    // after the initial mint the owner will be set to 0 address
-    function setOwner(address _owner) public {
-        require(msg.sender == owner, "Only Owner can do this");
-        owner = _owner;
+    function setReignDAO(address _reignDAO) public {
+        require(msg.sender == reignDAO, "Only reignDAO can do this");
+        reignDAO = _reignDAO;
+    }
+
+    function setMinter(address _minter, bool value) public {
+        require(msg.sender == reignDAO, "Only reignDAO can do this");
+        isMinter[_minter] = value;
+
+        emit SetMinter(_minter, value);
     }
 
     function mint(address to, uint256 value) external returns (bool) {
-        require(msg.sender == owner, "Only Owner can do this");
+        require(isMinter[msg.sender] == true, "Only Minter can do this");
 
         _mint(to, value);
         emit Mint(to, value);
+        return true;
+    }
+
+    function burn(address from, uint256 value) external returns (bool) {
+        require(isMinter[msg.sender] == true, "Only Minter can do this");
+
+        _burn(from, value);
+        emit Burn(from, value);
         return true;
     }
 
@@ -72,9 +90,11 @@ contract ReignToken is IERC20 {
         emit Transfer(address(0), to, value);
     }
 
-    /**
-        INTERNAL
-     */
+    function _burn(address from, uint256 value) internal {
+        balanceOf[from] = balanceOf[from].sub(value);
+        totalSupply = totalSupply.sub(value);
+        emit Transfer(from, address(0), value);
+    }
 
     function _approve(
         address owner,
