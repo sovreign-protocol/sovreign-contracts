@@ -92,3 +92,6 @@ Calling initialize() at '0xf984fc79212cf341137358030bde9920c1aed2d6' (Gov Reward
 SoVReignOwner approves addr '0x5EB95807bEEfA85b5D529d675e387dFEC2Ab9531' to transfer '4000000000000000000000000'
 SoVReignOwner deposits '4000000000000000000000000' to ReignDiamond
 ReignDAO activate()
+
+
+Wrapping Rewards deployed manually at: 0x20CF7b7F003A32Fa7169ecEeB435ee1af5eE6ED1
