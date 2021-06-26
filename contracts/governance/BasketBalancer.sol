@@ -8,17 +8,17 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 contract BasketBalancer {
     using SafeMath for uint256;
 
-    uint256 public full_allocation;
+    uint256 public fullAllocation;
     uint128 public lastEpochUpdate;
     uint256 public lastEpochEnd;
     uint256 public maxDelta;
 
-    address[] public allTokens;
+    address[] private allTokens;
 
     mapping(address => uint256) public continuousVote;
-    mapping(address => uint256) public tokenAllocation;
-    mapping(address => uint256) public tokenAllocationBefore;
-    mapping(address => mapping(uint128 => bool)) public votedInEpoch;
+    mapping(address => uint256) private tokenAllocation;
+    mapping(address => uint256) private tokenAllocationBefore;
+    mapping(address => mapping(uint128 => bool)) private votedInEpoch;
 
     IReign private reign;
     address public poolRouter;
@@ -62,7 +62,7 @@ contract BasketBalancer {
             continuousVote[tokens[i]] = weights[i];
             amountAllocated = amountAllocated.add(weights[i]);
         }
-        full_allocation = amountAllocated;
+        fullAllocation = amountAllocated;
 
         lastEpochUpdate = 0;
         maxDelta = _maxDelta;
@@ -160,7 +160,7 @@ contract BasketBalancer {
 
         //transaction will revert if allocation is not complete
         require(
-            amountAllocated == full_allocation,
+            amountAllocated == fullAllocation,
             "Allocation is not complete"
         );
 
@@ -183,7 +183,7 @@ contract BasketBalancer {
         continuousVote[token] = allocation;
 
         //update total allocation
-        full_allocation = full_allocation.add(allocation);
+        fullAllocation = fullAllocation.add(allocation);
 
         emit NewToken(token, allocation);
 
@@ -195,7 +195,7 @@ contract BasketBalancer {
     function removeToken(address token) external onlyDAO returns (uint256) {
         require(tokenAllocation[token] != 0, "Token is not part of Basket");
 
-        full_allocation = full_allocation.sub(continuousVote[token]);
+        fullAllocation = fullAllocation.sub(continuousVote[token]);
 
         //remove token from array, moving all others 1 down if necessary
         uint256 index;

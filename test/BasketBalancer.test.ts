@@ -354,7 +354,7 @@ describe('BasketBalancer', function () {
         it('allows DAO to add a new pool', async function () {
             await balancer.connect(reignDAO).addToken(address3, maxAllocation.div(10))
             expect( await balancer.getTargetAllocation(address3)).to.be.equal(maxAllocation.div(10))
-            expect( await balancer.full_allocation()).to.be.equal(maxAllocation.add(maxAllocation.div(10)))
+            expect( await balancer.fullAllocation()).to.be.equal(maxAllocation.add(maxAllocation.div(10)))
             let tokens = await balancer.getTokens()
             expect(tokens[2]).to.be.equal(address3)
         });
@@ -362,11 +362,11 @@ describe('BasketBalancer', function () {
         it('allows DAO to remove a new pool', async function () {
             await balancer.connect(reignDAO).addToken(address3, maxAllocation.div(10))
             expect( await balancer.getTargetAllocation(address3)).to.be.equal(maxAllocation.div(10))
-            expect( await balancer.full_allocation()).to.be.equal(maxAllocation.add(maxAllocation.div(10)))
+            expect( await balancer.fullAllocation()).to.be.equal(maxAllocation.add(maxAllocation.div(10)))
 
             await balancer.connect(reignDAO).removeToken(address2)
             expect( await balancer.getTargetAllocation(address2)).to.be.equal(0)
-            expect( await balancer.full_allocation()).to.be.equal(maxAllocation.div(2).add(maxAllocation.div(10)))
+            expect( await balancer.fullAllocation()).to.be.equal(maxAllocation.div(2).add(maxAllocation.div(10)))
             let tokens = await balancer.getTokens()
             expect(tokens.length).to.be.equal(2)
             expect(tokens[0]).to.be.equal(address1)
