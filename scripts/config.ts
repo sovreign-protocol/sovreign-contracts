@@ -22,7 +22,7 @@ const REIGN_SUPPLY = BigNumber.from(1000000000).mul(helpers.tenPow18);
 
 export async function deployConfig(): Promise<DeployConfig> {
     const sovReignOwnerAddr: string = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-    const user1Addr: string = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'; // WETH whale
+    const user1Addr: string = '0x4F868C1aa37fCf307ab38D215382e88FCA6275E2'; // WETH whale
     const user2Addr: string = '0xE3DD3914aB28bB552d41B8dFE607355DE4c37A51'; // WBTC whale
     const user3Addr:string = '0x55FE002aefF02F77364de339a1292923A15844B8';// USDC whale
     const user4Addr:string = '0x16463c0fdB6BA9618909F5b120ea1581618C1b9E';// DAI whale
