@@ -95,7 +95,7 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     await poolRouter.connect(c.user2Acct).deposit(c.wbtcAddr, depositAmountWbtc, 1, 100000)
     console.log(`User2 deposits 0.5 WBTC`)
     let sovBalance = await sovToken.balanceOf(c.user2Addr)
-    console.log(`User SOV Balance '${sovBalance}'`)
+    console.log(`User2 SOV Balance '${sovBalance}'`)
 
     ///////////////////////////
     // Mint SOV by depositing WBTC
@@ -106,14 +106,18 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
      allowance = await usdc.allowance(c.user3Addr,poolRouter.address)
     console.log(`User3 allowance '${allowance}'`)
-    
+
+
+    let amountOut = await poolRouter.getSovAmountOutSingle(c.usdcAddr, depositAmountUsdc, 1);
+    console.log(`Expected SOV Out'${amountOut}'`)
+
     await poolRouter.connect(c.user3Acct).deposit(c.usdcAddr, depositAmountUsdc, 1, 100000)
     console.log(`User3 deposits 20'000 USDC`)
     let sovBalanceU3 = await sovToken.balanceOf(c.user3Addr)
-    console.log(`User3 SOV Balance '${sovBalanceU3}'`)
+    console.log(`User3 SOV Balance: '${sovBalanceU3}'`)
 
-   
-
+    let sovPrice = await poolRouter.getSovAmountInSingle(c.usdcAddr, depositAmountUsdc, amountOut.mul(2));
+    console.log(`SOV needed to withdraw 20'000 USDC: '${sovPrice[1]}' SOV`)
     
     console.log(`\n --- USERS ADD LIQUIDITY TO UNISWAP SOV/USDC LP ---`);
 

@@ -32,7 +32,33 @@
   },
   {
     "inputs": [],
+    "name": "EXIT_FEE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "LIQ_FEE_DECIMALS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_OUT_RATIO",
     "outputs": [
       {
         "internalType": "uint256",
@@ -121,30 +147,85 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getPoolTokens",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenOut",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenAmountOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxPoolAmountIn",
+        "type": "uint256"
+      }
+    ],
+    "name": "getSovAmountInSingle",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "exitFee",
+        "type": "uint256"
+      },
       {
         "internalType": "uint256",
         "name": "poolAmountIn",
         "type": "uint256"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "minAmountsOut",
-        "type": "uint256[]"
       }
     ],
-    "name": "getAmountPoolOut",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenIn",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenAmountIn",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minPoolAmountOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "getSovAmountOutSingle",
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "poolAmountOut",
         "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTokenWeights",
+    "outputs": [
       {
         "internalType": "uint256[]",
         "name": "",
@@ -167,11 +248,11 @@
         "type": "uint256[]"
       }
     ],
-    "name": "getAmountsTokensIn",
+    "name": "getTokensAmountIn",
     "outputs": [
       {
         "internalType": "uint256[]",
-        "name": "",
+        "name": "actualAmountsIn",
         "type": "uint256[]"
       }
     ],
@@ -181,52 +262,31 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "tokenIn",
-        "type": "address"
-      },
-      {
         "internalType": "uint256",
-        "name": "amountTokenIn",
+        "name": "poolAmountIn",
         "type": "uint256"
       },
-      {
-        "internalType": "uint256",
-        "name": "minPoolAmountOut",
-        "type": "uint256"
-      }
-    ],
-    "name": "getAmountsTokensInSingle",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getPoolTokens",
-    "outputs": [
-      {
-        "internalType": "address[]",
-        "name": "",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getTokenWeights",
-    "outputs": [
       {
         "internalType": "uint256[]",
-        "name": "",
+        "name": "minAmountsOut",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "getTokensAmountOut",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "exitFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "pAiAfterExitFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "actualAmountsOut",
         "type": "uint256[]"
       }
     ],

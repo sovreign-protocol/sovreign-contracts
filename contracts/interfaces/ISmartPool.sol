@@ -13,6 +13,8 @@ abstract contract AbstractPool is BalancerOwnable {
     function joinPool(uint256 poolAmountOut, uint256[] calldata maxAmountsIn)
         external
         virtual;
+
+    function totalSupply() external virtual returns (uint256);
 }
 
 abstract contract ConfigurableRightsPool is AbstractPool {
@@ -96,6 +98,38 @@ abstract contract BPool is AbstractPool {
     function getFinalTokens() external view virtual returns (address[] memory);
 
     function getBalance(address token) external view virtual returns (uint256);
+
+    function calcPoolOutGivenSingleIn(
+        uint256 tokenBalanceIn,
+        uint256 tokenWeightIn,
+        uint256 poolSupply,
+        uint256 totalWeight,
+        uint256 tokenAmountIn,
+        uint256 swapFee
+    ) external pure virtual returns (uint256 poolAmountOut);
+
+    function calcPoolInGivenSingleOut(
+        uint256 tokenBalanceOut,
+        uint256 tokenWeightOut,
+        uint256 poolSupply,
+        uint256 totalWeight,
+        uint256 tokenAmountOut,
+        uint256 swapFee
+    ) external pure virtual returns (uint256 poolAmountIn);
+
+    function getDenormalizedWeight(address token)
+        external
+        view
+        virtual
+        returns (uint256);
+
+    function getTotalDenormalizedWeight()
+        external
+        view
+        virtual
+        returns (uint256);
+
+    function getSwapFee() external view virtual returns (uint256);
 }
 
 abstract contract ISmartPool is BalancerOwnable {
@@ -123,6 +157,8 @@ abstract contract ISmartPool is BalancerOwnable {
         returns (bool);
 
     function balanceOf(address owner) external view virtual returns (uint256);
+
+    function totalSupply() external view virtual returns (uint256);
 
     function setSwapFee(uint256 swapFee) external virtual;
 
