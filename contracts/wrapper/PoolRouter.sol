@@ -52,10 +52,12 @@ contract PoolRouter {
         IERC20(tokenIn).transferFrom(msg.sender, address(this), tokenAmountIn);
 
         //take fee before swap
-        uint256 amountMinusFee =
-            tokenAmountIn.mul(protocolFee).div(PROTOCOL_FEE_DECIMALS);
-        uint256 poolAmountMinusFee =
-            minPoolAmountOut.mul(protocolFee).div(PROTOCOL_FEE_DECIMALS);
+        uint256 amountMinusFee = tokenAmountIn.mul(protocolFee).div(
+            PROTOCOL_FEE_DECIMALS
+        );
+        uint256 poolAmountMinusFee = minPoolAmountOut.mul(protocolFee).div(
+            PROTOCOL_FEE_DECIMALS
+        );
 
         IERC20(tokenIn).approve(address(smartPool), amountMinusFee);
 
@@ -87,8 +89,10 @@ contract PoolRouter {
         uint256 liquidationFee
     ) public {
         address[] memory tokens = getPoolTokens();
-        uint256[] memory amountsIn =
-            getAmountsTokensIn(poolAmountOut, maxTokensAmountIn);
+        uint256[] memory amountsIn = getAmountsTokensIn(
+            poolAmountOut,
+            maxTokensAmountIn
+        );
 
         uint256[] memory amountsInMinusFee = new uint256[](tokens.length);
 
@@ -103,16 +107,18 @@ contract PoolRouter {
             );
 
             //take fee before swap
-            uint256 amountMinusFee =
-                tokenAmountIn.mul(protocolFee).div(PROTOCOL_FEE_DECIMALS);
+            uint256 amountMinusFee = tokenAmountIn.mul(protocolFee).div(
+                PROTOCOL_FEE_DECIMALS
+            );
 
             amountsInMinusFee[i] = amountMinusFee;
 
             IERC20(tokenIn).approve(address(smartPool), amountMinusFee);
         }
 
-        uint256 poolAmountMinusFee =
-            poolAmountOut.mul(protocolFee).div(PROTOCOL_FEE_DECIMALS);
+        uint256 poolAmountMinusFee = poolAmountOut.mul(protocolFee).div(
+            PROTOCOL_FEE_DECIMALS
+        );
 
         // swap underlying token for LP
         smartPool.joinPool(poolAmountMinusFee, amountsInMinusFee);
@@ -157,10 +163,9 @@ contract PoolRouter {
         uint256 balanceAfter = IERC20(tokenOut).balanceOf(address(this));
 
         //take fee before transfer out
-        uint256 amountMinusFee =
-            (balanceAfter.sub(balanceBefore)).mul(protocolFee).div(
-                PROTOCOL_FEE_DECIMALS
-            );
+        uint256 amountMinusFee = (balanceAfter.sub(balanceBefore))
+        .mul(protocolFee)
+        .div(PROTOCOL_FEE_DECIMALS);
 
         IERC20(tokenOut).transfer(msg.sender, amountMinusFee);
     }
@@ -205,10 +210,9 @@ contract PoolRouter {
             uint256 balanceAfter = IERC20(tokenOut).balanceOf(address(this));
 
             //take fee before transfer out
-            uint256 amountMinusFee =
-                (balanceAfter.sub(balancesBefore[i])).mul(protocolFee).div(
-                    100000
-                );
+            uint256 amountMinusFee = (balanceAfter.sub(balancesBefore[i]))
+            .mul(protocolFee)
+            .div(100000);
 
             IERC20(tokenOut).transfer(msg.sender, amountMinusFee);
         }
@@ -247,16 +251,16 @@ contract PoolRouter {
         uint256 balanceAfter = IERC20(tokenOut).balanceOf(address(this));
 
         //take protocol fee before transfer
-        uint256 amountMinusFee =
-            (balanceAfter.sub(balanceBefore)).mul(protocolFee).div(100000);
+        uint256 amountMinusFee = (balanceAfter.sub(balanceBefore))
+        .mul(protocolFee)
+        .div(100000);
 
         IERC20(tokenOut).transfer(msg.sender, amountMinusFee);
 
         // liquidation fee is paid in tokenOut tokens, it is set by lpOwner at deposit
-        uint256 liquidationFeeAmount =
-            (balanceAfter.sub(balanceBefore))
-                .mul(wrappingContract.liquidationFee(liquidatedUser))
-                .div(LIQ_FEE_DECIMALS);
+        uint256 liquidationFeeAmount = (balanceAfter.sub(balanceBefore))
+        .mul(wrappingContract.liquidationFee(liquidatedUser))
+        .div(LIQ_FEE_DECIMALS);
 
         require(
             IERC20(tokenOut).allowance(msg.sender, address(this)) >=
@@ -309,7 +313,7 @@ contract PoolRouter {
         address manager = smartPool.getSmartPoolManagerVersion();
         return
             SmartPoolManager(manager).joinPool(
-                ConfigurableRightsPool(address(this)),
+                ConfigurableRightsPool(address(smartPool)),
                 smartPool.bPool(),
                 poolAmountOut,
                 maxAmountsIn
@@ -325,7 +329,7 @@ contract PoolRouter {
         address manager = smartPool.getSmartPoolManagerVersion();
         return
             SmartPoolManager(manager).joinswapExternAmountIn(
-                ConfigurableRightsPool(address(this)),
+                ConfigurableRightsPool(address(smartPool)),
                 smartPool.bPool(),
                 tokenIn,
                 amountTokenIn,
@@ -349,7 +353,7 @@ contract PoolRouter {
         address manager = smartPool.getSmartPoolManagerVersion();
         return
             SmartPoolManager(manager).exitPool(
-                ConfigurableRightsPool(address(this)),
+                ConfigurableRightsPool(address(smartPool)),
                 smartPool.bPool(),
                 poolAmountIn,
                 minAmountsOut
