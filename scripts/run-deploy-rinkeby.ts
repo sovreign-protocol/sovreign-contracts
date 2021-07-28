@@ -10,7 +10,7 @@ deployConfig()
     .then(c => contractsPreFlight(c))
     .then(c => deployDAO(c))
     .then(c => tokenSetup(c))
-    .then(c => uniswapSetup(c))
+    //.then(c => uniswapSetup(c))
     .then(c => setupSmartPool(c))
     .then(c => activateSoVReign(c))
     .catch(error => {

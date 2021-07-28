@@ -26,10 +26,10 @@ export async function deployConfig(): Promise<DeployConfig> {
     const user3Addr: string = '0x2A95300047E373EEEAa5Eea0be7dcE1418Ccf191'; // USDC whale
     const user4Addr:string = '0x2C48187E19780725EFC973620F4A1dF1c38481CA';// DAI whale
     const user5Addr:string = '0x2C48187E19780725EFC973620F4A1dF1c38481CA';// PAXG whale -- not used here
-    const usdcAddr:  string = '0x354F3750D24C294c511027Bd0EcB66047338f887';
-    const wbtcAddr:  string = '0xCFED3CAEf5870CF7A95cE6D9Ec86b2570Db238bC';
-    const wethAddr:  string = '0x2452a7162aaee2F9C5c67D10bD6Ced232Ff2785e';
-    const daiAddr: string = '0xad36b2c064cc743daca00a134efc845dfd073f3c';
+    const usdcAddr:  string = '0xf65C93902eCC4c7979E92ED2cca01421e8021F77';
+    const wbtcAddr:  string = '0x3a85973FD194C9FB966882FeE7b11481c38344FB';
+    const wethAddr:  string = '0xf8e81D47203A594245E36C48e151709F0C19fBe8';
+    const daiAddr: string = '0x712863C3ad98ef4319133B8646D51383700cb37b';
     const paxgAddr: string = '0xad36b2c064cc743daca00a134efc845dfd073f3c';// -- not used here
     const bFactoryAddr: string = '0x9C84391B443ea3a48788079a5f98e2EaD55c9309'; 
     const smartPoolFactoryAddr: string = '0xA3F9145CB0B50D907930840BB2dcfF4146df8Ab4'; 
