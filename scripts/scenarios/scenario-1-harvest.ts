@@ -12,7 +12,7 @@ import {
         GovRewards,
     } from "../../typechain";
 
-import {getLatestBlockTimestamp, mineBlocks, moveAtTimestamp, tenPow18} from "../../test/helpers/helpers";
+import {getLatestBlockTimestamp, mineBlocks, moveAtTimestamp, tenPow18, tenPow6, tenPow8} from "../../test/helpers/helpers";
 import ERC20 from "../deployment/ContractABIs/ERC20.json"
 import { wrap } from "module";
 
@@ -106,10 +106,12 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
 
      allowance = await usdc.allowance(c.user3Addr,poolRouter.address)
     console.log(`User3 allowance '${allowance}'`)
-
+    
+    let amountInAll = await poolRouter.getTokensAmountIn(sovBalance, [tenPow18.mul(tenPow8),tenPow18.mul(tenPow8),tenPow18.mul(tenPow8),tenPow18.mul(tenPow8)]);
+    console.log(`Needed Amount to mint '${sovBalance}' SOV: '${amountInAll}'`)
 
     let amountOut = await poolRouter.getSovAmountOutSingle(c.usdcAddr, depositAmountUsdc, 1);
-    console.log(`Expected SOV Out'${amountOut}'`)
+    console.log(`Expected SOV Out for 20'000 USDC'${amountOut}'`)
 
     await poolRouter.connect(c.user3Acct).deposit(c.usdcAddr, depositAmountUsdc, 1, 100000)
     console.log(`User3 deposits 20'000 USDC`)
@@ -117,7 +119,10 @@ export async function scenario1(c: DeployConfig): Promise<DeployConfig> {
     console.log(`User3 SOV Balance: '${sovBalanceU3}'`)
 
     let sovPrice = await poolRouter.getSovAmountInSingle(c.usdcAddr, depositAmountUsdc, amountOut.mul(2));
-    console.log(`SOV needed to withdraw 20'000 USDC: '${sovPrice[1]}' SOV`)
+    console.log(`SOV needed to withdraw 20'000 USDC: '${sovPrice}' SOV`)
+
+    let amountsOut = await poolRouter.getTokensAmountOut(amountOut, [1,1,1,1]);
+    console.log(`'${sovPrice}' SOV can be burned for: '${amountsOut}' `)
     
     console.log(`\n --- USERS ADD LIQUIDITY TO UNISWAP SOV/USDC LP ---`);
 

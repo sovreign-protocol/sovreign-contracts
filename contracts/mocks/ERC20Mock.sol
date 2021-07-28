@@ -366,7 +366,7 @@ contract ERC20 is Context, IERC20 {
     ) internal virtual {}
 }
 
-contract ERC20Mock is ERC20("ERC20Mock", "MCK", 8) {
+contract ERC20Mock is ERC20("ERC20Mock", "MCK", 18) {
     bool public transferFromCalled = false;
 
     bool public transferCalled = false;

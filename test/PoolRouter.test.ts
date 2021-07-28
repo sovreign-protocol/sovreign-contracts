@@ -121,7 +121,8 @@ describe('PoolRouter', function () {
         })
 
         it('mints the correct amount of SOV to the user', async function () {
-            expect(await sovToken.balanceOf(userAddr)).to.be.eq(amountLP.mul(protocolFee).div(100000))
+            let balance = await sovToken.balanceOf(userAddr);
+            expect(balance).to.be.eq(amountLP.mul(protocolFee).div(100000))
         })
 
         it('pulls the underlying form the user', async function () {
@@ -183,7 +184,7 @@ describe('PoolRouter', function () {
         before(async function () {
             routerBalanceBefore = (await underlyingToken.balanceOf(router.address))
 
-            await router.connect(userNew).depositAll([amount,amount], amountLP, liquidationFee);
+            await router.connect(userNew).depositAll(amountLP,[amount,amount], liquidationFee);
         });
 
         it('deposits LP tokens in wrapper on behalf of user', async function () {
@@ -195,8 +196,8 @@ describe('PoolRouter', function () {
         })
 
         it('pulls the underlying form the user', async function () {
-            expect(await underlyingToken.balanceOf(userNewAddr)).to.be.eq(totalAmount.sub(amount))
-            expect(await underlyingToken2.balanceOf(userNewAddr)).to.be.eq(totalAmount.sub(amount))
+            expect(await underlyingToken.balanceOf(userNewAddr)).to.be.eq((totalAmount.sub(amount)))
+            expect(await underlyingToken2.balanceOf(userNewAddr)).to.be.eq((totalAmount.sub(amount)))
         })
 
         it('accrues protocol fee', async function () {

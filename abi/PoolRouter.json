@@ -32,19 +32,6 @@
   },
   {
     "inputs": [],
-    "name": "EXIT_FEE",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "LIQ_FEE_DECIMALS",
     "outputs": [
       {
@@ -126,14 +113,14 @@
   {
     "inputs": [
       {
-        "internalType": "uint256[]",
-        "name": "maxTokensAmountIn",
-        "type": "uint256[]"
-      },
-      {
         "internalType": "uint256",
         "name": "poolAmountOut",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "maxTokensAmountIn",
+        "type": "uint256[]"
       },
       {
         "internalType": "uint256",
@@ -179,11 +166,6 @@
     ],
     "name": "getSovAmountInSingle",
     "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "exitFee",
-        "type": "uint256"
-      },
       {
         "internalType": "uint256",
         "name": "poolAmountIn",
@@ -274,16 +256,6 @@
     ],
     "name": "getTokensAmountOut",
     "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "exitFee",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "pAiAfterExitFee",
-        "type": "uint256"
-      },
       {
         "internalType": "uint256[]",
         "name": "actualAmountsOut",

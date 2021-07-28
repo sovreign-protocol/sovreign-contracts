@@ -7,12 +7,13 @@ import "../interfaces/ISovWrapper.sol";
 import "../interfaces/ISmartPool.sol";
 import "../interfaces/IMintableERC20.sol";
 
+import "hardhat/console.sol";
+
 contract PoolRouter {
     using SafeMath for uint256;
 
     uint256 public constant LIQ_FEE_DECIMALS = 1000000; // 6 decimals
     uint256 public constant PROTOCOL_FEE_DECIMALS = 100000; // 5 decimals
-    uint256 public constant EXIT_FEE = 0; // 5 decimals
     uint256 public constant MAX_OUT_RATIO = (uint256(10**18) / 3) + 1;
 
     uint256 public protocolFee = 99950; // 100% - 0.050%
@@ -87,12 +88,12 @@ contract PoolRouter {
             3. stake lp tokens into Wrapping Contrat which mints SOV to User
     */
     function depositAll(
-        uint256[] calldata maxTokensAmountIn,
         uint256 poolAmountOut,
+        uint256[] calldata maxTokensAmountIn,
         uint256 liquidationFee
     ) public {
         address[] memory tokens = getPoolTokens();
-        uint256[] memory amountsIn = getTokensAmountIn(
+        uint256[] memory amountsIn = _getTokensAmountIn(
             poolAmountOut,
             maxTokensAmountIn
         );
@@ -215,7 +216,7 @@ contract PoolRouter {
             //take fee before transfer out
             uint256 amountMinusFee = (balanceAfter.sub(balancesBefore[i]))
                 .mul(protocolFee)
-                .div(100000);
+                .div(PROTOCOL_FEE_DECIMALS);
 
             IERC20(tokenOut).transfer(msg.sender, amountMinusFee);
         }
@@ -315,12 +316,17 @@ contract PoolRouter {
         BPool bPool = smartPool.bPool();
         require(bPool.isBound(tokenIn), "ERR_NOT_BOUND");
 
+        //apply protocol fee
+        uint256 tokenAmountInAdj = tokenAmountIn.mul(protocolFee).div(
+            PROTOCOL_FEE_DECIMALS
+        );
+
         poolAmountOut = bPool.calcPoolOutGivenSingleIn(
             bPool.getBalance(tokenIn),
             bPool.getDenormalizedWeight(tokenIn),
             smartPool.totalSupply(),
             bPool.getTotalDenormalizedWeight(),
-            tokenAmountIn,
+            tokenAmountInAdj,
             bPool.getSwapFee()
         );
         require(poolAmountOut >= minPoolAmountOut, "ERR_LIMIT_IN");
@@ -331,14 +337,43 @@ contract PoolRouter {
         uint256 poolAmountOut,
         uint256[] calldata maxAmountsIn
     ) public view returns (uint256[] memory actualAmountsIn) {
-        address manager = smartPool.getSmartPoolManagerVersion();
-        return
-            SmartPoolManager(manager).joinPool(
-                ConfigurableRightsPool(address(smartPool)),
-                smartPool.bPool(),
-                poolAmountOut,
-                maxAmountsIn
-            );
+        BPool bPool = smartPool.bPool();
+        uint256 poolAmountOutAdj = poolAmountOut.mul(protocolFee).div(
+            PROTOCOL_FEE_DECIMALS
+        );
+
+        address[] memory tokens = bPool.getCurrentTokens();
+
+        require(maxAmountsIn.length == tokens.length, "ERR_AMOUNTS_MISMATCH");
+
+        uint256 poolTotal = smartPool.totalSupply();
+        // Subtract  1 to ensure any rounding errors favor the pool
+        uint256 ratio = SafeMath.div(
+            poolAmountOutAdj.mul(10**18),
+            SafeMath.sub(poolTotal, 1)
+        );
+
+        require(ratio != 0, "ERR_MATH_APPROX");
+
+        // We know the length of the array; initialize it, and fill it below
+        // Cannot do "push" in memory
+        actualAmountsIn = new uint256[](tokens.length);
+
+        // This loop contains external calls
+        // External calls are to math libraries or the underlying pool, so low risk
+        for (uint256 i = 0; i < tokens.length; i++) {
+            address t = tokens[i];
+            uint256 bal = bPool.getBalance(t);
+            // Add 1 to ensure any rounding errors favor the pool
+            uint256 tokenAmountIn = SafeMath
+                .mul(ratio, SafeMath.add(bal, 1))
+                .div(10**18);
+
+            require(tokenAmountIn != 0, "ERR_MATH_APPROX");
+            require(tokenAmountIn <= maxAmountsIn[i], "ERR_LIMIT_IN");
+
+            actualAmountsIn[i] = tokenAmountIn;
+        }
     }
 
     // gets current LP exchange rate for single token
@@ -346,11 +381,17 @@ contract PoolRouter {
         address tokenOut,
         uint256 tokenAmountOut,
         uint256 maxPoolAmountIn
-    ) public view returns (uint256 exitFee, uint256 poolAmountIn) {
+    ) public view returns (uint256 poolAmountIn) {
         BPool bPool = smartPool.bPool();
         require(bPool.isBound(tokenOut), "ERR_NOT_BOUND");
+
+        //apply protocol fee
+        uint256 tokenAmountOutAdj = tokenAmountOut.mul(protocolFee).div(
+            PROTOCOL_FEE_DECIMALS
+        );
+
         require(
-            tokenAmountOut <=
+            tokenAmountOutAdj <=
                 SafeMath.mul(bPool.getBalance(tokenOut), MAX_OUT_RATIO),
             "ERR_MAX_OUT_RATIO"
         );
@@ -359,29 +400,19 @@ contract PoolRouter {
             bPool.getDenormalizedWeight(tokenOut),
             smartPool.totalSupply(),
             bPool.getTotalDenormalizedWeight(),
-            tokenAmountOut,
+            tokenAmountOutAdj,
             bPool.getSwapFee()
         );
 
         require(poolAmountIn != 0, "ERR_MATH_APPROX");
         require(poolAmountIn <= maxPoolAmountIn, "ERR_LIMIT_IN");
-
-        exitFee = SafeMath.mul(poolAmountIn, EXIT_FEE);
     }
 
     // gets current LP exchange rate for all
     function getTokensAmountOut(
         uint256 poolAmountIn,
         uint256[] calldata minAmountsOut
-    )
-        public
-        view
-        returns (
-            uint256 exitFee,
-            uint256 pAiAfterExitFee,
-            uint256[] memory actualAmountsOut
-        )
-    {
+    ) public view returns (uint256[] memory actualAmountsOut) {
         BPool bPool = smartPool.bPool();
         address[] memory tokens = bPool.getCurrentTokens();
 
@@ -389,12 +420,8 @@ contract PoolRouter {
 
         uint256 poolTotal = smartPool.totalSupply();
 
-        // Calculate exit fee and the final amount in
-        exitFee = SafeMath.mul(poolAmountIn, EXIT_FEE);
-        pAiAfterExitFee = SafeMath.sub(poolAmountIn, exitFee);
-
         uint256 ratio = SafeMath.div(
-            pAiAfterExitFee,
+            poolAmountIn.mul(10**18),
             SafeMath.add(poolTotal, 1)
         );
 
@@ -408,12 +435,34 @@ contract PoolRouter {
             address t = tokens[i];
             uint256 bal = bPool.getBalance(t);
             // Subtract 1 to ensure any rounding errors favor the pool
-            uint256 tokenAmountOut = SafeMath.mul(ratio, SafeMath.sub(bal, 1));
+            uint256 tokenAmountOut = SafeMath
+                .mul(ratio, SafeMath.sub(bal, 1))
+                .div(10**18);
+
+            //apply protocol fee
+            tokenAmountOut = tokenAmountOut.mul(protocolFee).div(
+                PROTOCOL_FEE_DECIMALS
+            );
 
             require(tokenAmountOut != 0, "ERR_MATH_APPROX");
             require(tokenAmountOut >= minAmountsOut[i], "ERR_LIMIT_OUT");
 
             actualAmountsOut[i] = tokenAmountOut;
         }
+    }
+
+    // gets current LP exchange rate for single Asset
+    function _getTokensAmountIn(
+        uint256 poolAmountOut,
+        uint256[] calldata maxAmountsIn
+    ) internal view returns (uint256[] memory actualAmountsIn) {
+        address manager = smartPool.getSmartPoolManagerVersion();
+        return
+            SmartPoolManager(manager).joinPool(
+                ConfigurableRightsPool(address(smartPool)),
+                smartPool.bPool(),
+                poolAmountOut,
+                maxAmountsIn
+            );
     }
 }
