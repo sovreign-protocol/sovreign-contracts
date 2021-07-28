@@ -88,3 +88,5 @@ Calling initialize() at '0xad031dcb078a6237e7752ded9261685f6a7364ac' (REIGN LP R
 Calling initialize() at '0x923ca1b060577e8bcdf6d82a9c4109ceeccc1122' (Gov Rewards contract)
 SoVReignOwner approves addr '0xc31cb4f82f178EA0377492144035C48de119A4f8' to transfer '4000000000000000000000000'
 SoVReignOwner deposits '4000000000000000000000000' to ReignDiamond
+
+WrappingRewards deployed at: 0x855dD13AbAb0e891952Fd973634cefBb1c5AAbAC 

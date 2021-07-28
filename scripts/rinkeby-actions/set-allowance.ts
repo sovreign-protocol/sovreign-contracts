@@ -7,8 +7,8 @@ import { tenPow18 } from "../../test/helpers/helpers";
 
 export async function setAllowance(c: DeployConfig): Promise<any> {
 
-    let rewardsVaultAddress = "0x6b4bcda40af16ad292f7389c70165c1a8ac23877";
-    let wrappingRewardsAddress = "0x20CF7b7F003A32Fa7169ecEeB435ee1af5eE6ED1";
+    let rewardsVaultAddress = "0x86296a7080a4728545c763102c9e015694e6179b";
+    let wrappingRewardsAddress = "0x855dD13AbAb0e891952Fd973634cefBb1c5AAbAC";
     
     ///////////////////////////
     // Connect to Pool
@@ -19,7 +19,7 @@ export async function setAllowance(c: DeployConfig): Promise<any> {
         c.sovReignOwnerAcct 
     );
 
-    await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(wrappingRewardsAddress, BigNumber.from(100000000000).mul(tenPow18))
+    await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(wrappingRewardsAddress, BigNumber.from(100000000000000).mul(tenPow18))
     console.log(`Allowance set to : '${wrappingRewardsAddress.toLowerCase()}' (wrappingRewardsAddress)`);
 
 }
