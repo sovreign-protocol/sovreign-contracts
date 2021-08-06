@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 contract ReignToken is IERC20 {
     using SafeMath for uint256;
 
-    string public constant name = "SoVReign Governance Token";
+    string public constant name = "Sovreign Governance Token";
     string public constant symbol = "REIGN";
     uint8 public constant decimals = 18;
 

@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract VestingRouter {
-    address[] public _vestingAddress;
-    uint256[] public _vestingAmount;
+    address[] public _vestingAddresses;
+    uint256[] public _vestingAmounts;
     uint256 public lastAllocatedAddress;
     IERC20 private _reign;
 
@@ -17,25 +17,25 @@ contract VestingRouter {
         uint256[] memory vestingAmount,
         address reignToken
     ) {
-        _vestingAddress = vestingAddresses;
-        _vestingAmount = vestingAmount;
+        _vestingAddresses = vestingAddresses;
+        _vestingAmounts = vestingAmount;
         _reign = IERC20(reignToken);
     }
 
     function allocateVestingFunds() public {
         for (
             uint256 i = lastAllocatedAddress;
-            i < _vestingAddress.length;
+            i < _vestingAddresses.length;
             i++
         ) {
             if (
-                _reign.balanceOf(address(this)) < _vestingAmount[i] ||
+                _reign.balanceOf(address(this)) < _vestingAmounts[i] ||
                 gasleft() < 20000
             ) {
                 break;
             }
             lastAllocatedAddress++;
-            _reign.transfer(_vestingAddress[i], _vestingAmount[i]);
+            _reign.transfer(_vestingAddresses[i], _vestingAmounts[i]);
         }
     }
 }

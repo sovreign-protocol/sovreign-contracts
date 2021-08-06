@@ -89,9 +89,9 @@ contract ReignDAO is Bridge {
     mapping(uint256 => Proposal) public proposals;
     mapping(uint256 => AbrogationProposal) public abrogationProposals;
     mapping(address => uint256) public latestProposalIds;
-    IReign reign;
-    IBasketBalancer basketBalancer;
-    bool isInitialized;
+    IReign private reign;
+    IBasketBalancer private basketBalancer;
+    bool private isInitialized;
     bool public isActive;
 
     event ProposalCreated(uint256 indexed proposalId);
@@ -249,11 +249,10 @@ contract ReignDAO is Bridge {
         );
 
         Proposal storage proposal = proposals[proposalId];
-        uint256 eta =
-            proposal.createTime +
-                proposal.parameters.warmUpDuration +
-                proposal.parameters.activeDuration +
-                proposal.parameters.queueDuration;
+        uint256 eta = proposal.createTime +
+            proposal.parameters.warmUpDuration +
+            proposal.parameters.activeDuration +
+            proposal.parameters.queueDuration;
         proposal.eta = eta;
 
         for (uint256 i = 0; i < proposal.targets.length; i++) {
@@ -340,8 +339,10 @@ contract ReignDAO is Bridge {
             "Already voted this option"
         );
 
-        uint256 votes =
-            reign.votingPowerAtTs(msg.sender, _getSnapshotTimestamp(proposal));
+        uint256 votes = reign.votingPowerAtTs(
+            msg.sender,
+            _getSnapshotTimestamp(proposal)
+        );
         require(votes > 0, "no voting power");
 
         // means it changed its vote
@@ -374,8 +375,10 @@ contract ReignDAO is Bridge {
         Proposal storage proposal = proposals[proposalId];
         Receipt storage receipt = proposal.receipts[msg.sender];
 
-        uint256 votes =
-            reign.votingPowerAtTs(msg.sender, _getSnapshotTimestamp(proposal));
+        uint256 votes = reign.votingPowerAtTs(
+            msg.sender,
+            _getSnapshotTimestamp(proposal)
+        );
 
         require(receipt.hasVoted, "Cannot cancel if not voted yet");
 
@@ -459,8 +462,9 @@ contract ReignDAO is Bridge {
             "invalid proposal id"
         );
 
-        AbrogationProposal storage abrogationProposal =
-            abrogationProposals[proposalId];
+        AbrogationProposal storage abrogationProposal = abrogationProposals[
+            proposalId
+        ];
         require(
             state(proposalId) == ProposalState.Queued &&
                 abrogationProposal.createTime != 0,
@@ -474,11 +478,10 @@ contract ReignDAO is Bridge {
             "Already voted this option"
         );
 
-        uint256 votes =
-            reign.votingPowerAtTs(
-                msg.sender,
-                abrogationProposal.createTime - 1
-            );
+        uint256 votes = reign.votingPowerAtTs(
+            msg.sender,
+            abrogationProposal.createTime - 1
+        );
         require(votes > 0, "no voting power");
 
         // means it changed its vote
@@ -517,8 +520,9 @@ contract ReignDAO is Bridge {
             "invalid proposal id"
         );
 
-        AbrogationProposal storage abrogationProposal =
-            abrogationProposals[proposalId];
+        AbrogationProposal storage abrogationProposal = abrogationProposals[
+            proposalId
+        ];
         Receipt storage receipt = abrogationProposal.receipts[msg.sender];
 
         require(
@@ -527,11 +531,10 @@ contract ReignDAO is Bridge {
             "Abrogation Proposal not active"
         );
 
-        uint256 votes =
-            reign.votingPowerAtTs(
-                msg.sender,
-                abrogationProposal.createTime - 1
-            );
+        uint256 votes = reign.votingPowerAtTs(
+            msg.sender,
+            abrogationProposal.createTime - 1
+        );
 
         require(receipt.hasVoted, "Cannot cancel if not voted yet");
 

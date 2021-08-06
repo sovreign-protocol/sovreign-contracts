@@ -15,9 +15,9 @@ contract ReignFacet {
     uint256 public constant BASE_STAKE_MULTIPLIER = 1 * 10**18;
     uint128 public constant BASE_BALANCE_MULTIPLIER = uint128(1 * 10**18);
 
-    mapping(uint128 => bool) isInitialized;
-    mapping(uint128 => uint256) initialisedAt;
-    mapping(address => uint256) balances;
+    mapping(uint128 => bool) private _isInitialized;
+    mapping(uint128 => uint256) private _initialisedAt;
+    mapping(address => uint256) private _balances;
 
     event Deposit(address indexed user, uint256 amount, uint256 newBalance);
     event Withdraw(
@@ -71,9 +71,9 @@ contract ReignFacet {
         uint256 allowance = ds.reign.allowance(msg.sender, address(this));
         require(allowance >= amount, "Token allowance too small");
 
-        balances[msg.sender] = balances[msg.sender].add(amount);
+        _balances[msg.sender] = _balances[msg.sender].add(amount);
 
-        _updateStake(ds.userStakeHistory[msg.sender], balances[msg.sender]);
+        _updateStake(ds.userStakeHistory[msg.sender], _balances[msg.sender]);
         _increaseEpochBalance(ds.userBalanceHistory[msg.sender], amount);
         _updateLockedReign(reignStaked().add(amount));
 
@@ -95,7 +95,7 @@ contract ReignFacet {
 
         ds.reign.transferFrom(msg.sender, address(this), amount);
 
-        emit Deposit(msg.sender, amount, balances[msg.sender]);
+        emit Deposit(msg.sender, amount, _balances[msg.sender]);
     }
 
     // withdraw allows a user to withdraw funds if the balance is not locked
@@ -109,11 +109,11 @@ contract ReignFacet {
         uint256 balance = balanceOf(msg.sender);
         require(balance >= amount, "Insufficient balance");
 
-        balances[msg.sender] = balance.sub(amount);
+        _balances[msg.sender] = balance.sub(amount);
 
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
-        _updateStake(ds.userStakeHistory[msg.sender], balances[msg.sender]);
+        _updateStake(ds.userStakeHistory[msg.sender], _balances[msg.sender]);
         _decreaseEpochBalance(ds.userBalanceHistory[msg.sender], amount);
         _updateLockedReign(reignStaked().sub(amount));
 
@@ -145,10 +145,12 @@ contract ReignFacet {
         require(balanceOf(msg.sender) > 0, "Sender has no balance");
 
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
-        LibReignStorage.Stake[] storage checkpoints =
-            ds.userStakeHistory[msg.sender];
-        LibReignStorage.Stake storage currentStake =
-            checkpoints[checkpoints.length - 1];
+        LibReignStorage.Stake[] storage checkpoints = ds.userStakeHistory[
+            msg.sender
+        ];
+        LibReignStorage.Stake storage currentStake = checkpoints[
+            checkpoints.length - 1
+        ];
         if (!epochIsInitialized(getEpoch())) {
             _initEpoch(getEpoch());
         }
@@ -181,8 +183,9 @@ contract ReignFacet {
 
         address delegatedTo = userDelegatedTo(msg.sender);
         if (delegatedTo != address(0)) {
-            uint256 newDelegatedPower =
-                delegatedPower(delegatedTo).sub(senderBalance);
+            uint256 newDelegatedPower = delegatedPower(delegatedTo).sub(
+                senderBalance
+            );
             _updateDelegatedPower(
                 ds.delegatedPowerHistory[delegatedTo],
                 newDelegatedPower
@@ -223,12 +226,12 @@ contract ReignFacet {
      *   VIEWS
      */
 
-    // balanceOf returns the current BOND balance of a user (bonus not included)
+    // balanceOf returns the current REIGN balance of a user (bonus not included)
     function balanceOf(address user) public view returns (uint256) {
-        return balances[user];
+        return _balances[user];
     }
 
-    // balanceAtTs returns the amount of BOND that the user currently staked (bonus NOT included)
+    // balanceAtTs returns the amount of REIGN that the user currently staked (bonus NOT included)
     function balanceAtTs(address user, uint256 timestamp)
         public
         view
@@ -239,14 +242,16 @@ contract ReignFacet {
         return stake.amount;
     }
 
-    // balanceAtTs returns the amount of BOND that the user currently staked (bonus NOT included)
+    // balanceAtTs returns the amount of REIGN that the user currently staked (bonus NOT included)
     function getEpochUserBalance(address user, uint128 epochId)
         public
         view
         returns (uint256)
     {
-        LibReignStorage.EpochBalance memory epochBalance =
-            balanceCheckAtEpoch(user, epochId);
+        LibReignStorage.EpochBalance memory epochBalance = balanceCheckAtEpoch(
+            user,
+            epochId
+        );
 
         return getEpochEffectiveBalance(epochBalance);
     }
@@ -268,8 +273,8 @@ contract ReignFacet {
         returns (LibReignStorage.EpochBalance memory)
     {
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
-        LibReignStorage.EpochBalance[] storage balanceHistory =
-            ds.userBalanceHistory[user];
+        LibReignStorage.EpochBalance[] storage balanceHistory = ds
+            .userBalanceHistory[user];
 
         if (balanceHistory.length == 0 || epochId < balanceHistory[0].epochId) {
             return
@@ -308,8 +313,9 @@ contract ReignFacet {
         returns (LibReignStorage.Stake memory)
     {
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
-        LibReignStorage.Stake[] storage stakeHistory =
-            ds.userStakeHistory[user];
+        LibReignStorage.Stake[] storage stakeHistory = ds.userStakeHistory[
+            user
+        ];
 
         if (stakeHistory.length == 0 || timestamp < stakeHistory[0].timestamp) {
             return
@@ -368,12 +374,12 @@ contract ReignFacet {
         return ownVotingPower.add(delegatedVotingPower);
     }
 
-    // reignStaked returns the total raw amount of BOND staked at the current block
+    // reignStaked returns the total raw amount of REIGN staked at the current block
     function reignStaked() public view returns (uint256) {
         return reignStakedAtTs(block.timestamp);
     }
 
-    // reignStakedAtEpoch returns the total raw amount of BOND users have deposited into the contract
+    // reignStakedAtEpoch returns the total raw amount of REIGN users have deposited into the contract
     // it does not include any bonus
     function reignStakedAtTs(uint256 timestamp) public view returns (uint256) {
         return
@@ -414,12 +420,12 @@ contract ReignFacet {
         returns (uint256)
     {
         uint256 epochTime;
-        // if initialisedAt[epochId] == 0 then the epoch has not yet been initialized
+        // if _initialisedAt[epochId] == 0 then the epoch has not yet been initialized
         // this guarantees that no deposits or lock updates happend since last epoch and we can safely use the latest checkpoint
-        if (epochId == getEpoch() || initialisedAt[epochId] == 0) {
+        if (epochId == getEpoch() || _initialisedAt[epochId] == 0) {
             epochTime = block.timestamp;
         } else {
-            epochTime = initialisedAt[epochId];
+            epochTime = _initialisedAt[epochId];
         }
         LibReignStorage.Stake memory stake = stakeAtTs(user, epochTime);
         if (block.timestamp > stake.expiryTimestamp) {
@@ -470,11 +476,13 @@ contract ReignFacet {
     function currentEpochMultiplier() public view returns (uint128) {
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
         uint128 currentEpoch = getEpoch();
-        uint256 currentEpochEnd =
-            ds.epoch1Start + currentEpoch * ds.epochDuration;
+        uint256 currentEpochEnd = ds.epoch1Start +
+            currentEpoch *
+            ds.epochDuration;
         uint256 timeLeft = currentEpochEnd - block.timestamp;
-        uint128 multiplier =
-            uint128((timeLeft * BASE_BALANCE_MULTIPLIER) / ds.epochDuration);
+        uint128 multiplier = uint128(
+            (timeLeft * BASE_BALANCE_MULTIPLIER) / ds.epochDuration
+        );
 
         return multiplier;
     }
@@ -485,22 +493,23 @@ contract ReignFacet {
         uint256 amount,
         uint128 currentMultiplier
     ) public pure returns (uint128) {
-        uint256 prevAmount =
-            prevBalance.mul(prevMultiplier).div(BASE_BALANCE_MULTIPLIER);
-        uint256 addAmount =
-            amount.mul(currentMultiplier).div(BASE_BALANCE_MULTIPLIER);
-        uint128 newMultiplier =
-            uint128(
-                prevAmount.add(addAmount).mul(BASE_BALANCE_MULTIPLIER).div(
-                    prevBalance.add(amount)
-                )
-            );
+        uint256 prevAmount = prevBalance.mul(prevMultiplier).div(
+            BASE_BALANCE_MULTIPLIER
+        );
+        uint256 addAmount = amount.mul(currentMultiplier).div(
+            BASE_BALANCE_MULTIPLIER
+        );
+        uint128 newMultiplier = uint128(
+            prevAmount.add(addAmount).mul(BASE_BALANCE_MULTIPLIER).div(
+                prevBalance.add(amount)
+            )
+        );
 
         return newMultiplier;
     }
 
     function epochIsInitialized(uint128 epochId) public view returns (bool) {
-        return isInitialized[epochId];
+        return _isInitialized[epochId];
     }
 
     /*
@@ -525,8 +534,9 @@ contract ReignFacet {
                 )
             );
         } else {
-            LibReignStorage.Stake storage old =
-                checkpoints[checkpoints.length - 1];
+            LibReignStorage.Stake storage old = checkpoints[
+                checkpoints.length - 1
+            ];
 
             if (old.timestamp == block.timestamp) {
                 old.amount = amount;
@@ -580,20 +590,20 @@ contract ReignFacet {
                 )
             );
         } else {
-            LibReignStorage.EpochBalance storage old =
-                epochBalances[epochBalances.length - 1];
+            LibReignStorage.EpochBalance storage old = epochBalances[
+                epochBalances.length - 1
+            ];
             uint256 lastIndex = epochBalances.length - 1;
 
             // the last action happened in an older epoch (e.g. a deposit in epoch 3, current epoch is >=5)
             // add a checkpoint for the previous epoch and the current one
             if (old.epochId < currentEpoch) {
-                uint128 multiplier =
-                    computeNewMultiplier(
-                        _getEpochBalance(old),
-                        BASE_BALANCE_MULTIPLIER,
-                        amount,
-                        currentMultiplier
-                    );
+                uint128 multiplier = computeNewMultiplier(
+                    _getEpochBalance(old),
+                    BASE_BALANCE_MULTIPLIER,
+                    amount,
+                    currentMultiplier
+                );
                 //update the stake with new multiplier and amount
                 epochBalances.push(
                     LibReignStorage.EpochBalance(
@@ -609,7 +619,7 @@ contract ReignFacet {
                     LibReignStorage.EpochBalance(
                         currentEpoch + 1,
                         BASE_BALANCE_MULTIPLIER,
-                        balances[msg.sender],
+                        _balances[msg.sender],
                         0
                     )
                 );
@@ -629,7 +639,7 @@ contract ReignFacet {
                     LibReignStorage.EpochBalance(
                         currentEpoch + 1,
                         BASE_BALANCE_MULTIPLIER,
-                        balances[msg.sender],
+                        _balances[msg.sender],
                         0
                     )
                 );
@@ -649,12 +659,10 @@ contract ReignFacet {
                     );
                     epochBalances[lastIndex - 1].newDeposits = epochBalances[
                         lastIndex - 1
-                    ]
-                        .newDeposits
-                        .add(amount);
+                    ].newDeposits.add(amount);
                 }
 
-                epochBalances[lastIndex].startBalance = balances[msg.sender];
+                epochBalances[lastIndex].startBalance = _balances[msg.sender];
             }
         }
     }
@@ -674,8 +682,9 @@ contract ReignFacet {
 
         // we can't have a situation in which there is a withdraw with no checkpoint
 
-        LibReignStorage.EpochBalance storage old =
-            epochBalances[epochBalances.length - 1];
+        LibReignStorage.EpochBalance storage old = epochBalances[
+            epochBalances.length - 1
+        ];
         uint256 lastIndex = epochBalances.length - 1;
 
         // the last action happened in an older epoch (e.g. a deposit in epoch 3, current epoch is >=5)
@@ -686,7 +695,7 @@ contract ReignFacet {
                 LibReignStorage.EpochBalance(
                     currentEpoch,
                     BASE_BALANCE_MULTIPLIER,
-                    balances[msg.sender],
+                    _balances[msg.sender],
                     0
                 )
             );
@@ -694,27 +703,27 @@ contract ReignFacet {
         // there was a deposit in the current epoch
         else if (old.epochId == currentEpoch) {
             old.multiplier = BASE_BALANCE_MULTIPLIER;
-            old.startBalance = balances[msg.sender];
+            old.startBalance = _balances[msg.sender];
             old.newDeposits = 0;
         }
         // there was a deposit in the `epochId - 1` epoch => we have a checkpoint for the current epoch
         else {
-            LibReignStorage.EpochBalance storage currentEpochCheckpoint =
-                epochBalances[lastIndex - 1];
+            LibReignStorage.EpochBalance
+                storage currentEpochCheckpoint = epochBalances[lastIndex - 1];
 
-            uint256 balanceBefore =
-                getEpochEffectiveBalance(currentEpochCheckpoint);
+            uint256 balanceBefore = getEpochEffectiveBalance(
+                currentEpochCheckpoint
+            );
             // in case of withdraw, we have 2 branches:
             // 1. the user withdraws less than he added in the current epoch
             // 2. the user withdraws more than he added in the current epoch (including 0)
             if (amount < currentEpochCheckpoint.newDeposits) {
-                uint128 avgDepositMultiplier =
-                    uint128(
-                        balanceBefore
-                            .sub(currentEpochCheckpoint.startBalance)
-                            .mul(BASE_BALANCE_MULTIPLIER)
-                            .div(currentEpochCheckpoint.newDeposits)
-                    );
+                uint128 avgDepositMultiplier = uint128(
+                    balanceBefore
+                        .sub(currentEpochCheckpoint.startBalance)
+                        .mul(BASE_BALANCE_MULTIPLIER)
+                        .div(currentEpochCheckpoint.newDeposits)
+                );
 
                 currentEpochCheckpoint.newDeposits = currentEpochCheckpoint
                     .newDeposits
@@ -734,7 +743,7 @@ contract ReignFacet {
                 currentEpochCheckpoint.multiplier = BASE_BALANCE_MULTIPLIER;
             }
 
-            epochBalances[lastIndex].startBalance = balances[msg.sender];
+            epochBalances[lastIndex].startBalance = _balances[msg.sender];
         }
     }
 
@@ -800,13 +809,14 @@ contract ReignFacet {
                 LibReignStorage.Checkpoint(block.timestamp, amount)
             );
         } else {
-            LibReignStorage.Checkpoint storage old =
-                checkpoints[checkpoints.length - 1];
+            LibReignStorage.Checkpoint storage old = checkpoints[
+                checkpoints.length - 1
+            ];
             old.amount = amount;
         }
     }
 
-    // _updateLockedReign stores the new `amount` into the BOND locked history
+    // _updateLockedReign stores the new `amount` into the REIGN locked history
     function _updateLockedReign(uint256 amount) internal {
         LibReignStorage.Storage storage ds = LibReignStorage.reignStorage();
 
@@ -819,8 +829,9 @@ contract ReignFacet {
                 LibReignStorage.Checkpoint(block.timestamp, amount)
             );
         } else {
-            LibReignStorage.Checkpoint storage old =
-                ds.reignStakedHistory[ds.reignStakedHistory.length - 1];
+            LibReignStorage.Checkpoint storage old = ds.reignStakedHistory[
+                ds.reignStakedHistory.length - 1
+            ];
             old.amount = amount;
         }
     }
@@ -847,8 +858,8 @@ contract ReignFacet {
 
     //initialises and epoch, and stores the init time
     function _initEpoch(uint128 epochId) internal {
-        isInitialized[epochId] = true;
-        initialisedAt[epochId] = block.timestamp;
+        _isInitialized[epochId] = true;
+        _initialisedAt[epochId] = block.timestamp;
 
         emit InitEpoch(msg.sender, epochId);
     }

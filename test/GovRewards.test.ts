@@ -87,10 +87,11 @@ describe("GovRewards", function () {
 
         it('Get epoch PoolSize and distribute tokens', async function () {
             await moveToEpoch(1)
+            await yieldFarm.epo
             await depositReign(amount, user)
             await moveToEpoch(2)
 
-            let poolSize = await yieldFarm.getPoolSize(await getLatestBlockTimestamp());
+            let poolSize = await yieldFarm.getPoolSizeAtTs(await getLatestBlockTimestamp());
             expect(poolSize).to.equal(amount)
             expect(await yieldFarm.getEpochStake(userAddr, 1)).to.equal(amount)
             expect(
@@ -115,7 +116,7 @@ describe("GovRewards", function () {
             // initialize epochs meanwhile
             await moveToEpoch(1)
             await moveToEpoch(9)
-            expect(await yieldFarm.getPoolSize(await getLatestBlockTimestamp())).to.equal(amount)
+            expect(await yieldFarm.getPoolSizeAtTs(await getLatestBlockTimestamp())).to.equal(amount)
 
             expect(await yieldFarm.lastInitializedEpoch()).to.equal(0) // no epoch initialized
             await expect(yieldFarm.harvest(10)).to.be.revertedWith('This epoch is in the future')
@@ -151,7 +152,7 @@ describe("GovRewards", function () {
             //this initialises the epoch
             await depositReign(amount)
             await moveToEpoch(2)
-            expect(await yieldFarm.getPoolSize(await getLatestBlockTimestamp())).to.equal(amount)
+            expect(await yieldFarm.getPoolSizeAtTs(await getLatestBlockTimestamp())).to.equal(amount)
 
             //Flying Parrot has nothing to harvest
             let balanceBeforeHarvest = await reignToken.balanceOf(await flayingParrot.getAddress())
