@@ -408,6 +408,36 @@ contract PoolRouter {
         require(poolAmountIn <= maxPoolAmountIn, "ERR_LIMIT_IN");
     }
 
+    // gets current LP exchange rate for single token
+    function getTokenAmountOutSingle(
+        address tokenOut,
+        uint256 poolAmountIn,
+        uint256 minTokenAmountOut
+    ) public view returns (uint256 tokenAmountOut) {
+        BPool bPool = smartPool.bPool();
+        require(bPool.isBound(tokenOut), "ERR_NOT_BOUND");
+
+        //apply protocol fee
+        uint256 poolAmountInAdj = poolAmountIn.mul(protocolFee).div(
+            PROTOCOL_FEE_DECIMALS
+        );
+
+        tokenAmountOut = bPool.calcSingleOutGivenPoolIn(
+            bPool.getBalance(tokenOut),
+            bPool.getDenormalizedWeight(tokenOut),
+            smartPool.totalSupply(),
+            bPool.getTotalDenormalizedWeight(),
+            poolAmountInAdj,
+            bPool.getSwapFee()
+        );
+
+        require(tokenAmountOut >= minTokenAmountOut, "ERR_LIMIT_OUT");
+        require(
+            tokenAmountOut <= bPool.getBalance(tokenOut).mul(MAX_OUT_RATIO),
+            "ERR_MAX_OUT_RATIO"
+        );
+    }
+
     // gets current LP exchange rate for all
     function getTokensAmountOut(
         uint256 poolAmountIn,

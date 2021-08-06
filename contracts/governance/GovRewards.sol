@@ -128,12 +128,11 @@ contract GovRewards {
         // (i.e. massHarvest needs to do a single transfer)
         uint256 epochRewards = getRewardsForEpoch();
         uint256 boostMultiplier = getBoost(msg.sender, epochId);
-        uint256 userEpochRewards =
-            epochRewards
-                .mul(_getUserBalancePerEpoch(msg.sender, epochId))
-                .mul(boostMultiplier) // apply boost multiplier
-                .div(_sizeAtEpoch[epochId])
-                .div(1 * 10**18);
+        uint256 userEpochRewards = epochRewards
+            .mul(_getUserBalancePerEpoch(msg.sender, epochId))
+            .mul(boostMultiplier)
+            .div(_sizeAtEpoch[epochId])
+            .div(1 * 10**18); // apply boost multiplier
 
         return userEpochRewards;
     }
@@ -146,7 +145,7 @@ contract GovRewards {
         lastInitializedEpoch = epochId;
         _epochInitTime[epochId] = block.timestamp;
         // call the staking smart contract to init the epoch
-        _sizeAtEpoch[epochId] = _getPoolSize(block.timestamp);
+        _sizeAtEpoch[epochId] = _getPoolSizeAtTs(block.timestamp);
 
         emit InitEpoch(msg.sender, epochId);
     }
@@ -179,8 +178,17 @@ contract GovRewards {
     }
 
     // calls to the staking smart contract to retrieve the epoch total poolLP size
-    function getPoolSize(uint256 timestamp) external view returns (uint256) {
-        return _getPoolSize(timestamp);
+    function getPoolSizeAtTs(uint256 timestamp)
+        external
+        view
+        returns (uint256)
+    {
+        return _getPoolSizeAtTs(timestamp);
+    }
+
+    // calls to the staking smart contract to retrieve the epoch total poolLP size
+    function getPoolSize(uint128 epochId) external view returns (uint256) {
+        return _sizeAtEpoch[epochId];
     }
 
     // checks if the user has voted that epoch and returns accordingly
@@ -192,7 +200,11 @@ contract GovRewards {
         return _reign.stakingBoostAtEpoch(user, epoch);
     }
 
-    function _getPoolSize(uint256 timestamp) internal view returns (uint256) {
+    function _getPoolSizeAtTs(uint256 timestamp)
+        internal
+        view
+        returns (uint256)
+    {
         // retrieve unilp token balance
         return _reign.reignStakedAtTs(timestamp);
     }

@@ -37,7 +37,7 @@ const cfg: HardhatUserConfig = {
     etherscan: config.etherscan,
 
     abiExporter: {
-        only: ['ReignDiamond', 'ReignFacet', 'OwnershipFacet', 'DiamondCutFacet', 'DiamondLoupeFacet', 'Rewards', 'RewardsVault', 'ReignDAO', 'PoolRouter','BasketBalancer', 'WrappingRewards'],
+        only: ['ReignDiamond','SovToken','SovWrapper', 'ReignFacet', 'OwnershipFacet', 'DiamondCutFacet', 'DiamondLoupeFacet', 'Rewards', 'RewardsVault', 'ReignDAO', 'PoolRouter','BasketBalancer', 'WrappingRewards'],
         except: ['.*Mock$'],
         clear: true,
         flat: true,

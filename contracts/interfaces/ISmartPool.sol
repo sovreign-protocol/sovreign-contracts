@@ -109,12 +109,21 @@ abstract contract BPool is AbstractPool {
     ) external pure virtual returns (uint256 poolAmountOut);
 
     function calcPoolInGivenSingleOut(
-        uint256 tokenBalanceOut,
-        uint256 tokenWeightOut,
-        uint256 poolSupply,
-        uint256 totalWeight,
-        uint256 tokenAmountOut,
-        uint256 swapFee
+        uint256,
+        uint256,
+        uint256,
+        uint256,
+        uint256,
+        uint256
+    ) external pure virtual returns (uint256 poolAmountIn);
+
+    function calcSingleOutGivenPoolIn(
+        uint256,
+        uint256,
+        uint256,
+        uint256,
+        uint256,
+        uint256
     ) external pure virtual returns (uint256 poolAmountIn);
 
     function getDenormalizedWeight(address token)
