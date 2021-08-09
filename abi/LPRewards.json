@@ -114,6 +114,19 @@
   },
   {
     "inputs": [],
+    "name": "depositLP",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "epochDuration",
     "outputs": [
       {

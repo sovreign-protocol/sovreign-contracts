@@ -174,6 +174,11 @@ contract LPRewards {
         );
     }
 
+    //returns deposit token
+    function depositLP() public view returns (address) {
+        return _depositLP;
+    }
+
     // calls to the staking smart contract to retrieve the epoch's total pool size
     function getPoolSize(uint128 epochId) external view returns (uint256) {
         return _getPoolSize(epochId);
