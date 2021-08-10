@@ -1,0 +1,92 @@
+
+ --- CONNECTING TO CONTRACTS ---
+DAI connected at: 0x712863c3ad98ef4319133b8646d51383700cb37b
+USDC connected at: 0xf65c93902ecc4c7979e92ed2cca01421e8021f77
+WBTC connected at: 0x3a85973fd194c9fb966882fee7b11481c38344fb
+WETH connected at: 0xf8e81d47203a594245e36c48e151709f0c19fbe8
+PAXG connected at: 0xad36b2c064cc743daca00a134efc845dfd073f3c
+SmartPool Factory connected at '0xA3F9145CB0B50D907930840BB2dcfF4146df8Ab4'
+UniswapV2Factory connected at '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f'
+UniswapV2Router connected  at '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
+
+ --- DEPLOY REIGN DAO ---
+DiamondCutFacet deployed to: 0x3daf2b6c7b4aaabd20bfec9c2c1d620cbef926c2
+DiamondLoupeFacet deployed to: 0x9a88ffbc63c9cfa66a28946fbb61508cd5b7994d
+OwnershipFacet deployed to: 0x47826feee0cf965eacfc24a92c2a9aba7646bf6c
+EpochClockFacet deployed to: 0xC9215f880Abecfeb58269a19D59a2fbb18f82762
+ReignFacet deployed at: 0xf9e11795a43d40389ded73b6ceba6b7c0ea59cbe
+ReignDiamond deployed at: 0xc1660f2af8d7e6f20598e18c752a955b23cf564e
+ReignDAO deployed at: 0x78500ee25f607ffc906cccd27077f15f76c01785
+
+ --- DEPLOY TOKENS ---
+ReignToken deployed at: 0x64f8b3b0a2a16a2bdfa30568cb769ed5ba760fba
+SovToken deployed at: 0xe0dfbdbeb6d599b9142d84f76a6c4ff964f3949d
+
+ --- DEPLOY WRAPPER CONTRACT ---
+SovWrapper deployed at: 0xbfa9ea3b1556687df2e9965ffef84f28911f8a8f
+
+ --- DEPLOY VAULTS ---
+RewardsVault deployed at: 0xc8a44079501a6110edf7fe66ff2342f28459cf50
+Development Vault deployed at: 0x49a895fda00d8d6b564b552c755d4c7860b19daf
+Treasury Sale Vault deployed at: 0x4a3e90b0e7ca0ac32588b956d581afd578da3579
+
+ --- DISTRIBUTE REIGN ---
+ReignToken minted: '70000000000000000000000000' to addr '0xcdb2a435a65a5a90da1dd2c1fe78a2df70795f91' (SoVReignOwner address)
+ReignToken minted: '23333333333333333333333333' to addr '0xa5e3c2047a28f0c8032b1a7e7074682b129445a7' (User1 address)
+ReignToken minted: '23333333333333333333333333' to addr '0x5577bd667608bbb2537f3d45610b14b7286466a7' (User2 address)
+ReignToken minted: '23333333333333333333333333' to addr '0x2a95300047e373eeeaa5eea0be7dce1418ccf191' (User3 address)
+ReignToken minted: '500000000000000000000000000' to addr '0xc8a44079501a6110edf7fe66ff2342f28459cf50' (RewardsVault contract)
+ReignToken minted: '40000000000000000000000000' to addr '0xc8a44079501a6110edf7fe66ff2342f28459cf50' (RewardsVault contract)
+ReignToken minted: '100000000000000000000000000' to addr '0xc8a44079501a6110edf7fe66ff2342f28459cf50' (RewardsVault contract)
+ReignToken minted: '50000000000000000000000000' to addr '0x49a895fda00d8d6b564b552c755d4c7860b19daf' (DevFund contract)
+ReignToken minted: '50000000000000000000000000' to addr '0xc1660f2af8d7e6f20598e18c752a955b23cf564e' (ReignDiamond contract)
+ReignToken minted: '120000000000000000000000000' to addr '0x4a3e90b0e7ca0ac32588b956d581afd578da3579' (TreasurySale contract)
+
+ --- DEPLOY UNISWAP POOLS ---
+Deployed a Uniswap pair for REIGN/WETH: '0x1C598eF8986B364F67C5b2b7BBb7cb45406694E2'
+Deployed a Uniswap pair for SOV/USDC: '0xd2805867258Db181b608dbc757A1Ce363b71C45f'
+
+ --- PREPARE REWARDS  ---
+Staking contract deployed at: 0x5Faf8C61A65670C9472E6ef909195a76104c6356
+LPRewards for Uniswap SOV/USDC LP deployed at: 0x04F47aa96C1F2018E7CD6df7b07b55D1C57cDaf4
+LPRewards for Uniswap REIGN/WETH LP deployed at: 0x381844316C16c5eB5D95098EEaFfaDCEA7502eA6
+GovRewards deployed at: 0x9a549A0704Bae811128877d247812EDE48095192
+
+ --- SET ALLOWANCES ---
+Calling setAllowance() from (RewardsVault contract) to (GovRewards contract)
+Calling setAllowance() from (RewardsVault contract) to (SOV/USDC LPRewards contract)
+Calling setAllowance() from (RewardsVault contract) to (REIGN/WETH LPRewards contract)
+Calling setAllowance() from (DevVault contract) to (Reign DAO contract)
+Calling setAllowance() from (TreasurySaleVault contract) to (Reign DAO contract)
+
+ --- SETUP CONFIGURABLE RIGHTS POOL ---
+Deployer Account funded
+SmartPool connected at 0x9E850E0E1cdD1b452A694D27eB82Fa78F502C8C7
+Smart Pool Initialized !
+Initial LP Supply: 10000
+Smart Pool controlled by: 0xCDb2a435a65A5a90Da1dd2C1Fe78A2df70795F91 (sovReignOwnerAcct)
+
+ --- DEPLOY POOL ROUTER ---
+PoolRouter deployed at: 0xdd87fcefe89c598d835b412009f2f4f9209753cd
+PoolRouter Whitelisted
+Cap Set at 10000000 LP Tokens
+
+ --- DEPLOY BASKET BALANCER ---
+BasketBalancer deployed at: 0x349884021b0df3d50c07a08edbe171789fd3c8bb
+BasketBalancer tracking at: 0x3a85973FD194C9FB966882FeE7b11481c38344FB,0xf65C93902eCC4c7979E92ED2cca01421e8021F77,0x712863C3ad98ef4319133B8646D51383700cb37b
+BasketBalancer weighting at: 13000000000000000000
+BasketBalancer weighting at: 13000000000000000000
+BasketBalancer weighting at: 13000000000000000000
+
+ --- ACTIVATE CONTRACTS ---
+Calling initReign() at '0xc1660f2af8d7e6f20598e18c752a955b23cf564e' (ReignDiamond contract)
+Calling initialize() at '0x78500ee25f607ffc906cccd27077f15f76c01785' (ReignDAO contract)
+Calling initialize() at '0x5faf8c61a65670c9472e6ef909195a76104c6356' (Staking contract)
+Calling initialize() at '0xbfa9ea3b1556687df2e9965ffef84f28911f8a8f' (SovWrapper contract)
+Calling initialize() at '0x04f47aa96c1f2018e7cd6df7b07b55d1c57cdaf4' (SOV LP Rewards contract)
+Calling initialize() at '0x381844316c16c5eb5d95098eeaffadcea7502ea6' (REIGN LP Rewards contract)
+Calling initialize() at '0x9a549a0704bae811128877d247812ede48095192' (Gov Rewards contract)
+SoVReignOwner approves addr '0xC1660f2aF8d7E6F20598E18C752a955B23cF564e' to transfer '4000000000000000000000000'
+SoVReignOwner deposits '4000000000000000000000000' to ReignDiamond
+
+WrappingRewards deployed at: 0x855dD13AbAb0e891952Fd973634cefBb1c5AAbAC 
