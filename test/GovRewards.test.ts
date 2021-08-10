@@ -239,6 +239,9 @@ describe("GovRewards", function () {
             
 
             await moveToEpoch(8)
+            
+            //init the epochs
+            await yieldFarm.connect(flayingParrot).massHarvest()
 
             // get epoch 1 rewards
             let boostedRewards = await totalAccrued(1,8);
@@ -283,9 +286,7 @@ describe("GovRewards", function () {
     async function totalAccrued(n:number, m:number) {
         let total = BigNumber.from(0);
         for(let i = n; i < m; i++){
-            let epochBoost = await yieldFarm.getBoost(userAddr, i);
-            let adjusted = epochBoost.mul((await yieldFarm.getRewardsForEpoch())).div(tenPow18)
-            total = total.add(adjusted);
+            total = total.add(await yieldFarm.getUserRewardsForEpoch(i));
         }
         return total
     }

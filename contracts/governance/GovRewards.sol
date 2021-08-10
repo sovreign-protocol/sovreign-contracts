@@ -200,6 +200,28 @@ contract GovRewards {
         return _reign.stakingBoostAtEpoch(user, epoch);
     }
 
+    // get how many rewards the user gets for an epoch
+    function getUserRewardsForEpoch(uint128 epochId)
+        public
+        view
+        returns (uint256)
+    {
+        // exit if there is no stake on the epoch
+        if (_sizeAtEpoch[epochId] == 0) {
+            return 0;
+        }
+
+        uint256 epochRewards = getRewardsForEpoch();
+        uint256 boostMultiplier = getBoost(msg.sender, epochId);
+        uint256 userEpochRewards = epochRewards
+            .mul(_getUserBalancePerEpoch(msg.sender, epochId))
+            .mul(boostMultiplier)
+            .div(_sizeAtEpoch[epochId])
+            .div(1 * 10**18); // apply boost multiplier
+
+        return userEpochRewards;
+    }
+
     function _getPoolSizeAtTs(uint256 timestamp)
         internal
         view

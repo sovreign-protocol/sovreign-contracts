@@ -164,11 +164,15 @@ describe("Wrapping Rewards", function () {
             )
             expect(await wrappingRewards.connect(user).userLastEpochIdHarvested()).to.equal(1)
             expect(await wrappingRewards.lastInitializedEpoch()).to.equal(1) // epoch 1 have been initialized
+            
+            // initialise the epochs
+            await (await wrappingRewards.connect(creator).massHarvest()).wait()
 
-            await (await wrappingRewards.connect(user).massHarvest()).wait()
+
             const totalDistributedAmount = await totalAccruedUntilEpoch(8)
-            //somehow the totalAccruedUntilEpoch() deviates by 3 which is a 1.8 *10^-25 -> should be ok
-            expect(await reignToken.balanceOf(userAddr)).to.be.eq(totalDistributedAmount.add(3))
+            await (await wrappingRewards.connect(user).massHarvest()).wait()
+            
+            expect(await reignToken.balanceOf(userAddr)).to.be.eq(totalDistributedAmount)
             expect(await wrappingRewards.connect(user).userLastEpochIdHarvested()).to.equal(7)
             expect(await wrappingRewards.lastInitializedEpoch()).to.equal(7) // epoch 7 has been initialized
         })
@@ -281,9 +285,7 @@ describe("Wrapping Rewards", function () {
     async function totalAccruedUntilEpoch(n:number) {
         let total = BigNumber.from(0);
         for(let i = 1; i < n; i++){
-            let epochBoost = await getUserBoost(userAddr, i);
-            let adjusted = epochBoost.mul(await wrappingRewards.getRewardsForEpoch()).div(tenPow18)
-            total = total.add(adjusted);
+            total = total.add(await wrappingRewards.connect(user).getUserRewardsForEpoch(i));
         }
         return total
     }

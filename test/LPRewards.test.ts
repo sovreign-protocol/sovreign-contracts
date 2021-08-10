@@ -157,7 +157,15 @@ describe('YieldFarm AMM Pool', function () {
         it('harvests rewards for user only once', async function () {
             await depositLP(amount)
             await moveAtEpoch(epochStart, epochDuration, 3)
+            //init epoch 1
+            await yieldFarm.connect(creator).harvest(1)
+
+            let expectedRewards = await yieldFarm.connect(user).getUserRewardsForEpoch(1);
+            let balanceBeforeHarvest = await reignToken.balanceOf(userAddr);
+
             await yieldFarm.connect(user).harvest(1)
+
+            expect(await await reignToken.balanceOf(userAddr)).to.be.eq(balanceBeforeHarvest.add(expectedRewards))
             await expect(yieldFarm.connect(user).harvest(1)).to.be.revertedWith("Can only harvest in order")
 
             expect(await reignToken.balanceOf(await user.getAddress())).to.equal(

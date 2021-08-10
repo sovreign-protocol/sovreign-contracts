@@ -133,8 +133,8 @@ contract WrappingRewards {
 
     // gets the total amount of rewards accrued to a pool during an epoch
     function getRewardsForEpoch() public view returns (uint256) {
-        uint256 epochRewards =
-            LibRewardsDistribution.wrappingRewardsPerEpochTotal(epochStart); //this accounts for2 year halving already
+        uint256 epochRewards = LibRewardsDistribution
+            .wrappingRewardsPerEpochTotal(epochStart); //this accounts for2 year halving already
         return epochRewards;
     }
 
@@ -177,6 +177,36 @@ contract WrappingRewards {
         }
     }
 
+    function getUserRewardsForEpoch(uint128 epochId)
+        public
+        view
+        returns (uint256)
+    {
+        // exit if there is no stake on the epoch
+        if (_sizeAtEpoch[epochId] == 0) {
+            return 0;
+        }
+
+        uint256 epochRewards = getRewardsForEpoch();
+        bool boost = isBoosted(msg.sender, epochId);
+
+        // get users share of rewards
+        uint256 userEpochRewards = epochRewards
+            .mul(_getUserBalancePerEpoch(msg.sender, epochId))
+            .div(_sizeAtEpoch[epochId]);
+
+        //if user is not boosted pull penalty into this contract and reduce user rewards
+        if (!boost) {
+            uint256 penalty = userEpochRewards.mul(NO_VOTE_PENALTY).div(
+                BASE_MULTIPLIER
+            ); // decrease by 3%
+
+            userEpochRewards = userEpochRewards.sub(penalty);
+        }
+
+        return userEpochRewards;
+    }
+
     /**
         INTERNAL
      */
@@ -198,15 +228,15 @@ contract WrappingRewards {
         bool boost = isBoosted(msg.sender, epochId);
 
         // get users share of rewards
-        uint256 userEpochRewards =
-            epochRewards.mul(_getUserBalancePerEpoch(msg.sender, epochId)).div(
-                _sizeAtEpoch[epochId]
-            );
+        uint256 userEpochRewards = epochRewards
+            .mul(_getUserBalancePerEpoch(msg.sender, epochId))
+            .div(_sizeAtEpoch[epochId]);
 
         //if user is not boosted pull penalty into this contract and reduce user rewards
         if (!boost) {
-            uint256 penalty =
-                userEpochRewards.mul(NO_VOTE_PENALTY).div(BASE_MULTIPLIER); // decrease by 3%
+            uint256 penalty = userEpochRewards.mul(NO_VOTE_PENALTY).div(
+                BASE_MULTIPLIER
+            ); // decrease by 3%
 
             userEpochRewards = userEpochRewards.sub(penalty);
 

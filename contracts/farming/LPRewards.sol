@@ -174,6 +174,23 @@ contract LPRewards {
         );
     }
 
+    // get how many rewards the user gets for an epoch
+    function getUserRewardsForEpoch(uint128 epochId)
+        public
+        view
+        returns (uint256)
+    {
+        // exit if there is no stake on the epoch
+        if (_sizeAtEpoch[epochId] == 0) {
+            return 0;
+        }
+
+        return
+            totalAmountPerEpoch
+                .mul(_getUserBalancePerEpoch(msg.sender, epochId))
+                .div(_sizeAtEpoch[epochId]);
+    }
+
     //returns deposit token
     function depositLP() public view returns (address) {
         return _depositLP;
