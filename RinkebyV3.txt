@@ -43,13 +43,13 @@ ReignToken minted: '50000000000000000000000000' to addr '0xc1660f2af8d7e6f20598e
 ReignToken minted: '120000000000000000000000000' to addr '0x4a3e90b0e7ca0ac32588b956d581afd578da3579' (TreasurySale contract)
 
  --- DEPLOY UNISWAP POOLS ---
-Deployed a Uniswap pair for REIGN/WETH: '0x1C598eF8986B364F67C5b2b7BBb7cb45406694E2'
+Deployed a Uniswap pair for REIGN/WETH: '0x1eF52788392D940A39D09ac26Cfe3C3a6F6fAe47'
 Deployed a Uniswap pair for SOV/USDC: '0xd2805867258Db181b608dbc757A1Ce363b71C45f'
 
  --- PREPARE REWARDS  ---
 Staking contract deployed at: 0x5Faf8C61A65670C9472E6ef909195a76104c6356
 LPRewards for Uniswap SOV/USDC LP deployed at: 0x04F47aa96C1F2018E7CD6df7b07b55D1C57cDaf4
-LPRewards for Uniswap REIGN/WETH LP deployed at: 0x381844316C16c5eB5D95098EEaFfaDCEA7502eA6
+LPRewards for Uniswap REIGN/WETH LP deployed at: 0x4cDF326F0cEcF20c1b759C60590839e92e1b4D29
 GovRewards deployed at: 0x9a549A0704Bae811128877d247812EDE48095192
 
  --- SET ALLOWANCES ---
@@ -90,3 +90,9 @@ SoVReignOwner approves addr '0xC1660f2aF8d7E6F20598E18C752a955B23cF564e' to tran
 SoVReignOwner deposits '4000000000000000000000000' to ReignDiamond
 
 WrappingRewards deployed at: 0x855dD13AbAb0e891952Fd973634cefBb1c5AAbAC 
+
+
+-- 
+InitEpoch on SovWrapper
+SetMinter on SovToken
+Set Rewards allowance

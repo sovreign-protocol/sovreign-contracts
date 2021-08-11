@@ -5,10 +5,10 @@ import RewardsVault from "../deployment/ContractABIs/RewardsVault.json"
 import { ethers } from "hardhat";
 import { tenPow18 } from "../../test/helpers/helpers";
 
-export async function setAllowance(c: DeployConfig): Promise<any> {
+export async function Script(c: DeployConfig): Promise<any> {
 
-    let rewardsVaultAddress = "0x86296a7080a4728545c763102c9e015694e6179b";
-    let wrappingRewardsAddress = "0xb2410885d946f95c70b411fcdbe866dd7b287907";
+    let rewardsVaultAddress = "0xc8a44079501a6110edf7fe66ff2342f28459cf50";
+    let wrappingRewardsAddress = "0x855dD13AbAb0e891952Fd973634cefBb1c5AAbAC";
     
     ///////////////////////////
     // Connect to Pool

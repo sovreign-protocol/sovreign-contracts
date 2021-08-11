@@ -1,9 +1,8 @@
 import {deployConfig} from "./config-rinkeby";
-import { transferOwnership } from "./rinkeby-actions/transfer-pool-ownership";
-import { deployGovRew } from "./rinkeby-actions/deploy-gov";
+import { Script } from "./rinkeby-actions/set-allowance";
 
 deployConfig()
-    .then(c => deployGovRew(c))
+    .then(c => Script(c))
     .catch(error => {
         console.error(error);
         process.exit(1);

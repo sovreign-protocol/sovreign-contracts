@@ -235,6 +235,25 @@
         "type": "uint128"
       }
     ],
+    "name": "getUserRewardsForEpoch",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint128",
+        "name": "epochId",
+        "type": "uint128"
+      }
+    ],
     "name": "harvest",
     "outputs": [
       {

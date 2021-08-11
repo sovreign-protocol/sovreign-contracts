@@ -6,10 +6,10 @@ import erc20 from "../deployment/ContractABIs/ERC20.json"
 import { ethers } from "hardhat";
 import { tenPow18 } from "../../test/helpers/helpers";
 
-export async function approveDeposit(c: DeployConfig): Promise<any> {
+export async function Script(c: DeployConfig): Promise<any> {
 
-    let routerAddress = "0x89e0da559126aa5ca804d4c7c30715522031b92b";
-    let sBTCAddress = "0x3a85973fd194c9fb966882fee7b11481c38344fb";
+    let routerAddress = "0xdd87fcefe89c598d835b412009f2f4f9209753cd";
+    let sBTCAddress = "0xf65C93902eCC4c7979E92ED2cca01421e8021F77";
     
     ///////////////////////////
     // Connect to Pool
@@ -26,13 +26,13 @@ export async function approveDeposit(c: DeployConfig): Promise<any> {
         c.sovReignOwnerAcct 
     );
 
-    await sbtc.connect(c.user2Acct).approve(routerAddress, BigNumber.from(100000000000000).mul(tenPow18))
+    await sbtc.connect(c.sovReignOwnerAcct).approve(routerAddress, BigNumber.from(100000000000000).mul(tenPow18))
     console.log(`Allowance set to : '${routerAddress.toLowerCase()}' (router)`);
 
     console.log(`Balance of : '${(await sbtc.balanceOf(c.user2Addr))}' (router)`);
 
 
-    await router.connect(c.user2Acct).deposit(sBTCAddress, BigNumber.from(10).mul(tenPow18), 1, 10000)
+    await router.connect(c.sovReignOwnerAcct).deposit(sBTCAddress, BigNumber.from(10).mul(tenPow18), 1, 10000)
     console.log(`Deposited set to : '${routerAddress.toLowerCase()}' (router)`);
 
 }
