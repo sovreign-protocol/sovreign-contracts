@@ -7,7 +7,7 @@ import {
     SovToken
 } from "../../typechain";
 import {BigNumber, Contract, ethers as ejs} from "ethers";
-import {tenPow18} from "../../test/helpers/helpers";
+import {tenPow18,tenPow8} from "../../test/helpers/helpers";
 
 import ConfigurableRightsPool from "./ContractABIs/ConfigurableRightsPool.json"
 
@@ -16,49 +16,56 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
 
     console.log(`\n --- SETUP CONFIGURABLE RIGHTS POOL ---`);
 
-    const dai = c.dai as ERC20;
-    const wbtc = c.wbtc as ERC20;
-    const usdc = c.usdc as ERC20;
+    const sbtc = c.sbtc as ERC20;
+    const seth = c.seth as ERC20;
+    const schf = c.schf as ERC20;
+    const susd = c.susd as ERC20;
+    const sxau = c.sxau as ERC20;
+    const sxag = c.sxag as ERC20;
     const sovToken = c.sovToken as SovToken;
     const smartPoolFactory = c.smartPoolFactory as Contract;
     const reignDiamond = c.reignDiamond as Contract;
     const reignDAO = c.reignDAO as Contract;
 
 
-    ///////////////////////////
-    // Transfer Tokens Necessary to Owner
-    ///////////////////////////
-    let wbtcAmount = 1000000000    // ~ 330'000 $
-    let usdcAmount = 330000000000 // ~ 330'000 $
-    let daiAmount = BigNumber.from(330000).mul(tenPow18)// ~ 330'000 $
-    await wbtc.connect(c.user2Acct).transfer(c.sovReignOwnerAddr, wbtcAmount*2) 
-    await usdc.connect(c.user3Acct).transfer(c.sovReignOwnerAddr, usdcAmount*2) 
-    await dai.connect(c.user4Acct).transfer(c.sovReignOwnerAddr, daiAmount.mul(2))  
+    const sbtcAmount = BigNumber.from(1).mul(tenPow8);
+    const sethAmount = BigNumber.from(15).mul(tenPow8);
+    const schfAmount = BigNumber.from(40000).mul(tenPow8);
+    const susdAmount = BigNumber.from(45000).mul(tenPow8);
+    const sxauAmount = BigNumber.from(30).mul(tenPow8);
+    const sxagAmount = BigNumber.from(150).mul(tenPow8);
 
-    console.log(`Deployer Account funded`);
-
-
+    
 
     ///////////////////////////
     // Create Pool
     ///////////////////////////
     const callDatasParams = [
-                'SOVLP',
+                'SOV-LP',
                 'Sovreign Pool LP',
                 [
-                    wbtc.address, 
-                    usdc.address,
-                    dai.address, 
+                    sbtc.address, 
+                    seth.address,
+                    schf.address, 
+                    susd.address, 
+                    sxau.address, 
+                    sxag.address, 
                 ],
                 [
-                    wbtcAmount, 
-                    usdcAmount,
-                    daiAmount, 
+                    sbtcAmount, 
+                    sethAmount,
+                    schfAmount, 
+                    susdAmount, 
+                    sxauAmount, 
+                    sxagAmount,  
                 ],
                 [
-                    BigNumber.from(130).mul(BigNumber.from(10).pow(17)), 
-                    BigNumber.from(130).mul(BigNumber.from(10).pow(17)), 
-                    BigNumber.from(130).mul(BigNumber.from(10).pow(17))
+                    BigNumber.from(30).mul(BigNumber.from(10).pow(17)), 
+                    BigNumber.from(30).mul(BigNumber.from(10).pow(17)), 
+                    BigNumber.from(30).mul(BigNumber.from(10).pow(17)),
+                    BigNumber.from(30).mul(BigNumber.from(10).pow(17)), 
+                    BigNumber.from(30).mul(BigNumber.from(10).pow(17)), 
+                    BigNumber.from(30).mul(BigNumber.from(10).pow(17))
                 ],
                 5_000000000000000 // 0.5% trading fee
             ]
@@ -96,18 +103,27 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
 
 
 
-    let tx = await dai.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, daiAmount);
+    let tx = await sbtc.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, sbtcAmount);
     await tx.wait();
   
-    tx = await wbtc.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, wbtcAmount);
+    tx = await seth.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, sethAmount);
     await tx.wait();
 
-    tx = await usdc.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, usdcAmount);
+    tx = await schf.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, schfAmount);
+    await tx.wait();
+
+     tx = await susd.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, susdAmount);
+    await tx.wait();
+  
+    tx = await sxau.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, sxauAmount);
+    await tx.wait();
+
+    tx = await sxag.connect(c.sovReignOwnerAcct).approve(smartPoolAddr, sxagAmount);
     await tx.wait();
 
 
     tx = await smartPool.connect(c.sovReignOwnerAcct).createPool(
-        BigNumber.from(10000).mul(tenPow18),
+        BigNumber.from(10000).mul(tenPow18), // 10'000 tokens
         13292,   // 2 days for weights update
         250  //  ca. 55min token add lock time
     )
@@ -171,10 +187,13 @@ export async function setupSmartPool(c: DeployConfig): Promise<DeployConfig> {
     c.basketBalancer = basketBalancer;
     let tokens = await basketBalancer.getTokens();
     console.log(`BasketBalancer deployed at: ${basketBalancer.address.toLowerCase()}`);
-    console.log(`BasketBalancer tracking at: ${tokens}`);
-    console.log(`BasketBalancer weighting at: ${await basketBalancer.getTargetAllocation(tokens[0])}`);
-    console.log(`BasketBalancer weighting at: ${await basketBalancer.getTargetAllocation(tokens[1])}`);
-    console.log(`BasketBalancer weighting at: ${await basketBalancer.getTargetAllocation(tokens[2])}`);
+    console.log(`BasketBalancer tracking: ${tokens}`);
+    console.log(`BasketBalancer weighting: ${await basketBalancer.getTargetAllocation(tokens[0])}`);
+    console.log(`BasketBalancer weighting: ${await basketBalancer.getTargetAllocation(tokens[1])}`);
+    console.log(`BasketBalancer weighting: ${await basketBalancer.getTargetAllocation(tokens[2])}`);
+    console.log(`BasketBalancer weighting: ${await basketBalancer.getTargetAllocation(tokens[3])}`);
+    console.log(`BasketBalancer weighting: ${await basketBalancer.getTargetAllocation(tokens[4])}`);
+    console.log(`BasketBalancer weighting: ${await basketBalancer.getTargetAllocation(tokens[5])}`);
 
     return c;
 }

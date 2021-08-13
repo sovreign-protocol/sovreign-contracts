@@ -12,6 +12,7 @@ import {
     SovWrapper,
     RewardsVault,
     LibRewardsDistribution,
+    VestingRouter
 } from "../../typechain";
 import { zeroAddress } from "../../test/helpers/helpers";
 
@@ -23,10 +24,8 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
 
     console.log(`\n --- DEPLOY TOKENS ---`);
 
-    const dai = c.dai as Contract;
     const reignDiamond = c.reignDiamond as Contract;
     const reignDAO = c.reignDAO as ReignDAO;
-    const uniswapFactory = c.uniswapFactory as Contract;
 
 
     const tokenDistribution = await deploy.deployContract('LibRewardsDistribution' ) as LibRewardsDistribution;
@@ -83,6 +82,28 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     console.log(`Treasury Sale Vault deployed at: ${treasurySaleVault.address.toLowerCase()}`);
 
 
+    const teamAllocation = await tokenDistribution.TEAM()
+
+
+    ///////////////////////////
+    // Deploy "Vesting Router" contract:
+    ///////////////////////////
+    const vestingRouter = await deploy.deployContract('VestingRouter', [
+        [
+            c.sovReignOwnerAddr, 
+            c.user1Addr,
+            c.user2Addr, 
+            c.user3Addr
+        ],[
+            teamAllocation.div(2), 
+            teamAllocation.div(6), 
+            teamAllocation.div(6), 
+            teamAllocation.div(6)
+        ],
+        reignToken.address]
+    ) as RewardsVault;
+    console.log(`Vesting Router deployed at: ${vestingRouter.address.toLowerCase()}`);
+
 
     console.log(`\n --- DISTRIBUTE REIGN ---`);
 
@@ -90,16 +111,9 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     // Distribute "ReignToken":
     ///////////////////////////
-    const teamAllocation = await tokenDistribution.TEAM()
-    await reignToken.connect(c.sovReignOwnerAcct).mint(c.sovReignOwnerAddr,teamAllocation.div(2))
-    console.log(`ReignToken minted: '${teamAllocation.div(2).toString()}' to addr '${c.sovReignOwnerAddr.toLowerCase()}' (SoVReignOwner address)`);
-    await reignToken.connect(c.sovReignOwnerAcct).mint(c.user1Addr, teamAllocation.div(6))
-    console.log(`ReignToken minted: '${teamAllocation.div(6).toString()}' to addr '${c.user1Addr.toLowerCase()}' (User1 address)`);
-    await reignToken.connect(c.sovReignOwnerAcct).mint(c.user2Addr, teamAllocation.div(6))
-    console.log(`ReignToken minted: '${teamAllocation.div(6).toString()}' to addr '${c.user2Addr.toLowerCase()}' (User2 address)`);
-    await reignToken.connect(c.sovReignOwnerAcct).mint(c.user3Addr, teamAllocation.div(6))
-    console.log(`ReignToken minted: '${teamAllocation.div(6).toString()}' to addr '${c.user3Addr.toLowerCase()}' (User3 address)`);
-   
+    await reignToken.connect(c.sovReignOwnerAcct).mint(vestingRouter.address,teamAllocation)
+    console.log(`ReignToken minted: '${teamAllocation}' to addr '${vestingRouter.address.toLowerCase()}' (Vesting Router address)`);
+
     // Rewards Vault
     const poolRewardAllocation = await tokenDistribution.WRAPPING_TOKENS()
     await reignToken.connect(c.sovReignOwnerAcct).mint(rewardsVault.address, poolRewardAllocation)
@@ -131,6 +145,16 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     console.log(`ReignToken minted: '${treasurySaleAllocation.toString()}' to addr '${treasurySaleVault.address.toLowerCase()}' (TreasurySale contract)`);
 
 
+    ///////////////////////////
+    // Deploy "Staking" contract:
+    ///////////////////////////
+    const staking = (await deploy.deployContract('Staking')) as Staking;
+    c.staking = staking
+    console.log(`Staking contract deployed at: ${staking.address}`);
+
+
+    
+    /*
     console.log(`\n --- DEPLOY UNISWAP POOLS ---`);
 
 
@@ -154,15 +178,9 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
 
     console.log(`\n --- PREPARE REWARDS  ---`);
 
+    
     ///////////////////////////
-    // Deploy "Staking" contract:
-    ///////////////////////////
-    const staking = (await deploy.deployContract('Staking')) as Staking;
-    c.staking = staking
-    console.log(`Staking contract deployed at: ${staking.address}`);
-
-    ///////////////////////////
-    // Deploy "LPRewards" contract for sov/dai:
+    // Deploy "LPRewards" contract for sov/usdc:
     ///////////////////////////
     const sovLpRewards = (await deploy.deployContract('LPRewards', 
         [
@@ -175,7 +193,7 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     c.sovLpRewards = sovLpRewards
 
     ///////////////////////////
-    // Deploy "LPRewards" contract for REIGN/USD:
+    // Deploy "LPRewards" contract for REIGN/WETH:
     ///////////////////////////
     const reignLpRewards = (await deploy.deployContract('LPRewards', 
         [
@@ -185,6 +203,8 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
             lpRewardAllocation.div(2)])) as LPRewards;
     console.log(`LPRewards for Uniswap REIGN/WETH LP deployed at: ${reignLpRewards.address}`);
     c.reignLpRewards = reignLpRewards
+
+    */
 
 
     //////////////////////////
@@ -202,13 +222,13 @@ export async function tokenSetup(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(govRewards.address, govRewardsAllocation)
     console.log(`Calling setAllowance() from (RewardsVault contract) to (GovRewards contract)`);
-
+/*
     await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(sovLpRewards.address, lpRewardAllocation.div(2))
     console.log(`Calling setAllowance() from (RewardsVault contract) to (SOV/USDC LPRewards contract)`);
 
     await rewardsVault.connect(c.sovReignOwnerAcct).setAllowance(reignLpRewards.address, lpRewardAllocation.div(2))
     console.log(`Calling setAllowance() from (RewardsVault contract) to (REIGN/WETH LPRewards contract)`);
-
+*/
     await devVault.connect(c.sovReignOwnerAcct).setAllowance(reignDAO.address, devAllocation)
     console.log(`Calling setAllowance() from (DevVault contract) to (Reign DAO contract)`);
 

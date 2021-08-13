@@ -1,7 +1,7 @@
 import {DeployConfig} from "../config";
 import {BigNumber, Contract} from "ethers";
 
-import RewardsVault from "../deployment/ContractABIs/RewardsVault.json"
+import RewardsVault from "../deployment-rinkeby/ContractABIs/RewardsVault.json"
 import { ethers } from "hardhat";
 import { tenPow18 } from "../../test/helpers/helpers";
 

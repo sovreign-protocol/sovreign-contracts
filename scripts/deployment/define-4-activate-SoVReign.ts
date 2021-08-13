@@ -23,8 +23,8 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     const staking = c.staking as Staking;
     const sovWrapper = c.sovWrapper as SovWrapper;
     const poolRouter = c.poolRouter as PoolRouter;
-    const sovLpRewards = c.sovLpRewards as LPRewards;
-    const reignLpRewards = c.reignLpRewards as LPRewards;
+    //const sovLpRewards = c.sovLpRewards as LPRewards;
+    // reignLpRewards = c.reignLpRewards as LPRewards;
     const govRewards = c.govRewards as GovRewards;
     const basketBalancer = c.basketBalancer as BasketBalancer;
     const smartPool = c.smartPool as Contract;
@@ -69,7 +69,7 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
         poolRouter.address
         );
 
-
+    /*
     ///////////////////////////
     // Init "sovLPRewards":
     ///////////////////////////
@@ -81,36 +81,14 @@ export async function activateSoVReign(c: DeployConfig): Promise<DeployConfig> {
     ///////////////////////////
     console.log(`Calling initialize() at '${reignLpRewards.address.toLowerCase()}' (REIGN LP Rewards contract)`);
     await reignLpRewards.connect(c.sovReignOwnerAcct).initialize();
-
+*/
     ///////////////////////////
     // Init "reignLpRewards":
     ///////////////////////////
     console.log(`Calling initialize() at '${govRewards.address.toLowerCase()}' (Gov Rewards contract)`);
     await govRewards.connect(c.sovReignOwnerAcct).initialize();
 
-    ///////////////////////////
-    // "SoVReignOwner" stakes ReignToken to "ReignDiamond"
-    // This is required to "activate" the ReignDAO
-    ///////////////////////////
-    const amountStakedSoVReignOwner = BigNumber.from(4_000_000).mul(helpers.tenPow18);
-
-    console.log(`SoVReignOwner approves addr '${reignDiamond.address}' to transfer '${amountStakedSoVReignOwner}'`)
-    await reignToken
-        .connect(c.sovReignOwnerAcct)
-        .approve(reignDiamond.address, amountStakedSoVReignOwner);
-
-    console.log(`SoVReignOwner deposits '${amountStakedSoVReignOwner}' to ReignDiamond`)
-    let tx = await reignDiamondFacet
-        .connect(c.sovReignOwnerAcct)
-        .deposit(amountStakedSoVReignOwner);
-
-    await tx.wait() 
-
-    ///////////////////////////
-    // Activate the "ReignDAO"
-    ///////////////////////////
-    console.log(`ReignDAO activate()`)
-    await reignDAO.connect(c.sovReignOwnerAcct).activate()
+    
 
 
     return c;

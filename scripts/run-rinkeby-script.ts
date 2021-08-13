@@ -1,5 +1,5 @@
 import {deployConfig} from "./config-rinkeby";
-import { Script } from "./rinkeby-actions/set-allowance";
+import { Script } from "./rinkeby-actions/deploy-LPRew";
 
 deployConfig()
     .then(c => Script(c))

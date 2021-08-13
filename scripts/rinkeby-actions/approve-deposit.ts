@@ -1,8 +1,8 @@
 import {DeployConfig} from "../config";
 import {BigNumber, Contract} from "ethers";
 
-import PoolRouter from "../deployment/ContractABIs/PoolRouter.json"
-import erc20 from "../deployment/ContractABIs/ERC20.json"
+import PoolRouter from "../deployment-rinkeby/ContractABIs/PoolRouter.json"
+import erc20 from "../deployment-rinkeby/ContractABIs/ERC20.json"
 import { ethers } from "hardhat";
 import { tenPow18 } from "../../test/helpers/helpers";
 

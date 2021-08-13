@@ -1,5 +1,6 @@
-import {deployConfig} from "./config-rinkeby";
+import {deployConfig} from "./config";
 import {contractsPreFlight} from "./deployment/define-0-contracts-preflight";
+import {fundOwnerWallet} from "./deployment/define-0.5-fund-owner-wallet";
 import {deployDAO} from "./deployment/define-1-deploy-DAO";
 import {tokenSetup} from "./deployment/define-2-tokens-setup";
 import {setupSmartPool} from "./deployment/define-3-pool-setup";
@@ -9,6 +10,7 @@ import {createRewards} from "./deployment/define-5-create-rewards";
 
 deployConfig()
     .then(c => contractsPreFlight(c))
+    .then(c => fundOwnerWallet(c))
     .then(c => deployDAO(c))
     .then(c => tokenSetup(c))
     .then(c => setupSmartPool(c))

@@ -1,15 +1,12 @@
-import {DeployConfig} from "../config";
+import {DeployConfigRinkeby} from "../config-rinkeby";
 import {BigNumber, Contract} from "ethers";
 
 import ConfigurableRightsPool from "../deployment/ContractABIs/ConfigurableRightsPool.json"
-import erc20 from "../deployment/ContractABIs/ERC20.json"
-import { ethers } from "hardhat";
-import { tenPow18 } from "../../test/helpers/helpers";
 
-export async function Script(c: DeployConfig): Promise<any> {
+export async function Script(c: DeployConfigRinkeby): Promise<any> {
 
-    let smartPoolAddress = "0x81afEb02084F6E98dE8f0D945968578cF6Aa58fD";
-    let reignDAOAddress = "0x81284c9f26338d6067f15d58c9d30af1d145627d";
+    let smartPoolAddress = "0x9E850E0E1cdD1b452A694D27eB82Fa78F502C8C7";
+    let reignDAOAddress = "0x78500ee25f607ffc906cccd27077f15f76c01785";
     
     ///////////////////////////
     // Connect to Pool

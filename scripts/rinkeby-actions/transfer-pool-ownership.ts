@@ -1,7 +1,7 @@
 import {DeployConfig} from "../config";
 import {Contract} from "ethers";
 
-import ConfigurableRightsPool from "../deployment/ContractABIs/ConfigurableRightsPool.json"
+import ConfigurableRightsPool from "../deployment-rinkeby/ContractABIs/ConfigurableRightsPool.json"
 import { ethers } from "hardhat";
 
 export async function transferOwnership(c: DeployConfig): Promise<any> {

@@ -21,16 +21,19 @@ import {
 
 export async function deployConfig(): Promise<DeployConfig> {
     const sovReignOwnerAddr: string = '0xCDb2a435a65A5a90Da1dd2C1Fe78A2df70795F91';
-    const user1Addr: string = '0xA5E3C2047a28f0C8032B1A7e7074682B129445a7'; // WETH whale
-    const user2Addr: string = '0x5577bd667608bBB2537f3d45610B14b7286466a7'; // WBTC whale
-    const user3Addr: string = '0x2A95300047E373EEEAa5Eea0be7dcE1418Ccf191'; // USDC whale
-    const user4Addr:string = '0x2C48187E19780725EFC973620F4A1dF1c38481CA';// DAI whale
-    const user5Addr:string = '0x2C48187E19780725EFC973620F4A1dF1c38481CA';// PAXG whale -- not used here
-    const usdcAddr:  string = '0xf65C93902eCC4c7979E92ED2cca01421e8021F77';
-    const wbtcAddr:  string = '0x3a85973FD194C9FB966882FeE7b11481c38344FB';
-    const wethAddr:  string = '0xf8e81D47203A594245E36C48e151709F0C19fBe8';
-    const daiAddr: string = '0x712863C3ad98ef4319133B8646D51383700cb37b';
-    const paxgAddr: string = '0xad36b2c064cc743daca00a134efc845dfd073f3c';// -- not used here
+    const user1Addr: string = '0xA5E3C2047a28f0C8032B1A7e7074682B129445a7'; 
+    const user2Addr: string = '0x5577bd667608bBB2537f3d45610B14b7286466a7'; 
+    const user3Addr: string = '0x2A95300047E373EEEAa5Eea0be7dcE1418Ccf191'; 
+    const user4Addr:string = '0x2C48187E19780725EFC973620F4A1dF1c38481CA';
+    const susdWhaleAddr:string = '0x2C48187E19780725EFC973620F4A1dF1c38481CA';
+    const usdcAddr: string = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+    const sbtcAddr:  string = '0xA2E93bFb0250E41f2BbFAD4c6fED67c67f5eb381';
+    const sethAddr:  string = '0x0955468eccd6d2ee06a5e47d0734a7508badf7a5';
+    const sxauAddr: string = '0x19fc05cf36804bcaee77f27b48e103207fc70d89';
+    const sxagAddr: string = '0x6c191f9f7af0a493a1623ddb41fe5cff386d128f';
+    const schfAddr: string = '0x9380241b3851e27ded40f86837a58a9af29f81c3';
+    const susdAddr: string = '0xd784369bfd4145fdd8645eaf8a5df3edf5d4a1a2';
+    const wethAddr: string = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
     const bFactoryAddr: string = '0x9C84391B443ea3a48788079a5f98e2EaD55c9309'; 
     const smartPoolFactoryAddr: string = '0xA3F9145CB0B50D907930840BB2dcfF4146df8Ab4'; 
     const uniswapFactoryAddr: string = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
@@ -42,12 +45,15 @@ export async function deployConfig(): Promise<DeployConfig> {
         user2Addr,
         user3Addr,
         user4Addr,
-        user5Addr,
+        susdWhaleAddr,
         usdcAddr,
-        daiAddr,
-        wbtcAddr,
+        sbtcAddr,
+        sethAddr,
+        sxauAddr,
+        sxagAddr,
+        schfAddr,
+        susdAddr,
         wethAddr,
-        paxgAddr,
         uniswapFactoryAddr,
         uniswapRouterAddr,
         bFactoryAddr,
@@ -57,7 +63,7 @@ export async function deployConfig(): Promise<DeployConfig> {
         await getAccount(user2Addr),
         await getAccount(user3Addr),
         await getAccount(user4Addr),
-        await getAccount(user5Addr),
+        await getAccount(susdWhaleAddr),
         // Total REIGN token amount to be minted
         BigNumber.from(1000000000).mul(helpers.tenPow18),
         // REIGN token amount to 'sovReignOwnerAddr'
@@ -86,12 +92,15 @@ export class DeployConfig {
     public user2Addr: string;
     public user3Addr: string;
     public user4Addr: string;
-    public user5Addr: string;
+    public susdWhaleAddr: string;
     public usdcAddr: string;
-    public daiAddr: string;
-    public wbtcAddr: string;
+    public sbtcAddr: string;
+    public sethAddr: string;
+    public sxauAddr: string;
+    public sxagAddr: string;
+    public schfAddr: string;
+    public susdAddr: string;
     public wethAddr: string;
-    public paxgAddr:string;
     public uniswapFactoryAddr: string;
     public uniswapRouterAddr: string;
     public bFactoryAddr: string;
@@ -101,7 +110,7 @@ export class DeployConfig {
     public user2Acct: Signer;
     public user3Acct: Signer;
     public user4Acct: Signer;
-    public user5Acct: Signer;
+    public susdWhale: Signer;
     public amountReignTokenInitTotal: BigNumber;
     public amountReignTokenToSoVReignOwner: BigNumber;
     public amountReignTokenToRewardsVault: BigNumber;
@@ -116,11 +125,14 @@ export class DeployConfig {
     public rewardsVault?: RewardsVault;
     public devVault?: RewardsVault;
     public treasurySaleVault?: RewardsVault;
-    public dai?: Contract;
     public usdc?: Contract;
-    public wbtc?: Contract;
+    public susd?: Contract;
+    public schf?: Contract;
+    public sbtc?: Contract;
+    public seth?: Contract;
+    public sxau?: Contract;
+    public sxag?: Contract;
     public weth?: Contract;
-    public paxg?: Contract;
     public reignToken?: ReignToken;
     public sovToken?: SovToken;
     public govRewards?: GovRewards;
@@ -145,12 +157,15 @@ export class DeployConfig {
         user2Addr: string,
         user3Addr: string,
         user4Addr: string,
-        user5Addr: string,
+        susdWhaleAddr: string,
         usdcAddr: string,
-        daiAddr: string,
-        wbtcAddr: string,
+        sbtcAddr: string,
+        sethAddr: string,
+        sxauAddr: string,
+        sxagAddr: string,
+        schfAddr: string,
+        susdAddr: string,
         wethAddr: string,
-        paxgAddr: string,
         uniswapFactoryAddr: string,
         uniswapRouterAddr: string,
         bFactoryAddr:string,
@@ -160,7 +175,7 @@ export class DeployConfig {
         user2Acct: Signer,
         user3Acct: Signer,
         user4Acct: Signer,
-        user5Acct: Signer,
+        susdWhale: Signer,
         amountReignTokenInitTotal: BigNumber,
         amountReignTokenToSoVReignOwner: BigNumber,
         amountReignTokenToRewardsVault: BigNumber,
@@ -177,12 +192,15 @@ export class DeployConfig {
         this.user2Addr = user2Addr;
         this.user3Addr = user3Addr;
         this.user4Addr = user4Addr;
-        this.user5Addr = user5Addr;
+        this.susdWhaleAddr = susdWhaleAddr;
         this.usdcAddr = usdcAddr;
-        this.daiAddr = daiAddr;
-        this.wbtcAddr = wbtcAddr;
-        this.wethAddr = wethAddr;
-        this.paxgAddr = paxgAddr;
+        this.sbtcAddr = sbtcAddr;
+        this.sethAddr = sethAddr;
+        this.sxauAddr = sxauAddr;
+        this.sxagAddr = sxagAddr;
+        this.schfAddr = schfAddr;
+        this.susdAddr = susdAddr;
+        this.wethAddr = susdAddr;
         this.uniswapFactoryAddr = uniswapFactoryAddr;
         this.uniswapRouterAddr = uniswapRouterAddr;
         this.bFactoryAddr = bFactoryAddr;
@@ -192,7 +210,7 @@ export class DeployConfig {
         this.user2Acct = user2Acct;
         this.user3Acct = user3Acct;
         this.user4Acct = user4Acct;
-        this.user5Acct = user5Acct;
+        this.susdWhale = susdWhale;
         this.amountReignTokenInitTotal = amountReignTokenInitTotal;
         this.amountReignTokenToSoVReignOwner = amountReignTokenToSoVReignOwner;
         this.amountReignTokenToRewardsVault = amountReignTokenToRewardsVault;

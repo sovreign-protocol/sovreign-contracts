@@ -11,40 +11,75 @@ export async function contractsPreFlight(c: DeployConfig): Promise<DeployConfig>
     console.log(`\n --- CONNECTING TO CONTRACTS ---`);
 
     ///////////////////////////
-    // Connect "dai" contract:
+    // Connect "susd" contract:
     ///////////////////////////
-    const dai = new Contract(
-        c.daiAddr,
+    const susd = new Contract(
+        c.susdAddr,
         ERC20,
         c.sovReignOwnerAcct
     )
-    c.dai = dai
-    console.log(`DAI connected at: ${dai.address.toLowerCase()}`);
+    c.susd = susd
+    console.log(`sUSD connected at: ${susd.address.toLowerCase()}`);
 
 
      ///////////////////////////
-    // Connect "usdc" contract:
+    // Connect "schf" contract:
     ///////////////////////////
-    const usdc = new Contract(
-        c.usdcAddr,
+    const schf = new Contract(
+        c.schfAddr,
         ERC20,
         c.sovReignOwnerAcct
     )
-    c.usdc = usdc
-    console.log(`USDC connected at: ${usdc.address.toLowerCase()}`);
+    c.schf = schf
+    console.log(`schf connected at: ${schf.address.toLowerCase()}`);
 
 
     ///////////////////////////
-    // Connect "wbtc" contract:
+    // Connect "sbtc" contract:
     ///////////////////////////
-    const wbtc = new Contract(
-        c.wbtcAddr, 
+    const sbtc = new Contract(
+        c.sbtcAddr, 
         ERC20,
         c.sovReignOwnerAcct 
     )
-    c.wbtc = wbtc
-    console.log(`WBTC connected at: ${wbtc.address.toLowerCase()}`);
+    c.sbtc = sbtc
+    console.log(`sbtc connected at: ${sbtc.address.toLowerCase()}`);
 
+    ///////////////////////////
+    // Connect "seth" contract:
+    ///////////////////////////
+    const seth = new Contract(
+        c.sethAddr, 
+        ERC20,
+        c.sovReignOwnerAcct 
+    )
+    c.seth = seth
+    console.log(`seth connected at: ${seth.address.toLowerCase()}`);
+
+
+     ///////////////////////////
+    // Connect "sxau" contract:
+    ///////////////////////////
+    const sxau = new Contract(
+        c.sxauAddr, 
+        ERC20,
+        c.sovReignOwnerAcct 
+    )
+    c.sxau = sxau
+    console.log(`sxau connected at: ${sxau.address.toLowerCase()}`);
+
+     ///////////////////////////
+    // Connect "sxag" contract:
+    ///////////////////////////
+    const sxag = new Contract(
+        c.sxagAddr, 
+        ERC20,
+        c.sovReignOwnerAcct 
+    )
+    c.sxag = sxag
+    console.log(`sxag connected at: ${sxag.address.toLowerCase()}`);
+
+    
     ///////////////////////////
     // Connect "weth" contract:
     ///////////////////////////
@@ -54,19 +89,7 @@ export async function contractsPreFlight(c: DeployConfig): Promise<DeployConfig>
         c.sovReignOwnerAcct 
     )
     c.weth = weth
-    console.log(`WETH connected at: ${weth.address.toLowerCase()}`);
-
-
-     ///////////////////////////
-    // Connect "paxg" contract:
-    ///////////////////////////
-    const paxg = new Contract(
-        c.paxgAddr, 
-        ERC20,
-        c.sovReignOwnerAcct 
-    )
-    c.paxg = paxg
-    console.log(`PAXG connected at: ${paxg.address.toLowerCase()}`);
+    console.log(`weth connected at: ${weth.address.toLowerCase()}`);
 
 
     ///////////////////////////
