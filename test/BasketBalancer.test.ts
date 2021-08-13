@@ -107,7 +107,7 @@ describe('BasketBalancer', function () {
 
         it('keeps correct epoch', async function () {
             expect(await balancer.getCurrentEpoch()).to.eq(0);
-            awaitUntilNextEpoch()
+            await awaitUntilNextEpoch()
             expect(await balancer.getCurrentEpoch()).to.eq(1);
         });
 
@@ -415,8 +415,8 @@ describe('BasketBalancer', function () {
 
     async function awaitUntilNextEpoch() {
         //wait until the update periods is over
-        helpers.moveAtEpoch(epochStart, epochDuration, ( await balancer.getCurrentEpoch()).add(1).toNumber())
-        await balancer.getCurrentEpoch()
+        await helpers.moveAtEpoch(epochStart, epochDuration, ( await balancer.getCurrentEpoch()).add(1).toNumber())
+        
     }
 
     async function setupContracts () {

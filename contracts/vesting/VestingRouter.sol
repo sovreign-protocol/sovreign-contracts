@@ -30,7 +30,7 @@ contract VestingRouter {
         ) {
             if (
                 _reign.balanceOf(address(this)) < _vestingAmounts[i] ||
-                gasleft() < 20000
+                gasleft() < 40000
             ) {
                 break;
             }

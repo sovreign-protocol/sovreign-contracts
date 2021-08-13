@@ -95,7 +95,7 @@ describe('Token', function () {
 
         it('allows Owner to set new owner', async function () {
             expect(await reign.owner()).to.be.eq(userAddress)
-            reign.connect(user).setOwner(happyPirateAddress)
+            await reign.connect(user).setOwner(happyPirateAddress)
             expect(await reign.owner()).to.be.eq(happyPirateAddress)
         })
 
@@ -201,16 +201,16 @@ describe('Token', function () {
 
         it('allows reignDAO to set new reignDAO', async function () {
             expect(await sov.reignDAO()).to.be.eq(ownerAddress)
-            sov.connect(owner).setReignDAO(happyPirateAddress)
+            await sov.connect(owner).setReignDAO(happyPirateAddress)
             expect(await sov.reignDAO()).to.be.eq(happyPirateAddress)
         })
 
         it('allows reignDAO to set new Minter', async function () {
             expect(await sov.reignDAO()).to.be.eq(ownerAddress)
-            sov.connect(owner).setMinter(happyPirateAddress, true)
+            await sov.connect(owner).setMinter(happyPirateAddress, true)
             expect(await sov.isMinter(happyPirateAddress)).to.be.eq(true)
 
-            sov.connect(owner).setMinter(happyPirateAddress, false)
+            await sov.connect(owner).setMinter(happyPirateAddress, false)
             expect(await sov.isMinter(happyPirateAddress)).to.be.eq(false)
         })
 
