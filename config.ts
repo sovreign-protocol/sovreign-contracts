@@ -38,7 +38,8 @@ export const networks: NetworksUserConfig = {
     rinkeby: {
         url: 'https://eth-rinkeby.alchemyapi.io/v2/5m00FPenbnL1ct1wJBK8lNalEVyvhePf',
         accounts: defaultAccountRinkeby,
-        gas: 'auto'
+        gas: 'auto',
+        hardfork: 'london'
     },
 
     hardhat: {
@@ -46,6 +47,7 @@ export const networks: NetworksUserConfig = {
         mining: {
             auto: true
         },
+        hardfork: 'london',
         forking: {
             // I know, I know. Not a good practice to add tokens to git repos.
             // For development, I don't care. :-)
