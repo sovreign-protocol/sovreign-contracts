@@ -22,7 +22,6 @@ contract PoolRouter {
     ISovWrapper public wrappingContract;
     IMintableERC20 public sovToken;
 
-    address public reignDao;
     address public treasury;
 
     constructor(
