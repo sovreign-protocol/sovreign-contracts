@@ -1,8 +1,8 @@
-![Build and Test](https://github.com/dialecticch/sovreign-contracts/actions/workflows/build.yml/badge.svg?branch=master)
+![Build and Test](https://github.com/sovreign-protocol/sovreign-contracts/actions/workflows/build.yml/badge.svg?branch=master)
 
 # 👑 Sovreign: Contracts 👑
 
-This repo has all smart contracts used by Sovreign.
+This repo has all smart contracts used by [Sovreign](https://sovreign.org).
 
 The `./contracts` folder has the following structure:
 
