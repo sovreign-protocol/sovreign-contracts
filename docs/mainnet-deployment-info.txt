@@ -1,0 +1,34 @@
+ --- DEPLOY REIGN DAO ---
+DiamondCutFacet deployed to: 0x2c487d7ad6a59ca6a8cd7e72eb7537d78cc75cc3
+DiamondLoupeFacet deployed to: 0x7b43a3787319f147d0c7e327ab3d1625b9d5c2f9
+OwnershipFacet deployed to: 0x7ee8e35bc602e622ba692f17ae051e364dd5d387
+EpochClockFacet deployed to: 0x902d1428e6827897bB3408CC0b4eDef3Cf1A7a2e
+ReignFacet deployed at: 0xc63529cd344b467d4d7c671658069cda3b8b4f93
+ReignDiamond deployed at: 0x456fb11ea859b8f1e128063cb949ed80f12afce2
+ReignDAO deployed at: 0xde809bbe8fb348581d4c913393e0ad456002d591
+
+ReignToken deployed at: 0x17f59dd7fefc2f276509eed2ad6b65271458177e
+SovToken deployed at: 0x0afee744b6d9ff2b78f76fe10b3e0199c413fd34
+
+SovWrapper deployed at: 0xa7217d1b7710e03051519bf7a114dcca8e8868ca
+
+--- DEPLOY VAULTS ---
+RewardsVault deployed at: 0x8452b234f08633a40fe3baf7f1b704112f09b16a
+Development Vault deployed at: 0x41489b1751beb29d1fb8c370aba8aa86f0b91b92
+Treasury Sale Vault deployed at: 0x735804f1b99ad2f4bf2d4b1a2d465289b3afdc5d
+
+Staking contract deployed at: 0xC23C1A1Cc094B436Ea0740aB53C9804Df6ec2141
+
+Deployed a Uniswap pair for REIGN/WETH: '0xA2a0C3e53CCc6946E61949ADC46A713F601D645F'
+Connected to Uniswap pair for SOV/USDC: '0x9B98Ff54446C7Ccf3118f980B5F32520d7Fa5207'
+
+LPRewards for Uniswap SOV/USDC LP deployed at: 0x258dBb646aD8C2eE74923b2607363B6C8BEe371C
+LPRewards for Uniswap REIGN/WETH LP deployed at: 0x8Da96eE3D3302628C367a5817F50Ea23392cbD7B
+GovRewards deployed at: 0xfe1e7c7210460CeA3A4A49AeAD81443bF6e60A73
+
+SmartPool connected at 0x93D1ff47ccaB6AFBFb0d29F6268961674a783B7C
+PoolRouter deployed at: 0xb59008414bc3087229d3cd09537946081b74f4cd
+
+BasketBalancer deployed at: 0x5af2c9a84b6dc6b44a4d318df75a7b71d65f3886
+
+WrappingRewards deployed at: 0x16d01a143fb54bc01e1c5a63f4bd26d246fe15cb
