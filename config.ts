@@ -13,7 +13,7 @@ const defaultAccount = {
 }
 
 const defaultAccountRinkeby = {
-    mnemonic: "cave grief nephew there cry isolate find brief burst into mesh catch",
+    mnemonic: "test test test test test test test test test test test junk",
     initialIndex: 0,
     path: "m/44'/60'/0'/0",
     count: 20,
