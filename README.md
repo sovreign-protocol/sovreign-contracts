@@ -64,7 +64,14 @@ yarn coverage
 
 > **IMPORTANT:**
 >
-> By default, the env variable `MAINNET_ALCHEMY_ENABLED` is set to `true` in `.env` file. It means that
+> The following env variables can be set:
+> - `TAG`
+> - `MAINNET_FORKING_ENABLED`
+> - `MAINNET_URL`
+> - `RINKEBY_URL`
+> - `ETHERSCAN_API_KEY`
+>
+>  By default, the `MAINNET_FORKING_ENABLED` is set to `true` in `.env` file. It means that
 > hardhat uses mainnet forking for running the scripts and tests.
 
 - Just deploy and set-up all contracts:
