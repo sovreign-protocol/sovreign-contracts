@@ -62,11 +62,11 @@ export const etherscan: EtherscanConfig = {
 };
 
 function getRinkebyURL(): string {
-    return process.env.RINKEBY_URL || "";
+    return process.env.RINKEBY_URL || "http://localhost:8545";
 }
 
 function getMainnetURL(): string {
-    return process.env.MAINNET_URL || "";
+    return process.env.MAINNET_URL || "http://localhost:8545";
 }
 
 function isForkingEnabled(): boolean {
