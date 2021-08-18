@@ -36,7 +36,7 @@ export const networks: NetworksUserConfig = {
     },
 
     rinkeby: {
-        url: 'https://eth-rinkeby.alchemyapi.io/v2/5m00FPenbnL1ct1wJBK8lNalEVyvhePf',
+        url: getRinkebyURL(),
         accounts: defaultAccountRinkeby,
         gas: 'auto',
         hardfork: 'london'
@@ -49,10 +49,8 @@ export const networks: NetworksUserConfig = {
         },
         hardfork: 'london',
         forking: {
-            // I know, I know. Not a good practice to add tokens to git repos.
-            // For development, I don't care. :-)
-            url: "https://eth-mainnet.alchemyapi.io/v2/-g51O7AhTJD5wgzNee3y1ksKDaQqM4Fy",
-            enabled: (process.env.MAINNET_ALCHEMY_ENABLED) ? (process.env.MAINNET_ALCHEMY_ENABLED == "true") : false
+            url: getMainnetURL(),
+            enabled: isForkingEnabled()
         }
     },
 };
@@ -60,5 +58,21 @@ export const networks: NetworksUserConfig = {
 // Use to verify contracts on Etherscan
 // https://buidler.dev/plugins/nomiclabs-buidler-etherscan.html
 export const etherscan: EtherscanConfig = {
-    apiKey: '2ZMJ7KEB5C5I9RP6X5AF2D5ZXMEAVSGBMD',
+    apiKey: getEtherscanAPIKey(),
 };
+
+function getRinkebyURL(): string {
+    return process.env.RINKEBY_URL || "";
+}
+
+function getMainnetURL(): string {
+    return process.env.MAINNET_URL || "";
+}
+
+function isForkingEnabled(): boolean {
+    return (process.env.MAINNET_FORKING_ENABLED) ? (process.env.MAINNET_FORKING_ENABLED == "true") : false
+}
+
+function getEtherscanAPIKey(): string {
+    return process.env.ETHERSCAN_API_KEY || "";
+}
