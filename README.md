@@ -27,7 +27,7 @@ This project is using the solidity compiler version 0.7.6
 ## Dependencies
 
 - node v14.14
-- hardhat v2.
+- hardhat v2
 - openzeppelin-contracts v3.2.2-solc-0.7
 - docker
 - docker-compose
@@ -75,7 +75,7 @@ yarn coverage
 > - `RINKEBY_URL`
 > - `ETHERSCAN_API_KEY`
 >
->  By default, the `MAINNET_FORKING_ENABLED` is set to `true` in `.env` file. It means that
+> By default, the `MAINNET_FORKING_ENABLED` is set to `true` in `.env` file. It means that
 > hardhat uses mainnet forking for running the scripts and tests.
 
 - Just deploy and set-up all contracts:
