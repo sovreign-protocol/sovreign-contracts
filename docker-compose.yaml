@@ -21,7 +21,7 @@ services:
       context: ./docker
       dockerfile: ./Dockerfile
     <<: *project-base
-    image: dialecticch/sovreign-contracts/remixd:latest
+    image: sovreign-protocol/sovreign-contracts/remixd:latest
     container_name: remixd
     hostname: remixd
     ports:
