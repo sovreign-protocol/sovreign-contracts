@@ -1,4 +1,6 @@
 ![Build and Test](https://github.com/sovreign-protocol/sovreign-contracts/actions/workflows/build.yml/badge.svg?branch=master)
+![Solidity](https://img.shields.io/static/v1?label=solidity&message=0.7.6&color=success)
+![Twitter Follow](https://img.shields.io/twitter/follow/Sovreign_org?style=social)
 
 # 👑 Sovreign: Contracts 👑
 
