@@ -4,7 +4,7 @@
 
 This repo has all smart contracts used by [Sovreign](https://sovreign.org).
 
-The `./contracts` folder has the following structure:
+The [./contracts](https://github.com/sovreign-protocol/sovreign-contracts/tree/master/contracts) folder has the following structure:
 
 - `./facets/`: contains the Diamond Facets utilized
 - `./farming/`: contains all yield-farming contracts as well as the main staking vault
@@ -15,6 +15,8 @@ The `./contracts` folder has the following structure:
 - `./tokens/`: contains the SOV and REIGN Token contracts
 - `./vesting/`: contains vesting contracts for the team and early investors
 - `./wrapper/`: contains all functionality related to wrapping the Balancer LP into SVR
+
+Check the [./docs](https://github.com/sovreign-protocol/sovreign-contracts/tree/master/docs) folder for an audit report and deployment information on testnet + mainnet.
 
 ## solc
 
